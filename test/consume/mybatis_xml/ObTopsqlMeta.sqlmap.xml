@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd" >
+<sqlMap namespace="ob_topsql_meta">
+
+	<resultMap id="clusterTenantGroupMap"
+			   class="dataobject.TopSQLMetaDO">
+		<result column="obregion_group" property="obregionGroup" jdbcType="VARCHAR" />
+		<result column="tenant_group" property="tenantGroup" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<resultMap id="tenantGroupMap"
+		class="dataobject.TopSQLMetaDO">
+		<result column="tenant_group" property="tenantGroup" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<resultMap id="clusterByObregionGroupMap"
+		class="dataobject.TopSQLMetaDO">
+		<result column="obregion_group" property="obregionGroup"
+			jdbcType="VARCHAR" />
+	</resultMap>
+
+	<resultMap id="OBStatTaskMap"
+		class="dataobject.OBStatTaskDO">
+		<result column="status" property="status" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<resultMap id="clusterByRegionGroupMap"
+		class="dataobject.TopSQLMetaDO">
+		<result column="cluster" property="cluster" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<resultMap id="OB10TenantNameMap"
+		class="dataobject.TopSqlDO">
+		<result column="tenant_name" property="tenantName" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<resultMap id="OB10ClusterMap"
+		class="dataobject.TopSqlDO">
+		<result column="cluster" property="cluster" jdbcType="VARCHAR" />
+		<result column="tenant_name" property="tenantName" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<resultMap id="OBServerByClusterMap"
+		class="dataobject.TarsHostMetaDO">
+		<result column="obregion_group" property="obRegionGroup"
+			jdbcType="VARCHAR" />
+		<result column="cluster" property="cluster" jdbcType="VARCHAR" />
+		<result column="zone" property="zone" jdbcType="VARCHAR" />
+		<result column="svr_ip" property="svrIp" jdbcType="VARCHAR" />
+		<result column="status" property="status" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<!-- 查询多个集群组里有哪些集群 -->
+	<select id="getClusterByTenantList" resultClass="string">
+		select cluster from ob_topsql_meta
+		<dynamic prepend="where">
+			<isNotEmpty prepend="AND" property="tenantList">
+				tenant_name in
+				<iterate property="tenantList" open="(" close=")" conjunction=",">
+					#tenantList[]#
+				</iterate>
+			</isNotEmpty>
+		</dynamic>
+		GROUP BY cluster
+	</select>
+
+	<!-- 根据条件查询租户 -->
+	<select id="getTenant" resultMap="OB10ClusterMap">
+		select cluster,tenant_name from
+		ob_topsql_meta
+		where
+		status = 'active'
+		and tenant_group != 'sys' and tenant_group != ''
+		<isNotEmpty prepend="AND" property="cluster">
+			cluster = #cluster#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="currentTenant">
+			tenant_name = #currentTenant#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="tenantName">
+			tenant_name like CONCAT('%',#tenantName#,'%')
+		</isNotEmpty>
+		group by cluster,tenant_name
+		order by cluster,tenant_name
+		limit 10
+	</select>
+
+	<!-- 查询在OB1.0中有哪些集群 -->
+	<select id="getOB10ClusterList" resultClass="String">
+		select distinct cluster from ob_topsql_meta
+		<isNotEmpty prepend="where" property="account">
+			account=#account#
+		</isNotEmpty>
+	</select>
+
+	<!-- 查询在OB1.0中某个集群中有哪些租户 -->
+	<select id="getOB10TenantNameByClusterList" resultMap="OB10TenantNameMap">
+		select tenant_name from ob_topsql_meta
+		<dynamic prepend="where">
+			<isNotEmpty prepend="AND" property="cluster">
+				cluster =
+				#cluster#
+			</isNotEmpty>
+		</dynamic>
+		and tenant_name !='sys' and status = 'active'
+	</select>
+
+	<!-- 查询某个集群中有哪些OBServer -->
+	<select id="getOBServerByCluster" resultMap="OBServerByClusterMap">
+		select obregion_group,cluster,zone,svr_ip,status from tars_host_meta
+		<dynamic prepend="where">
+			<isNotEmpty prepend="AND" property="cluster">
+				cluster =
+				#cluster#
+			</isNotEmpty>
+		</dynamic>
+	</select>
+
+	<!-- 查询某个租户组里有哪些集群 -->
+	<select id="getClusterByTenantGroup" resultMap="clusterByRegionGroupMap">
+		select cluster from ob_topsql_meta
+		<dynamic prepend="where">
+			<isNotEmpty prepend="AND" property="tenantGroup">
+				tenant_group =
+				#tenantGroup#
+			</isNotEmpty>
+		</dynamic>
+		and status = 'active'
+		group by cluster
+	</select>
+
+
+	<!-- 查询状态 -->
+	<select id="getOBStatTask" resultMap="OBStatTaskMap">
+		select status from tars_obstat_task
+		<dynamic prepend="where">
+			<isNotEmpty prepend="AND" property="obRegionGroup">
+				obregion_group =
+				#obRegionGroup#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="tenantGroup">
+				tenant_group =
+				#tenantGroup#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="startTime">
+				start_time =
+				#startTime#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="endTime">
+				end_time =
+				#endTime#
+			</isNotEmpty>
+		</dynamic>
+	</select>
+
+	<!-- 查询在OB1.0中某个集群组中有哪些租户组 -->
+	<select id="getOB10TenantGroupByObregionGroupList" resultMap="tenantGroupMap">
+		select tenant_group
+		from ob_topsql_meta
+		<dynamic prepend="where">
+			<isNotEmpty prepend="AND" property="obregionGroup">
+				obregion_group =
+				#obregionGroup#
+			</isNotEmpty>
+		</dynamic>
+		group by tenant_group
+	</select>
+
+
+	<!-- 查询在OB1.0某个集群属于哪个集群组 -->
+	<select id="getOB10ClusterByObregionGroupList" resultMap="clusterByObregionGroupMap">
+		select obregion_group from
+		ob_topsql_meta
+		<dynamic prepend="where">
+			<isNotEmpty prepend="AND" property="cluster">
+				cluster =
+				#cluster#
+			</isNotEmpty>
+		</dynamic>
+		limit 1
+	</select>
+
+
+	<!-- 某个租户在哪个集群组，租户组 -->
+	<select id="getClusterTenantGroupByTenantName" resultMap="clusterTenantGroupMap">
+		select obregion_group,tenant_group from
+		ob_topsql_meta
+		<dynamic prepend="where">
+			<isNotEmpty prepend="AND" property="tenantName">
+				tenant_name =
+				#tenantName#
+			</isNotEmpty>
+		</dynamic>
+		limit 1
+	</select>
+
+
+
+	<resultMap id="obTopsqlMetaMap"
+			   class="dataobject.TopSQLMetaDO">
+		<result column="obregion_group" property="obregionGroup" jdbcType="VARCHAR" />
+		<result column="tenant_group" property="tenantGroup" jdbcType="VARCHAR" />
+		<result column="cluster" property="cluster" jdbcType="VARCHAR" />
+		<result column="tenant_name" property="tenantName" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<select id="selectObTopsqlMeta" resultMap="obTopsqlMetaMap">
+		SELECT obregion_group,tenant_group,cluster,tenant_name
+		FROM ob_topsql_meta
+		WHERE cluster=#cluster# AND tenant_name=#tenantName#
+	</select>
+
+	<select id="selectFirstClusterTenant" resultMap="obTopsqlMetaMap">
+		SELECT obregion_group,tenant_group,cluster,tenant_name
+		FROM ob_topsql_meta
+		WHERE obregion_group= #obregionGroup# AND tenant_group= #tenantGroup#
+		ORDER BY cluster,tenant_name
+		LIMIT 1
+	</select>
+
+</sqlMap>

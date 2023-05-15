@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="gbk"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper.sqlaudit.ObTopsqlBaselineMapper">
+
+    <select id="selectDistinctSqlIdList" resultType="string">
+        select distinct sql_id from ob_topsql_baseline
+        where cluster=#{cluster} and tenant_name=#{tenantName} and end_time between #{start} and #{end}
+    </select>
+
+    <select id="getSPMCpuAndLogicalReads" resultType="entity.ObTopsqlBaselineEntity">
+        <![CDATA[
+
+
+                        SELECT SUM(cpu_time * exections) sum_cpu_time,MAX(max_cpu_time) max_cpu_time,
+                        SUM(logical_reads * exections) sum_logical_reads,MAX(logical_reads) max_logical_reads,SUM(exections) cnt
+                        FROM ob_topsql_baseline
+                        WHERE cluster = #{cluster}
+                        AND tenant_name = #{tenantName}
+                        AND sql_id = #{sqlId}
+                        AND end_time >= from_unixtime(#{startTime})
+                        AND end_time <= from_unixtime(#{endTime})
+                        AND svr_ip = #{svrIp}
+                        LIMIT 1
+
+
+        ]]>
+    </select>
+
+    <select id="getTopCpuSQLByTenant" resultType="string">
+        SELECT sql_id
+        FROM
+        (SELECT sql_id,SUM(exections * cpu_time) cpu_percent
+        FROM ob_topsql_baseline
+        WHERE
+        cluster = #{cluster}
+        AND tenant_name = #{tenantName}
+        AND end_time >= DATE_SUB(#{endTime},INTERVAL 10 minute)
+        AND sql_type NOT IN ('0','3','6')
+        GROUP BY sql_id
+        ORDER BY 2 DESC
+        LIMIT 1) a
+    </select>
+
+
+    <select id="getPlanChangeSQLByTenant" resultType="string">
+        select sql_id
+        from (
+            select  sql_id,SUM(exections * cpu_time) cpu_percent
+            FROM ob_topsql_baseline
+            WHERE
+                cluster = #{cluster}
+              AND tenant_name = #{tenantName}
+              AND end_time >= DATE_SUB(#{endTime},INTERVAL 10 minute)
+              AND sql_id in
+                    (
+                     SELECT sql_id
+                     FROM tars_sqldiag_all
+                     WHERE cluster = #{cluster}
+                       AND tenant_name = #{tenantName}
+                       AND batch_time >= DATE_SUB(#{endTime}, INTERVAL 10 minute)
+                       AND diag_type = 1
+                    )
+            AND sql_type NOT IN ('0','3','6')
+            GROUP BY sql_id
+            ORDER BY 2 DESC
+            LIMIT 5
+             ) as a
+    </select>
+
+    <select id="last10MinShadowSQLCount" resultType="entity.ObTopsqlBaselineEntity">
+        SELECT
+        /*+ READ_CONSISTENCY(weak) */
+        SUM(b.exections) cnt,SUM(b.cpu_time * b.exections) cpu_time
+        FROM ob_topsql_text a LEFT JOIN ob_topsql_baseline b
+        ON a.sql_id = b.sql_id AND a.cluster = b.cluster AND a.tenant_name = b.tenant_name
+        WHERE
+        a.shadow_mark = 1
+        AND b.cluster = #{cluster}
+        <if test="tenantName != null">
+            AND b.tenant_name = #{tenantName}
+        </if>
+        <if test="startTime == null">
+            AND b.end_time >= DATE_SUB(#{endTime} , INTERVAL 10 minute)
+        </if>
+        <if test="startTime != null">
+            <![CDATA[
+		        AND b.end_time <= #{endTime}
+		        AND b.end_time >= #{startTime}
+		           ]]>
+        </if>
+        <if test="ip != null">
+            AND b.svr_ip = #{ip}
+        </if>
+    </select>
+
+    <select id="last10MinTotalSQLCount" resultType="tars.entity.ObTopsqlBaselineEntity">
+        SELECT /*+ READ_CONSISTENCY(weak) */
+        SUM(exections) cnt,SUM(cpu_time * exections) cpu_time
+        FROM ob_topsql_baseline
+        WHERE cluster = #{cluster}
+        <if test="tenantName != null">
+            AND tenant_name = #{tenantName}
+        </if>
+        <if test="startTime == null">
+            AND end_time >= DATE_SUB(#{endTime} , INTERVAL 10 minute)
+        </if>
+        <if test="startTime != null">
+            <![CDATA[
+		        AND end_time <= #{endTime}
+		        AND end_time >= #{startTime}
+		           ]]>
+        </if>
+        <if test="ip != null">
+            AND svr_ip = #{ip}
+        </if>
+    </select>
+
+    <select id="last10MinUserSQLCount" resultType="entity.ObTopsqlBaselineEntity">
+        SELECT
+        /*+ READ_CONSISTENCY(weak) */
+        SUM(exections) cnt,SUM(cpu_time * exections) cpu_time
+        FROM ob_topsql_baseline
+        WHERE
+        cluster = #{cluster}
+        AND tenant_name = #{tenantName}
+        AND user_name = #{userName}
+        <if test="startTime == null">
+            AND end_time >= DATE_SUB(#{endTime} , INTERVAL 10 minute)
+        </if>
+        <if test="startTime != null">
+            <![CDATA[
+		        AND end_time <= #{endTime}
+		        AND end_time >= #{startTime}
+		           ]]>
+        </if>
+    </select>
+
+</mapper>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper.sqlaudit.InfoSchemaMapper">
+
+    <select id="selectTables" resultType="string">
+        select table_name
+        from information_schema.tables
+        where table_schema=#{dbName}
+        and table_name like CONCAT('%',#{tableName},'%')
+    </select>
+
+    <select id="selectColumns" resultType="entity.Column">
+        SELECT COLUMN_NAME, DATA_TYPE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE table_name = #{tableName}
+        AND table_schema = #{dbName}
+    </select>
+
+</mapper>

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper.sqlportrait.StsObTopsqlBaselineMapper">
+
+    <insert id="insertBatch">
+        insert into sts_ob_topsql_baseline
+        (cluster,tenant_name,svr_ip,sql_id,batch_time,start_time,end_time,exections,fail_times,rpc_count,remote_plans,miss_plans,
+        elapsed_time,execute_time,cpu_time,queue_time,netwait_time,iowait_time,getplan_time,return_rows,logical_reads,gmt_create,
+        affected_rows,sql_type,max_elapsed_time,retry_cnt,decode_time,total_wait_time,app_wait_time,concurrency_wait_time,schedule_time,
+        row_cache_hit,bloom_filter_cache_hit,block_cache_hit,block_index_cache_hit,disk_reads,memstore_read_row_count,
+        ssstore_read_row_count,event,client_ip,user_name,db_name,section,plan_id,max_cpu_time,table_scan,request_id,exec_ps)
+        values
+        <foreach item="item" collection="list" separator=",">
+        (#{item.cluster},#{item.tenantName},#{item.svrIp},#{item.sqlId},#{item.batchTime},#{item.startTime},#{item.endTime},#{item.exections},
+        #{item.failTimes},#{item.rpcCount},#{item.remotePlans},#{item.missPlans},#{item.elapsedTime},#{item.executeTime},#{item.cpuTime},
+        #{item.queueTime},#{item.netwaitTime},#{item.iowaitTime},#{item.getplanTime},#{item.returnRows},#{item.logicalReads},#{item.gmtCreate},
+        #{item.affectedRows},#{item.sqlType},#{item.maxElapsedTime},#{item.retryCnt},#{item.decodeTime},#{item.totalWaitTime},#{item.appWaitTime},
+        #{item.concurrencyWaitTime},#{item.scheduleTime},#{item.rowCacheHit},#{item.bloomFilterCacheHit},#{item.blockCacheHit},#{item.blockIndexCacheHit},
+        #{item.diskReads},#{item.memstoreReadRowCount},#{item.ssstoreReadRowCount},#{item.event},#{item.clientIp},#{item.userName},#{item.dbName},
+        #{item.section},#{item.planId},#{item.maxCpuTime},#{item.tableScan},#{item.requestId},#{item.execPs})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        `cluster`=values(`cluster`)
+    </insert>
+
+    <resultMap id="resultMap" type="dataobject.TopSqlDO">
+        <result column="sql_id" property="sqlId"/>
+        <result column="sql_type" property="sql_type"/>
+        <result column="exections" property="exections"/>
+        <result column="fail_times" property="fail_times"/>
+        <result column="rpc_count" property="rpc_count"/>
+        <result column="remote_plans" property="remote_plans"/>
+        <result column="miss_plans" property="miss_plans"/>
+        <result column="elapsed_time" property="elapsed_time"/>
+        <result column="execute_time" property="execute_time"/>
+        <result column="cpu_time" property="cpu_time"/>
+        <result column="queue_time" property="queue_time"/>
+        <result column="netwait_time" property="netwait_time"/>
+        <result column="iowait_time" property="iowait_time"/>
+        <result column="getplan_time" property="getplan_time"/>
+        <result column="return_rows" property="return_rows"/>
+        <result column="logical_reads" property="logical_reads"/>
+        <result column="affected_rows" property="affected_rows"/>
+        <result column="max_elapsed_time" property="max_elapsed_time"/>
+        <result column="retry_cnt" property="retry_cnt"/>
+        <result column="decode_time" property="decode_time"/>
+        <result column="total_wait_time" property="total_wait_time"/>
+        <result column="app_wait_time" property="app_wait_time"/>
+        <result column="concurrency_wait_time" property="concurrency_wait_time"/>
+        <result column="schedule_time" property="schedule_time"/>
+        <result column="row_cache_hit" property="row_cache_hit"/>
+        <result column="bloom_filter_cache_hit" property="bloom_filter_cache_hit"/>
+        <result column="block_cache_hit" property="block_cache_hit"/>
+        <result column="block_index_cache_hit" property="block_index_cache_hit"/>
+        <result column="disk_reads" property="disk_reads"/>
+        <result column="memstore_read_row_count" property="memstore_read_row_count"/>
+        <result column="ssstore_read_row_count" property="ssstore_read_row_count"/>
+        <result column="tenant_name" property="tenantName"/>
+        <result column="exec_ps" property="exec_ps"/>
+        <result column="event" property="event"/>
+        <result column="max_cpu_time" property="max_cpu_time"/>
+        <result column="client_ip" property="client_ip"/>
+        <result column="user_name" property="user_name"/>
+        <result column="db_name" property="db_name"/>
+        <result column="svr_ip" property="svr_ip"/>
+    </resultMap>
+
+    <select id="queryByCondition" resultMap="resultMap">
+        <include refid="selectSqlId" />
+        order by elapsed_time + getplan_time * 10 + return_rows * 10 + logical_reads * 10 DESC
+    </select>
+
+    <select id="queryByConditionWithText" resultMap="resultMap">
+        select /*+ QUERY_TIMEOUT(30000000000) */
+        a.* from (<include refid="selectSqlId"/>) a
+        <if test="searchSQLText!=null">
+            inner join sts_ob_topsql_text b on a.cluster=b.cluster and a.tenant_name=b.tenant_name and a.sql_id=b.sql_id
+            where b.sql_text like concat('%',#{searchSQLText},'%')
+            order by elapsed_time + getplan_time * 10 + return_rows * 10 + logical_reads * 10 DESC
+        </if>
+    </select>
+
+    <sql id="selectSqlId">
+        select /*+ QUERY_TIMEOUT(30000000000) */
+        cluster,tenant_name,sql_id,
+        max(svr_ip) svr_ip,
+        sql_type,
+        sum(exections) exections,
+        sum(fail_times) fail_times,
+        rpc_count,
+        sum(remote_plans) remote_plans,
+        sum(miss_plans) miss_plans,
+        round(avg(elapsed_time))/1000 elapsed_time,
+        round(avg(execute_time))/1000 execute_time,
+        round(avg(cpu_time))/1000 cpu_time,
+        round(avg(queue_time))/1000 queue_time,
+        round(avg(netwait_time))/1000 netwait_time,
+        round(avg(iowait_time))/1000 iowait_time,
+        round(avg(getplan_time))/1000 getplan_time,
+        round(avg(return_rows)) return_rows,
+        round(avg(logical_reads)) logical_reads,
+        round(avg(affected_rows)) affected_rows,
+        round(max(max_elapsed_time))/1000 max_elapsed_time,
+        sum(retry_cnt) retry_cnt,
+        round(avg(decode_time))/1000 decode_time,
+        round(avg(total_wait_time))/1000 total_wait_time,
+        round(avg(app_wait_time))/1000 app_wait_time,
+        round(avg(concurrency_wait_time))/1000 concurrency_wait_time,
+        round(avg(schedule_time))/1000 schedule_time,
+        round(avg(row_cache_hit)) row_cache_hit,
+        round(avg(bloom_filter_cache_hit)) bloom_filter_cache_hit,
+        round(avg(block_cache_hit)) block_cache_hit,
+        round(avg(block_index_cache_hit)) block_index_cache_hit,
+        round(avg(disk_reads)) disk_reads,
+        round(avg(memstore_read_row_count)) memstore_read_row_count,
+        round(avg(ssstore_read_row_count)) ssstore_read_row_count,
+        round(sum(exections)/sum(section)) exec_ps,
+        max(event) event,
+        max(max_cpu_time)/1000 max_cpu_time,
+        max(client_ip) client_ip,
+        max(user_name) user_name,
+        max(db_name) db_name
+        from
+        sts_ob_topsql_baseline
+        where cluster=#{cluster} and tenant_name=#{tenantName}
+        <if test="serverIp!=null and serverIp!=''">
+            and svr_ip=#{serverIp}
+        </if>
+        <if test="dbName!=null and dbName!=''">
+            and db_name=#{dbName}
+        </if>
+        <if test="searchContext!=null and searchContext!=''">
+            and ${searchName} ${searchSymbol} #{searchContext}
+        </if>
+        and end_time between #{startTime} and #{endTime}
+        group by cluster,tenant_name,sql_id
+    </sql>
+
+    <resultMap id="QuotaMap" type="dataobject.TopSqlQuotaDO">
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="exections" property="exections"/>
+        <result column="fail_times" property="fail_times"/>
+        <result column="rpc_count" property="rpc_count"/>
+        <result column="remote_plans" property="remote_plans"/>
+        <result column="miss_plans" property="miss_plans"/>
+        <result column="elapsed_time" property="elapsed_time"/>
+        <result column="execute_time" property="execute_time"/>
+        <result column="cpu_time" property="cpu_time"/>
+        <result column="queue_time" property="queue_time"/>
+        <result column="netwait_time" property="netwait_time"/>
+        <result column="iowait_time" property="iowait_time"/>
+        <result column="getplan_time" property="getplan_time"/>
+        <result column="return_rows" property="return_rows"/>
+        <result column="logical_reads" property="logical_reads"/>
+        <result column="affected_rows" property="affected_rows"/>
+        <result column="max_elapsed_time" property="max_elapsed_time"/>
+        <result column="retry_cnt" property="retry_cnt"/>
+        <result column="decode_time" property="decode_time"/>
+        <result column="total_wait_time" property="total_wait_time"/>
+        <result column="app_wait_time" property="app_wait_time"/>
+        <result column="concurrency_wait_time" property="concurrency_wait_time"/>
+        <result column="schedule_time" property="schedule_time"/>
+        <result column="row_cache_hit" property="row_cache_hit"/>
+        <result column="bloom_filter_cache_hit" property="bloom_filter_cache_hit"/>
+        <result column="block_cache_hit" property="block_cache_hit"/>
+        <result column="block_index_cache_hit" property="block_index_cache_hit"/>
+        <result column="disk_reads" property="disk_reads"/>
+        <result column="memstore_read_row_count" property="memstore_read_row_count"/>
+        <result column="ssstore_read_row_count" property="ssstore_read_row_count"/>
+        <result column="exec_ps" property="exec_ps"/>
+        <result column="event" property="event"/>
+        <result column="max_cpu_time" property="max_cpu_time"/>
+        <result column="client_ip" property="client_ip"/>
+        <result column="user_name" property="user_name"/>
+        <result column="db_name" property="db_name"/>
+        <result column="svr_ip" property="svr_ip"/>
+    </resultMap>
+
+    <!--
+    某条sql的历史指标，
+    由于没有降采样，目前查询限制是最多不能3天，并且最多返回200条
+     -->
+    <select id="getQuotaBySql" resultMap="QuotaMap">
+        SELECT
+            sql_type,start_time,end_time,
+            exections,fail_times,rpc_count,remote_plans,miss_plans,
+            elapsed_time/1000 elapsed_time,execute_time/1000 execute_time,
+            cpu_time/1000 cpu_time,queue_time/1000 queue_time,
+            netwait_time/1000 netwait_time,iowait_time/1000 iowait_time,
+            getplan_time/1000 getplan_time,return_rows,logical_reads,
+            affected_rows,max_elapsed_time/1000 max_elapsed_time, retry_cnt,decode_time/1000 decode_time,
+            total_wait_time/1000 total_wait_time,app_wait_time/1000 app_wait_time,
+            concurrency_wait_time/1000 concurrency_wait_time,
+            schedule_time/1000 schedule_time,row_cache_hit,
+            bloom_filter_cache_hit,block_cache_hit,block_index_cache_hit,
+            disk_reads,memstore_read_row_count,ssstore_read_row_count,
+            exec_ps,event,max_cpu_time/1000 max_cpu_time,client_ip,user_name,db_name,svr_ip
+        FROM
+            sts_ob_topsql_baseline
+        where
+            cluster=#{cluster} and tenant_name=#{tenantName} and sql_id=#{sqlId} and end_time between #{start} and #{end}
+        ORDER BY cluster,tenant_name,sql_id,end_time DESC
+        limit 200
+    </select>
+
+</mapper>

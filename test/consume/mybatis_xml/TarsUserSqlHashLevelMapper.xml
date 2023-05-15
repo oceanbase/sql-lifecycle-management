@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper.sqlaudit.TarsUserSqlHashLevelMapper">
+
+
+    <select id="selectSqlLevelList" resultType="entity.TarsSqlInfo">
+        SELECT
+        a.cluster,a.tenant_name,a.db_name,a.sql_id,a.pure_dbname,a.sql_hash,a.version,a.shadow_mark,IFNULL(a.sql_mode,'') sql_mode,
+        IFNULL(a.statement,a.sql_text) statement,sql_mode,IFNULL(a.table_name,'') table_name,IFNULL(a.pure_name,'') pure_name,
+        b.obregion_group,b.tenant_group,
+        c.level user_sql_level,c.limit_threshold user_sql_limit_threshold,c.can_limit_eleven user_sql_limit_eleven,c.emp_id user_sql_emp_id,
+        d.level user_db_level,d.limit_threshold user_db_limit_threshold,d.can_limit_eleven user_db_limit_eleven,d.emp_id user_db_emp_id
+        FROM ob_topsql_text a
+        Inner JOIN ob_topsql_meta b on a.cluster=b.cluster and a.tenant_name=b.tenant_name
+        left join tars_user_sql_hash_level c on b.obregion_group=c.obregion_group and b.tenant_group=c.tenant_group and a.sql_hash=c.sql_hash
+        left join tars_user_pure_dbname_level d on b.obregion_group=d.obregion_group and b.tenant_group=d.tenant_group and a.pure_dbname=d.pure_dbname
+        WHERE
+        <if test="sqlIdList.size() > 0">
+            a.cluster=#{cluster}
+            and a.tenant_name=#{tenantName}
+            and a.sql_id in
+            <foreach item="item" index="index" collection="sqlIdList" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="sqlIdList.size() == 0">
+            1 = 2
+        </if>
+    </select>
+
+    <select id="selectSqlLevelListByHash" resultType="entity.TarsUserSqlHashLevelEntity">
+        SELECT *
+        FROM tars_user_sql_hash_level
+        WHERE
+        <if test="sqlHashList.size() > 0">
+            obregion_group = #{obregionGroup} and tenant_group = #{tenantGroup}
+            and sql_hash in
+            <foreach item="sqlHash" index="index" collection="sqlHashList" open="(" separator="," close=")">
+                #{sqlHash}
+            </foreach>
+        </if>
+        <if test="sqlHashList.size() == 0">
+            1 = 2
+        </if>
+    </select>
+
+    <insert id="insertOnDupUpdate" parameterType="entity.TarsUserPureDbnameLevelEntity">
+        INSERT INTO
+        tars_user_sql_hash_level
+        (`obregion_group`,`tenant_group`,`sql_hash`,`pure_dbname`,`level`,`limit_threshold`,`can_limit_eleven`,`emp_id`,`cluster`,`tenant_name`,`sql_id`)
+        VALUES
+        (#{obregionGroup},#{tenantGroup},#{sqlHash},#{pureDbname},#{level},#{limitThreshold},#{canLimitEleven},#{empId},#{cluster},#{tenantName},#{sqlId})
+        ON DUPLICATE KEY UPDATE
+        `obregion_group`=values(`obregion_group`),
+        `tenant_group`=values(`tenant_group`),
+        `sql_hash`=values(`sql_hash`),
+        `pure_dbname`=values(`pure_dbname`),
+        `level`=values(`level`),
+        `limit_threshold`=values(`limit_threshold`),
+        `can_limit_eleven`=values(`can_limit_eleven`),
+        `emp_id`=values(`emp_id`),
+        `cluster`=values(`cluster`),
+        `tenant_name`=values(`tenant_name`),
+        `sql_id`=values(`sql_id`)
+    </insert>
+
+    <select id="selectDistinctTenantGroup" resultType="entity.ObTopsqlMetaEntity">
+        select distinct obregion_group,tenant_group
+        from tars_user_sql_hash_level
+    </select>
+
+
+</mapper>

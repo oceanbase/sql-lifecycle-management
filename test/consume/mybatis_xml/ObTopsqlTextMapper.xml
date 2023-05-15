@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper.sqlaudit.ObTopsqlTextMapper">
+
+    <select id="selectSqlHash" resultType="entity.TarsSqlInfo">
+        SELECT a.cluster,a.tenant_name,a.db_name,sql_mode,sql_id,sql_hash,pure_name,statement,version,obregion_group,tenant_group,c.pure_dbName
+        FROM ob_topsql_text a
+        INNER JOIN ob_topsql_meta b ON a.cluster=b.cluster AND a.tenant_name=b.tenant_name
+        LEFT JOIN ob_meta_database c ON a.cluster=c.cluster AND a.tenant_name=c.tenant_name AND a.db_name=c.db_name
+        WHERE a.cluster=#{cluster} AND a.tenant_name=#{tenantName} AND a.sql_id=#{sqlId}
+    </select>
+
+    <select id="selectTextList" resultType="entity.ObTopsqlTextEntity">
+        SELECT * FROM ob_topsql_text
+        WHERE
+        <if test="sqlIds.size() > 0">
+            cluster=#{cluster} AND tenant_name=#{tenantName} AND sql_id IN
+            <foreach item="sqlId" index="index" collection="sqlIds" open="(" separator="," close=")">
+                #{sqlId}
+            </foreach>
+        </if>
+        <if test="sqlIds.size() == 0">
+            1 = 2
+        </if>
+    </select>
+
+    <select id="getSQLIDBySQLHash" resultType="string">
+        SELECT sql_id
+        FROM ob_topsql_text
+        WHERE
+        sql_hash = #{sqlHash}
+    </select>
+
+</mapper>
