@@ -25,6 +25,7 @@ __pycache__/
 # Logs and databases #
 ######################
 *.sqlite
+*.log
 
 # OS generated files #
 ######################
