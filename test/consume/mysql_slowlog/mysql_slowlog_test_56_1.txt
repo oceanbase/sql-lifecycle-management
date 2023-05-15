@@ -1,0 +1,56 @@
+/u01/mysql/bin/mysqld, Version: 5.6.16.12.7-20170607-log (Source distribution). started with:
+Tcp port: 3306  Unix socket: /u01/my3306/run/mysql.sock
+Time                 Id Command    Argument
+# Time: 210720 11:59:46
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id: 89512547
+# Schema: asdfasdf  Last_errno: 0  Killed: 0
+# Query_time: 0.778688  Lock_time: 0.000038  Rows_sent: 3381  Rows_examined: 35617  Rows_affected: 0
+# Bytes_sent: 217826539  Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_read: 83668
+use asdfasdf;
+SET timestamp=1626753586;
+/* trace_id=0b27c50b162675358600179551323,rpc_id=0 */         SELECT /*MS-FPDECISION-FPD-APP-SERVER-SELECT-BY-CONDITION*/ *         FROM fpd_app_server         WHERE 1=1                                             AND             is_valid = 1;
+# Time: 210720 11:59:49
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id: 89588440
+# Schema: asdfasdf  Last_errno: 0  Killed: 0
+# Query_time: 0.551640  Lock_time: 0.000045  Rows_sent: 3381  Rows_examined: 35617  Rows_affected: 0
+# Bytes_sent: 217826539  Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_read: 83659
+SET timestamp=1626753589;
+/* trace_id=218d075c162675358876767001041,rpc_id=0 */         SELECT /*MS-FPDECISION-FPD-APP-SERVER-SELECT-BY-CONDITION*/ *         FROM fpd_app_server         WHERE 1=1                                             AND             is_valid = 1;
+# Time: 210720 11:59:51
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id: 89588340
+# Schema: asdfasdf  Last_errno: 0  Killed: 0
+# Query_time: 0.512870  Lock_time: 0.000056  Rows_sent: 3381  Rows_examined: 35617  Rows_affected: 0
+# Bytes_sent: 217826539  Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_read: 83656
+SET timestamp=1626753591;
+/* trace_id=21983d0e16267535906453025999,rpc_id=0 */         SELECT /*MS-FPDECISION-FPD-APP-SERVER-SELECT-BY-CONDITION*/ *         FROM fpd_app_server         WHERE 1=1                                             AND             is_valid = 1;
+# Time: 210720 11:59:54
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id: 89592686
+# Schema: asdfasdf  Last_errno: 0  Killed: 0
+# Query_time: 0.561524  Lock_time: 0.000040  Rows_sent: 3381  Rows_examined: 35617  Rows_affected: 0
+# Bytes_sent: 217826539  Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# QC_Hit: No  Full_scan: Yes  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_read: 83660
+SET timestamp=1626753594;
+/* trace_id=0b24770a162675359384366171081,rpc_id=0 */         SELECT /*MS-FPDECISION-FPD-APP-SERVER-SELECT-BY-CONDITION*/ *         FROM fpd_app_server         WHERE 1=1                                             AND             is_valid = 1;

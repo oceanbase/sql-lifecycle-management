@@ -1,0 +1,51 @@
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id: 89576565
+# Schema: asdfasdf  Last_errno: 0  Killed: 0
+# Query_time: 2.021248  Lock_time: 0.000078  Rows_sent: 1  Rows_examined: 448330  Rows_affected: 0
+# Bytes_sent: 60  Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_read: 945169
+SET timestamp=1626753595;
+SELECT /*MS-FCBUSERVICE-OS-OPRN-COUNT-OPERATION-LST-BY-NAME-OR-CODE*/    count(*) as total            FROM                 os_oprn t1            WHERE     t1.TNT_INST_ID = 'ALIPW3CN'               AND                 t1.ST = 'NORMAL'                                                             AND              apply_mode in                 (                      'PUBLIC'                  ,                      'PUBLIC_COMMON'                  )                          and                 t1.isolation_key = 'TENANT_ALIPW3CN';
+# Time: 210720 11:59:56
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id: 89576564
+# Schema: asdfasdf  Last_errno: 0  Killed: 0
+# Query_time: 1.302876  Lock_time: 0.000107  Rows_sent: 1  Rows_examined: 474994  Rows_affected: 0
+# Bytes_sent: 1867  Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: No  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_read: 105868
+SET timestamp=1626753596;
+SELECT /*MS-FCBUSERVICE-OS-ROLE-SEARCH-ROLE-BY-TYPE-CODE*/ role.ID, role.NM,         role.CODE,role.ORG_ID,role.domain_id,role.ADMINS,role.SCD_ADMINS,role.PRN_ID,role.PATH,role.TYPE_CODE,         role.DSC,role.ST,role.EXPR_TM,role.CRT_ID,role.CRT_NM,role.property,         role.MOD_ID, role.MOD_NM,role.GMT_CREATE,role.GMT_MODIFIED,role.TNT_INST_ID,role.MNG_MODE,role.APPLY_MODE, role.risk_memo         FROM OS_ROLE role         WHERE         role.TNT_INST_ID='ALIPW3CN'         AND     (role.TYPE_CODE = 'ROLE' or role.TYPE_CODE is null )             AND    role.st !='DELETE'      AND    (role.apply_mode in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    or (role.type_code = 'ROLE' AND 'PUBLIC' in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    AND role.apply_mode IS NULL))                         and                 role.isolation_key = 'TENANT_ALIPW3CN'                         order by role.id desc limit 0, 10;
+# Time: 210720 11:59:57
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id: 89576565
+# Schema: asdfasdf  Last_errno: 0  Killed: 0
+# Query_time: 1.979110  Lock_time: 0.000128  Rows_sent: 1  Rows_examined: 448331  Rows_affected: 0
+# Bytes_sent: 1846  Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: Yes  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_read: 942208
+SET timestamp=1626753597;
+SELECT /*MS-FCBUSERVICE-OS-OPRN-QUERY-OPERATION-LST-BY-NAME-OR-CODE*/         t1.ID , t1.NM, t1.OPT_CODE, t1.OPT_CODE_TP, t1.ST,t1.ORG_ID, t1.PD_ID,         t1.DSC, t1.RANK, t1.APPLY_USR_ID, t1.USE_SNR, t1.DOMAIN_ID, t1.ADMINS, t1.MNG_MODE, t1.APPLY_MODE,         t1.RISK_MEMO, t1.CRT_ID, t1.CRT_NM, t1.MOD_ID, t1.MOD_NM,         t1.GMT_CREATE, t1.GMT_MODIFIED, t1.TNT_INST_ID,t1.property         FROM         os_oprn t1         WHERE         t1.TNT_INST_ID = 'ALIPW3CN'         AND             t1.ST = 'NORMAL'                    AND             apply_mode in             (                 'PUBLIC'             ,                 'PUBLIC_COMMON'             )                  and             t1.isolation_key = 'TENANT_ALIPW3CN'                  order by t1.NM         limit 0, 10;
+# Time: 210720 11:59:59
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id: 89576565
+# Schema: asdfasdf  Last_errno: 0  Killed: 0
+# Query_time: 1.979110  Lock_time: 0.000128  Rows_sent: 1  Rows_examined: 448331  Rows_affected: 0
+# Bytes_sent: 1846  Tmp_tables: 0  Tmp_disk_tables: 0  Tmp_table_sizes: 0
+# InnoDB_trx_id: 0
+# QC_Hit: No  Full_scan: No  Full_join: No  Tmp_table: No  Tmp_table_on_disk: No
+# Filesort: Yes  Filesort_on_disk: No  Merge_passes: 0
+#   InnoDB_IO_r_ops: 0  InnoDB_IO_r_bytes: 0  InnoDB_IO_r_wait: 0.000000
+#   InnoDB_rec_lock_wait: 0.000000  InnoDB_queue_wait: 0.000000
+#   InnoDB_pages_read: 942208
+SET timestamp=1626753597;
+SELECT /*MS-FCBUSERVICE-OS-OPRN-QUERY-OPERATION-LST-BY-NAME-OR-CODE*/         t1.ID , t1.NM, t1.OPT_CODE, t1.OPT_CODE_TP, t1.ST,t1.ORG_ID, t1.PD_ID,         t1.DSC, t1.RANK, t1.APPLY_USR_ID, t1.USE_SNR, t1.DOMAIN_ID, t1.ADMINS, t1.MNG_MODE, t1.APPLY_MODE,         t1.RISK_MEMO, t1.CRT_ID, t1.CRT_NM, t1.MOD_ID, t1.MOD_NM,         t1.GMT_CREATE, t1.GMT_MODIFIED, t1.TNT_INST_ID,t1.property         FROM         os_oprn t1         WHERE         t1.TNT_INST_ID = 'ALIPW6CN'         AND             t1.ST = 'NORMAL'                    AND             apply_mode in             (                 'PUBLIC'             ,                 'PUBLIC_COMMON'             )                  and             t1.isolation_key = 'TENANT_ALIPW3CN'                  order by t1.NM         limit 0, 10;

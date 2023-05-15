@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="sqlaudit.AffEvent">
+
+    <sql id="affevent.user_columns">
+	    id,username,password
+    </sql>
+
+    <sql id="affevent.abc">
+	    ${abc},username
+    </sql>
+
+    <select id="query" resultType="User">
+		select
+	    <include refid="affevent.user_columns"/>
+        from t_user
+    </select>
+
+    <select id="query_abc" resultType="User_abc">
+        select
+    	<include refid="affevent.abc">
+            <property name="abc" value="id"/>
+    	</include>
+        from t_user_abc
+    </select>
+
+</mapper>

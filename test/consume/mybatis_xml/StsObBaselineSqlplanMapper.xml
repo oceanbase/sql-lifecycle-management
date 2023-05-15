@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper.sqlportrait.StsObBaselineSqlplanMapper">
+
+    <insert id="insertBatch">
+        insert into sts_ob_baseline_sqlplan
+        (abnormal_record_id,cluster,tenant_name,sql_id,plan_hash,sql_hash,plan_union_hash,plan_info,tenant_id,svr_ip,svr_port,plan_id,plan_type,table_scan,
+        outline_hash,outline_id,outline_data,query_sql,first_load_time,merged_version,last_active_time,avg_exe_usec,hit_count,executions,
+        slow_count,elapsed_time,cpu_time,disk_reads,direct_writes,buffer_gets,application_wait_time,concurrency_wait_time,user_io_wait_time,
+        rows_processed,pure_name,table_name,sql_mode,rzone_mark,shadow_mark,suffix_key,gmt_create,gmt_modify,outline_time,plan_full)
+        values
+        <foreach item="item" collection="list" separator=",">
+            (#{abnormalRecordId},#{item.cluster},#{item.tenantName},#{item.sqlId},#{item.planHash},#{item.sqlHash},#{item.planUnionHash},#{item.planInfo},#{item.tenantId},
+            #{item.svrIp},#{item.svrPort},#{item.planId},#{item.planType},#{item.tableScan},#{item.outlineHash},#{item.outlineId},#{item.outlineData},
+            #{item.querySql},#{item.firstLoadTime},#{item.mergedVersion},#{item.lastActiveTime},#{item.avgExeUsec},#{item.hitCount},#{item.executions},
+            #{item.slowCount},#{item.elapsedTime},#{item.cpuTime},#{item.diskReads},#{item.directWrites},#{item.bufferGets},#{item.applicationWaitTime},
+            #{item.concurrencyWaitTime},#{item.userIoWaitTime},#{item.rowsProcessed},#{item.pureName},#{item.tableName},#{item.sqlMode},#{item.rzoneMark},
+            #{item.shadowMark},#{item.suffixKey},#{item.gmtCreate},#{item.gmtModify},#{item.outlineTime},#{item.planFull})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        `cluster`=values(`cluster`)
+    </insert>
+
+    <resultMap id="OB10SqlPlanMap" type="dataobject.SqlPlanDO">
+        <result column="plan_id" property="planId" jdbcType="BIGINT"/>
+        <result column="plan_union_hash" property="planUnionHash" jdbcType="VARCHAR"/>
+        <result column="hit_count" property="hitCount" jdbcType="BIGINT"/>
+        <result column="query_sql" property="querySql" jdbcType="VARCHAR"/>
+        <result column="plan_info" property="planInfo" jdbcType="VARCHAR"/>
+        <result column="plan_full" property="planFull" jdbcType="VARCHAR"/>
+        <result column="svr_ip" property="svrIp" jdbcType="VARCHAR"/>
+        <result column="outline_id" property="outlineId" jdbcType="BIGINT"/>
+        <result column="outline_data" property="outlineData" jdbcType="VARCHAR"/>
+        <result column="first_load_time" property="firstLoadTime" jdbcType="TIMESTAMP"/>
+        <result column="avg_exe_usec" property="avgExeUsec" jdbcType="BIGINT"/>
+        <result column="outline_time" property="outlineTime" jdbcType="TIMESTAMP"/>
+        <result column="merged_version" property="mergedVersion" jdbcType="BIGINT"/>
+        <result column="tenant_name" property="tenantName" jdbcType="VARCHAR"/>
+    </resultMap>
+    <select id="getOB10SqlPlan" resultMap="OB10SqlPlanMap">
+        SELECT
+        plan_id,plan_union_hash,hit_count,query_sql,plan_info,outline_id,outline_data,first_load_time,
+        avg_exe_usec/1000 avg_exe_usec,outline_time,merged_version,plan_full,svr_ip,tenant_name
+        FROM
+        sts_ob_baseline_sqlplan
+        WHERE abnormal_record_id=#{abnormalRecordId} and cluster=#{cluster} and tenant_name=#{tenantName} and sql_id=#{sqlId}
+    </select>
+
+</mapper>

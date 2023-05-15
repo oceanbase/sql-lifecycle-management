@@ -1,0 +1,19 @@
+/usr/local/mysql/bin/mysqld, Version: 5.7.36 (MySQL Community Server (GPL)). started with:
+Tcp port: 3306  Unix socket: /u01/mysql/mysql.sock
+Time                 Id Command    Argument
+# Time: 2022-08-01T06:22:21.148963Z
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id:  3987
+# Query_time: 11.959699  Lock_time: 0.000188 Rows_sent: 0  Rows_examined: 843008
+use asdfasdf
+SET timestamp=1659334941;
+insert into tb_slow select * from tb_slow;
+# Time: 2022-08-01T06:22:43.983542Z
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id:  3987
+# Query_time: 20.070820  Lock_time: 0.000210 Rows_sent: 0  Rows_examined: 1686016
+SET timestamp=1659334963;
+insert into tb_slow select * from tb_slow;
+# Time: 2022-08-02T09:08:36.878247Z
+# User@Host: asdfasdf[asdfasdf] @  [127.0.0.1]  Id:  3991
+# Query_time: 38.081178  Lock_time: 0.000299 Rows_sent: 0  Rows_examined: 3372032
+SET timestamp=1659431316;
+insert into tb_slow select * from tb_slow;

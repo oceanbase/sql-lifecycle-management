@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper.sqlportrait.StsTarsSqldiagAllMapper">
+
+    <insert id="insertBatch">
+        insert into sts_tars_sqldiag_all
+        (cluster,tenant_name,svr_ip,sql_id,batch_time,request_time,diag_type,diag,sql_text,exections,elapsed_time,execute_time,
+         cpu_time,max_cpu_time,return_rows,affected_rows,logical_reads,memstore_read,ssstore_read,user_name,client_ip,db_name,
+         table_scan,plan_info,sql_hash,table_name,pure_name,sql_mode,rzone_mark,shadow_mark,suffix_key,gmt_create,suggest,pure_dbname,
+         mds_diagnose_key,mds_diagnose_value,mds_advisor_key,mds_advisor_value)
+        values
+        <foreach item="i" collection="list" separator=",">
+        (#{i.cluster},#{i.tenantName},#{i.svrIp},#{i.sqlId},#{i.batchTime},#{i.requestTime},#{i.diagType},#{i.diag},#{i.sqlText},
+         #{i.exections},#{i.elapsedTime},#{i.executeTime},#{i.cpuTime},#{i.maxCpuTime},#{i.returnRows},#{i.affectedRows},#{i.logicalReads},
+         #{i.memstoreRead},#{i.ssstoreRead},#{i.userName},#{i.clientIp},#{i.dbName},#{i.tableScan},#{i.planInfo},#{i.sqlHash},#{i.tableName},
+         #{i.pureName},#{i.sqlMode},#{i.rzoneMark},#{i.shadowMark},#{i.suffixKey},#{i.gmtCreate},#{i.suggest},#{i.pureDbname},#{i.mdsDiagnoseKey},
+         #{i.mdsDiagnoseValue},#{i.mdsAdvisorKey},#{i.mdsAdvisorValue})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        `cluster`=values(`cluster`)
+    </insert>
+
+    <resultMap id="SQLDiagMap" type="dataobject.TarsSQLDiagAllDO">
+        <result column="tenant_name" property="tenantName" jdbcType="VARCHAR"/>
+        <result column="sql_id" property="sqlId" jdbcType="VARCHAR"/>
+        <result column="diag_rule" property="diagRule" jdbcType="VARCHAR"/>
+        <result column="diag" property="diag" jdbcType="VARCHAR"/>
+        <result column="cnt" property="cnt" jdbcType="BIGINT"/>
+        <result column="cpu_time" property="cpuTime" jdbcType="BIGINT"/>
+        <result column="exections" property="exections" jdbcType="BIGINT"/>
+        <result column="request_time" property="requestTime" jdbcType="TIMESTAMP"/>
+        <result column="db_name" property="dbName" jdbcType="VARCHAR"/>
+        <result column="suggest" property="suggest" jdbcType="VARCHAR"/>
+        <result column="cluster" property="cluster" jdbcType="VARCHAR"/>
+        <result column="mds_diagnose_key" property="mdsDiagnoseKey" jdbcType="VARCHAR"/>
+        <result column="mds_diagnose_value" property="mdsDiagnoseValue" jdbcType="VARCHAR"/>
+        <result column="mds_advisor_key" property="mdsAdvisorKey" jdbcType="VARCHAR"/>
+        <result column="mds_advisor_value" property="mdsAdvisorValue" jdbcType="VARCHAR"/>
+        <result column="diag_rule_mds_key" property="diagRuleMdsKey" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="selectSqlDiag" resultMap="SQLDiagMap">
+        select a.suggest,a.db_name,a.cluster,a.tenant_name,a.sql_id,b.diag_rule,b.mds_key diag_rule_mds_key,count(*) cnt,max(a.diag)
+        diag,max(a.request_time)
+        request_time,a.mds_diagnose_key,a.mds_diagnose_value,a.mds_advisor_key,a.mds_advisor_value,
+        (case when exections is not null and exections > 0 then sum(exections*cpu_time)/(sum(exections) * 1000) else 0 end) cpu_time,
+        sum(exections) exections
+        from
+        sts_tars_sqldiag_all a,sts_tars_sqldiag_type b
+        where a.diag_type = b.diag_id
+        <if test="cluster!=null and cluster!=''">
+            and a.cluster = #{cluster}
+        </if>
+        <if test="tenantName!=null and tenantName!=''">
+            and a.tenant_name = #{tenantName}
+        </if>
+        <if test="dbName!=null and dbName!=''">
+            and a.tenant_name = #{dbName}
+        </if>
+        <if test="svrIp!=null and svrIp!=''">
+            and a.svr_ip = #{svrIp}
+        </if>
+        <if test="sqlId!=null and sqlId!=''">
+            and a.sql_id = #{sqlId}
+        </if>
+        and batch_time between #{startTime} and #{endTime}
+        <if test="searchContext!=null and searchContext!=''">
+            and a.${searchName} ${searchSymbol} #{searchContext}
+        </if>
+        <if test="searchSQLText!=null and searchSQLText!=''">
+            and a.sql_text like CONCAT('%',#{searchSQLText},'%')
+        </if>
+        group by a.cluster,a.tenant_name,a.sql_id,b.diag_rule
+        order by cpu_time*exections desc,a.cluster,a.tenant_name,a.sql_id,b.diag_rule
+    </select>
+
+</mapper>

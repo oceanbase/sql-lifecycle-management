@@ -1,0 +1,1 @@
+sudo kill -9 `ps -ef|grep sqless|grep -v grep |sed s/[[:space:]]*[[:space:]]/:/g|cut -d':' -f2| tr '\n' ' '`
