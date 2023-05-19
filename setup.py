@@ -36,7 +36,7 @@ setup(
         'future==0.16.0',
         'flask-cors==3.0.10',
         'fire==0.3.1',
-        'lxml==4.6.2',
+        'lxml==4.9.1',
         'tqdm==4.53.0',
         'flask_request_id==0.1',
         'Pycrypto==2.6.1',
