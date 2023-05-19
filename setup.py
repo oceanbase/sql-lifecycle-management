@@ -27,7 +27,7 @@ setup(
         'sqlalchemy==1.3.1',
         'pymysql==0.9.3',
         'DBUtils==1.3',
-        'flask==2.0.1',
+        'flask==2.2.5',
         'requests==2.21.0',
         'flask_restful==0.3.9',
         'Flask-API==1.0',
