@@ -31,7 +31,7 @@ setup(
         'requests==2.21.0',
         'flask_restful==0.3.9',
         'Flask-API==1.0',
-        'werkzeug==2.0.2',
+        'werkzeug==2.2.3',
         'unittest-xml-reporting==3.0.4',
         'future==0.16.0',
         'flask-cors==3.0.10',
