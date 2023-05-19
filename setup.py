@@ -33,7 +33,7 @@ setup(
         'Flask-API==1.0',
         'werkzeug==2.2.3',
         'unittest-xml-reporting==3.0.4',
-        'future==0.16.0',
+        'future==0.18.3',
         'flask-cors==3.0.10',
         'fire==0.3.1',
         'lxml==4.9.1',
