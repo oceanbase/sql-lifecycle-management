@@ -28,13 +28,12 @@ log_file = os.path.basename(sys.argv[0]).split(".")[0] + '.log'
 log = Logger(log_file)
 
 # local db config
-cfg_file = os.getcwd().split('sqless')[0] + 'sqless/db.cfg'
+cfg_file = os.getcwd().split('sql-lifecycle-management')[0] + 'sql-lifecycle-management/db.cfg'
 
 f = open(cfg_file, 'r', encoding='utf-8')
 cfg = f.read()
 cfg = eval(cfg)
 metadb = cfg['db']
-env = cfg['env']
 
 # encryption and decryption
 need_decrypt = cfg.get('need_decrypt', 0)

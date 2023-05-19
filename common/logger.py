@@ -32,7 +32,7 @@ class Logger(object):
             clevel=clevel_default,
             flevel=flevel_default):
         # init file name
-        self.log_path = os.getcwd().split('sqless')[0] + 'sqless/logs/'
+        self.log_path = os.getcwd().split('sql-lifecycle-management')[0] + 'sql-lifecycle-management/logs/'
         if not logfile:
             self.rq = time.strftime('%Y%m%d%H%M', time.localtime(time.time()))
             self.logfile = self.log_path + self.rq + '.log'

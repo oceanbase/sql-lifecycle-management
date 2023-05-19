@@ -21,15 +21,6 @@ app.config["BUNDLE_ERRORS"] = True
 
 api = Api(app)
 
-# csrf check
-referrer_white_list = [
-    'https://sqless.opentrscdn.com',
-    'http://sqless.opentrs.com',
-    'https://sqless.opentrs.com',
-    'https://sqless.opentrs.cn',
-    'http://sqless.opentrs.cn',
-]
-
 
 class BaseAPI(Resource):
     def __init__(self, *args, **kwargs):
