@@ -28,7 +28,7 @@ setup(
         'pymysql==0.9.3',
         'DBUtils==1.3',
         'flask==2.2.5',
-        'requests==2.21.0',
+        'requests==2.31.0',
         'flask_restful==0.3.9',
         'Flask-API==1.0',
         'werkzeug==2.2.3',
