@@ -19,7 +19,9 @@ jobs:
         python-version: "3.9"
 
     - name: Install dependencies
-      run: make install
+      run: |
+        pip install --upgrade pip
+        make install
 
     - name: Run test
       run: make test
