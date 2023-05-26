@@ -44,7 +44,8 @@ setup(
         'simplejson==3.18.4',
         'schedule',
         'flasgger',
-        'ply==3.11'
+        'ply==3.11',
+        'chardet==3.0.4'
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
