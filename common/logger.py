@@ -10,7 +10,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-
 import logging
 import logging.config
 import os
@@ -32,7 +31,7 @@ class Logger(object):
             clevel=clevel_default,
             flevel=flevel_default):
         # init file name
-        self.log_path = os.getcwd().split('sql-lifecycle-management')[-1] + 'sql-lifecycle-management/logs/'
+        self.log_path = os.getcwd() + '/logs/'
         if not logfile:
             self.rq = time.strftime('%Y%m%d%H%M', time.localtime(time.time()))
             self.logfile = self.log_path + self.rq + '.log'
