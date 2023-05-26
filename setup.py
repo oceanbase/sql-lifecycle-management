@@ -23,6 +23,7 @@ setup(
     url="https://github.com/oceanbase/sql-lifecycle-management",
     license='Apache-2.0',
     python_requires='>=3.6.3',
+    py_modules=[],
     install_requires=[
         'sqlalchemy==1.3.1',
         'pymysql==0.9.3',
