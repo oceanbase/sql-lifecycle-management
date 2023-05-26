@@ -25,4 +25,6 @@ jobs:
 
     - name: Run test
       run: |
+        pwd
+        ls -al
         make test
