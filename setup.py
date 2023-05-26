@@ -43,7 +43,8 @@ setup(
         'pytest',
         'simplejson==3.18.4',
         'schedule',
-        'flasgger'
+        'flasgger',
+        'ply==3.11'
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
