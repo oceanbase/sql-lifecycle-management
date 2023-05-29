@@ -217,8 +217,7 @@ class MyTestCase(unittest.TestCase):
         """
         statement_node = ParserUtils.parameterized_query(parser.parse(sql))
         statement = format_sql(statement_node, 0)
-        assert statement == """UPDATE t1 SET c = ? WHERE id = ?
-"""
+        assert statement == """UPDATE t1 SET c = ? WHERE id = ?"""
 
 
 if __name__ == '__main__':

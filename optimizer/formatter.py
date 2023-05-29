@@ -857,6 +857,8 @@ def format_sort_items(sort_items, unmangle_names=True):
 def format_sql(root, unmangle_names=True):
     builder = []
     SqlFormatter(builder, unmangle_names).process(root, 0)
+    if builder and builder[-1] == '\n':
+        del builder[-1]
     return "".join(builder)
 
 
