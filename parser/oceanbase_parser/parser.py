@@ -217,8 +217,8 @@ def p_delete(p):
     offset = 0
     limit = 0
     if p_limit:
-        offset = int(p_limit[0])
-        limit = int(p_limit[1])
+        offset = p_limit[0]
+        limit = p_limit[1]
     p[0] = Delete(table=p[3], where=p[4], order_by=p[5], limit=limit, offset=offset)
 
 
@@ -228,8 +228,8 @@ def p_update(p):
     offset = 0
     limit = 0
     if p_limit:
-        offset = int(p_limit[0])
-        limit = int(p_limit[1])
+        offset = p_limit[0]
+        limit = p_limit[1]
     p[0] = Update(table=p[2], set_list=p[4], where=p[5], order_by=p[6], limit=limit, offset=offset)
 
 
@@ -276,8 +276,8 @@ def p_cursor_specification(p):
                          query.group_by,
                          query.having,
                          p[2],
-                         limit,
-                         offset,
+                         limit=query.limit if query.limit else limit,
+                         offset=query.offset if query.offset else offset,
                          for_update=query.for_update if query.for_update else for_update,
                          nowait_or_wait=query.nowait_or_wait if query.nowait_or_wait else nowait_or_wait
                      ),
@@ -454,7 +454,7 @@ def _item_list(p):
 
 
 def p_query_spec(p):
-    r"""query_spec : SELECT select_items table_expression_opt"""
+    r"""query_spec : SELECT select_items table_expression_opt order_by_opt limit_opt"""
     select_items = p[2]
     table_expression_opt = p[3]
     from_relations = table_expression_opt.from_ if table_expression_opt else None
@@ -464,6 +464,13 @@ def p_query_spec(p):
     p_for_update = table_expression_opt.for_update if table_expression_opt else None
     for_update = None
     nowait_or_wait = None
+
+    p_limit = p[5]
+    offset = 0
+    limit = 0
+    if p_limit:
+        offset = p_limit[0]
+        limit = p_limit[1]
 
     if p_for_update:
         for_update = p_for_update[0]
@@ -483,7 +490,10 @@ def p_query_spec(p):
                               group_by=group_by,
                               having=having,
                               for_update=for_update,
-                              nowait_or_wait=nowait_or_wait)
+                              nowait_or_wait=nowait_or_wait,
+                              order_by=p[2],
+                              limit=limit,
+                              offset=offset)
 
 
 def p_where_opt(p):

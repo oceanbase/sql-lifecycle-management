@@ -26,6 +26,7 @@ __pycache__/
 ######################
 *.sqlite
 *.log
+logs/
 
 # OS generated files #
 ######################
