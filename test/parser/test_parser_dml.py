@@ -283,7 +283,6 @@ delete from execution_log          where                (                       
         result = oceanbase_parser.parse("""
         SELECT * FROM `antinvoice93`.einv_base_info WHERE einv_source = ? ORDER BY gmt_create DESC LIMIT ?
         """)
-        assert result.limit == '?'
         assert result.query_body.limit == '?'
 
     def test_subquery_limit(self):
@@ -444,6 +443,14 @@ INSERT IGNORE INTO bumonitor_risk_process_context (gmt_create, gmt_modified, row
     def test_double_type(self):
         sql = """
         SELECT Winner FROM table_11621915_1 WHERE Purse > 964017.2297960471 AND Date_ds = "may 28"
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
+    def test_union_has_order_limit(self):
+        sql = """
+        ( select 球员id from 球员夺冠次数 order by 冠军次数 asc limit 3 ) union ( select 球员id from 球员夺冠次数 order by 亚军次数 desc limit 5 )
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
         result = oceanbase_parser.parse(sql)
