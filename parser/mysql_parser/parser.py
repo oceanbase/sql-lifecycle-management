@@ -881,10 +881,13 @@ def p_value(p):
 
 def p_function_call(p):
     r"""function_call : qualified_name LPAREN call_args RPAREN
-                      | qualified_name LPAREN DISTINCT call_args RPAREN"""
+                      | qualified_name LPAREN DISTINCT call_args RPAREN
+                      | CURRENT_DATE LPAREN RPAREN"""
     if len(p) == 5:
         distinct = p[3] is None or (isinstance(p[3], str) and p[3].upper() == "DISTINCT")
         p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], distinct=distinct, arguments=p[3])
+    elif len(p) == 4:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[])
     else:
         p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], distinct=True, arguments=p[4])
 

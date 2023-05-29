@@ -428,6 +428,19 @@ INSERT IGNORE INTO bumonitor_risk_process_context (gmt_create, gmt_modified, row
         result = oceanbase_parser.parse(sql)
         assert isinstance(result, Statement)
 
+    def test_current_date(self):
+        sql = """
+        select 
+            t1,t2
+        from 
+            foo 
+        where 
+            t1 > (CURRENT_DATE() - INTERVAL 30 day)+'0' 
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
 
 if __name__ == '__main__':
     unittest.main()
