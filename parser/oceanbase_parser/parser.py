@@ -343,9 +343,14 @@ def p_sort_items(p):
 
 
 def p_sort_item(p):
-    r"""sort_item : value_expression order_opt null_ordering_opt"""
-    p[0] = SortItem(p.lineno(1), p.lexpos(1),
-                    sort_key=p[1], ordering=p[2] or 'asc', null_ordering=p[3])
+    r"""sort_item : value_expression order_opt null_ordering_opt
+                  | LPAREN value_expression RPAREN order_opt null_ordering_opt"""
+    if len(p) == 4:
+        p[0] = SortItem(p.lineno(1), p.lexpos(1),
+                        sort_key=p[1], ordering=p[2] or 'asc', null_ordering=p[3])
+    else:
+        p[0] = SortItem(p.lineno(1), p.lexpos(1),
+                        sort_key=p[2], ordering=p[4] or 'asc', null_ordering=p[5])
 
 
 def p_order_opt(p):
