@@ -441,6 +441,14 @@ INSERT IGNORE INTO bumonitor_risk_process_context (gmt_create, gmt_modified, row
         result = oceanbase_parser.parse(sql)
         assert isinstance(result, Statement)
 
+    def test_float_type(self):
+        sql = """
+        SELECT Winner FROM table_11621915_1 WHERE Purse > 964017.2297960471 AND Date_ds = "may 28"
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
 
 if __name__ == '__main__':
     unittest.main()
