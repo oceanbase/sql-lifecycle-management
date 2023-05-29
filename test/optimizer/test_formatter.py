@@ -19,8 +19,7 @@ WHERE C1 < 20000
 UNION ALL SELECT *
 FROM
   T1
-WHERE C2 < 30 AND LNNVL(C1 < 20000)
-"""
+WHERE C2 < 30 AND LNNVL(C1 < 20000)"""
 
     def test_union(self):
         statement = parser.parse("""
@@ -35,41 +34,35 @@ WHERE C1 < 20000
 UNION SELECT *
 FROM
   T1
-WHERE C2 < 30
-"""
+WHERE C2 < 30"""
 
     def test_as(self):
         statement = parser.parse("""SELECT a.* FROM d1 as a""")
         after_sql_rewrite_format = format_sql(statement, 0)
         assert after_sql_rewrite_format == """SELECT a.*
 FROM
-  d1 AS a
-"""
+  d1 AS a"""
 
     def test_update(self):
         statement = parser.parse("""update t set a = 1,b = 2 where c= 3""")
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """UPDATE t SET a = 1 , b = 2 WHERE c = 3
-"""
+        assert after_sql_rewrite_format == """UPDATE t SET a = 1 , b = 2 WHERE c = 3"""
         statement = parser.parse("""update t set a = 1,b = 2 where c= 3 order by c limit 1""")
         after_sql_rewrite_format = format_sql(statement, 0)
         assert after_sql_rewrite_format == """UPDATE t SET a = 1 , b = 2 WHERE c = 3
 ORDER BY c ASC
-LIMIT 1
-"""
+LIMIT 1"""
 
     def test_delete(self):
         statement = parser.parse("""delete from t where c= 3 and a = 1""")
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """DELETE FROM t WHERE c = 3 AND a = 1
-"""
+        assert after_sql_rewrite_format == """DELETE FROM t WHERE c = 3 AND a = 1"""
 
         statement = parser.parse("""delete from t where c= 3 and a = 1 order by c limit 1""")
         after_sql_rewrite_format = format_sql(statement, 0)
         assert after_sql_rewrite_format == """DELETE FROM t WHERE c = 3 AND a = 1
 ORDER BY c ASC
-LIMIT 1
-"""
+LIMIT 1"""
 
     def test_sql_1(self):
         statement = parser.parse("""select tnt_inst_id as tnt_inst_id,gmt_create as gmt_create,gmt_modified as gmt_modified,principal_id as principal_id,version as version from cu_version_control where (principal_id = 'TOKENREL|100100000003358587777|IPAY_HK'  )""")
@@ -82,8 +75,7 @@ LIMIT 1
 , version AS version
 FROM
   cu_version_control
-WHERE principal_id = \'TOKENREL|100100000003358587777|IPAY_HK\'
-"""
+WHERE principal_id = \'TOKENREL|100100000003358587777|IPAY_HK\'"""
 
     def test_subquery_limit(self):
         statement = parser.parse("""
@@ -95,9 +87,7 @@ FROM
   (SELECT *
 FROM
   customs_script_match_history
-LIMIT ?
-) a
-"""
+LIMIT ?) a"""
 
 
 if __name__ == '__main__':

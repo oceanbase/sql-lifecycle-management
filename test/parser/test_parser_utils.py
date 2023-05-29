@@ -211,6 +211,14 @@ class MyTestCase(unittest.TestCase):
                               {'table_name': 'treatment', 'alias': '',
                                'filter_column_list': [{'column_name': 'treatmentname', 'opt': '='}]}]
 
+    def test_update_parameterize(self):
+        sql = """
+            UPDATE `t1` SET `c`='11' WHERE (`id`='1111111')          
+        """
+        statement_node = ParserUtils.parameterized_query(parser.parse(sql))
+        statement = format_sql(statement_node, 0)
+        assert statement == """UPDATE t1 SET c = ? WHERE id = ?"""
+
 
 if __name__ == '__main__':
     unittest.main()
