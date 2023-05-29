@@ -281,14 +281,14 @@ def p_cursor_specification(p):
                          query.where,
                          query.group_by,
                          query.having,
-                         p[2],
-                         limit,
-                         offset,
+                         order_by=query.order_by if query.order_by else p[2],
+                         limit=query.limit if query.limit else limit,
+                         offset=query.offset if query.offset else offset,
                          for_update=query.for_update if query.for_update else for_update,
                          nowait_or_wait=query.nowait_or_wait if query.nowait_or_wait else nowait_or_wait
                      ),
-                     limit=limit,
-                     offset=offset
+                     limit=query.limit if query.limit else limit,
+                     offset=query.offset if query.offset else offset
                      )
     else:
         p[0] = Query(p.lineno(1), p.lexpos(1),
@@ -303,11 +303,11 @@ def p_subquery(p):
     if p_limit:
         offset = p_limit[0]
         limit = p_limit[1]
-
+    a = p[2]
     if isinstance(p[2], QuerySpecification):
-        p[2].limit = limit
-        p[2].offset = offset
-        p[2].order_by = p[3] or []
+        p[2].limit = p[2].limit if p[2].limit else limit
+        p[2].offset = p[2].offset if p[2].offset else offset
+        p[2].order_by = p[2].order_by if p[2].order_by else p[3] or []
     p[0] = SubqueryExpression(p.lineno(1), p.lexpos(1), query=p[2])
 
 
@@ -461,7 +461,7 @@ def _item_list(p):
 
 
 def p_query_spec(p):
-    r"""query_spec : SELECT select_items table_expression_opt"""
+    r"""query_spec : SELECT select_items table_expression_opt order_by_opt limit_opt"""
     select_items = p[2]
     table_expression_opt = p[3]
     from_relations = table_expression_opt.from_ if table_expression_opt else None
@@ -471,6 +471,13 @@ def p_query_spec(p):
     p_for_update = table_expression_opt.for_update if table_expression_opt else None
     for_update = None
     nowait_or_wait = None
+
+    p_limit = p[5]
+    offset = 0
+    limit = 0
+    if p_limit:
+        offset = p_limit[0]
+        limit = p_limit[1]
 
     if p_for_update:
         for_update = p_for_update[0]
@@ -490,7 +497,11 @@ def p_query_spec(p):
                               group_by=group_by,
                               having=having,
                               for_update=for_update,
-                              nowait_or_wait=nowait_or_wait)
+                              nowait_or_wait=nowait_or_wait,
+                              order_by=p[4],
+                              limit=limit,
+                              offset=offset
+                              )
 
 
 def p_where_opt(p):
