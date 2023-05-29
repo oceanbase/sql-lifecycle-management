@@ -456,6 +456,13 @@ INSERT IGNORE INTO bumonitor_risk_process_context (gmt_create, gmt_modified, row
         result = oceanbase_parser.parse(sql)
         assert isinstance(result, Statement)
 
+    def test_order_by_has_parentheses(self):
+        sql = """
+SELECT channel_code , contact_number FROM customer_contact_channels WHERE active_to_date - active_from_date = (SELECT active_to_date - active_from_date FROM customer_contact_channels ORDER BY (active_to_date - active_from_date) DESC LIMIT 1)        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
 
 if __name__ == '__main__':
     unittest.main()
