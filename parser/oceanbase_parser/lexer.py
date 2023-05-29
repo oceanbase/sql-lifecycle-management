@@ -60,6 +60,8 @@ def t_DOUBLE(t):
     r"""(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\d*(?:\.\d+)(?:[eE][+-]?\d+)?)"""
     if 'e' in t.value or 'E' in t.value or '.' in t.value:
         t.type = 'DOUBLE'
+    else:
+        t.type = "INTEGER"
     return t
 
 
