@@ -324,6 +324,10 @@ class AstVisitor(object):
             for _table in node.table:
                 self.process(_table, context)
 
+        if node.set_list:
+            for _column in node.set_list:
+                self.process(_column, context)
+
         if node.where:
             self.process(node.where, context)
 
