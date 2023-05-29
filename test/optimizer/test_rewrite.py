@@ -20,8 +20,7 @@ WHERE C1 < 20000
 UNION SELECT *
 FROM
   T1
-WHERE C2 < 30
-"""
+WHERE C2 < 30"""
 
     def test_supplement_column_rewrite(self):
         statement = parser.parse("SELECT * FROM sqless_base")
@@ -40,8 +39,7 @@ WHERE C2 < 30
   a
 , b
 FROM
-  sqless_base
-"""
+  sqless_base"""
 
     def test_supplement_column_rewrite_rule_match(self):
         statement = parser.parse("SELECT * FROM sqless_base")
@@ -89,8 +87,7 @@ FROM
   a
 , c
 FROM
-  d1
-"""
+  d1"""
         statement = parser.parse("SELECT a.* FROM d1 a")
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
@@ -98,8 +95,7 @@ FROM
   a.a
 , a.c
 FROM
-  d1 a
-"""
+  d1 a"""
         statement = parser.parse("SELECT a.* FROM d1 as a")
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
@@ -107,8 +103,7 @@ FROM
   a.a
 , a.c
 FROM
-  d1 AS a
-"""
+  d1 AS a"""
         statement = parser.parse("SELECT c.* , d2.b FROM a.d1 c,d2")
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
@@ -118,15 +113,13 @@ FROM
 , d2.b
 FROM
   a.d1 c
-, d2
-"""
+, d2"""
 
     def test_or_same_column(self):
         after_sql_rewrite_format = """SELECT *
 FROM
   T1
-WHERE C1 IN (20000, 30)
-"""
+WHERE C1 IN (20000, 30)"""
 
         statement = parser.parse("SELECT * FROM T1 WHERE C1 = 20000 OR C1 = 30")
         RewriteMySQLORRule().match_action(statement)
@@ -153,8 +146,7 @@ WHERE C1 IN (20000)
 UNION SELECT *
 FROM
   T1
-WHERE C2 IN (30)
-"""
+WHERE C2 IN (30)"""
 
     def test_like(self):
         statement = parser.parse("select * from sqless_base where d like 'a%'")
@@ -183,8 +175,7 @@ WHERE C2 IN (30)
 , d
 FROM
   sqless_base
-WHERE d LIKE \'a%\'
-"""
+WHERE d LIKE \'a%\'"""
 
     def test_qm(self):
         statement = parser.parse("""select * FROM cm_relation    WHERE status = ?               
@@ -257,8 +248,7 @@ WHERE d LIKE \'a%\'
 , status
 FROM
   cm_relation
-WHERE status = ? AND primary_id = ? AND rel_type = ? AND rel_biz_type = ?
-"""
+WHERE status = ? AND primary_id = ? AND rel_type = ? AND rel_biz_type = ?"""
 
     def test_delete_update_order(self):
         statement = parser.parse("""delete from tbl where col1 = ? order by col""")
@@ -266,8 +256,7 @@ WHERE status = ? AND primary_id = ? AND rel_type = ? AND rel_biz_type = ?
         assert match
         RemoveOrderByInDeleteUpdateRule().match_action(statement, None)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """DELETE FROM tbl WHERE col1 = ?
-"""
+        assert after_sql_rewrite_format == """DELETE FROM tbl WHERE col1 = ?"""
         statement = parser.parse("""delete from tbl where col1 = ? order by col limit 1""")
         match = RemoveOrderByInDeleteUpdateRule().match(statement, None)
         assert not match
@@ -277,8 +266,7 @@ WHERE status = ? AND primary_id = ? AND rel_type = ? AND rel_biz_type = ?
         assert match
         RemoveOrderByInDeleteUpdateRule().match_action(statement, None)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """UPDATE tbl SET col1 = ? WHERE col2 = ?
-"""
+        assert after_sql_rewrite_format == """UPDATE tbl SET col1 = ? WHERE col2 = ?"""
         statement = parser.parse("""update tbl set col1 = ? where col2 = ? order by col limit 1""")
         match = RemoveOrderByInDeleteUpdateRule().match(statement, None)
         assert not match
