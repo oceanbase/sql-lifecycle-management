@@ -16,7 +16,7 @@ from parser.oceanbase_parser.reserved import *
 
 reserved = sorted(set(presto_tokens).difference(presto_nonreserved))
 
-tokens = ['INTEGER', 'DECIMAL', 'NUMBER',
+tokens = ['INTEGER', 'NUMBER', 'DOUBLE',
           'IDENTIFIER', 'DIGIT_IDENTIFIER',
           'QUOTED_IDENTIFIER', 'BACKQUOTED_IDENTIFIER',
           'STRING', 'PERIOD',
@@ -54,6 +54,15 @@ t_QM = r'\?'
 t_CONCAT = r'\|\|'
 
 t_ignore = ' \t'
+
+
+def t_DOUBLE(t):
+    r"""(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\d*(?:\.\d+)(?:[eE][+-]?\d+)?)"""
+    if 'e' in t.value or 'E' in t.value or '.' in t.value:
+        t.type = 'DOUBLE'
+    else:
+        t.type = "INTEGER"
+    return t
 
 
 def t_INTEGER(t):
