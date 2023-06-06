@@ -32,7 +32,7 @@ CREATE TABLE `monitor_database` (
   `db_id` varchar(64) NOT NULL COMMENT '数据库唯一ID，包含用户id+唯一别名',
   `approve_type` varchar(32) NOT NULL COMMENT '数据采集的授权方式：pull-中心式拉取、push-db端推送、manual-人工上传',
   `approve_scope` varchar(64) NOT NULL COMMENT '数据收集的授权范围，如果是pull自动拉取，可选值包含：sql/plan/schema/statistics',
-  `host_ip` varchar(32) COMMENT 'DB服务器地址，pull授权必填',
+  `host_ip` varchar(255) COMMENT 'DB服务器地址，pull授权必填',
   `host_port` int(8) COMMENT 'DB服务器端口，pull授权必填',
   `user_name` varchar(32) COMMENT 'DB连接用户名，pull授权必填，ob需要拼接集群租户',
   `password` varchar(32)  COMMENT 'DB连接密码，pull授权选填，空表示使用sqless默认提供的密码',
