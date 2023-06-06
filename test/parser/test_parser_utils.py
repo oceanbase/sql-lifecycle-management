@@ -219,6 +219,16 @@ class MyTestCase(unittest.TestCase):
         statement = format_sql(statement_node, 0)
         assert statement == """UPDATE t1 SET c = ? WHERE id = ?"""
 
+    def test_between(self):
+        sql = """
+         select max(`successRate`) AS `successRate` from `table_850d` where `period` between '2022-07-11 00:00:00' and '2022-07-11 23:59:59' and `successRate` < 0.35;
+        """
+        visitor = ParserUtils.format_statement(parser.parse(sql))
+        table_list = visitor.table_list
+        assert table_list == [{'table_name': 'table_850d', 'alias': '',
+                               'filter_column_list': [{'column_name': 'period', 'opt': 'between'},
+                                                      {'column_name': 'successRate', 'opt': '<'}]}]
+
 
 if __name__ == '__main__':
     unittest.main()
