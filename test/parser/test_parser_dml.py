@@ -463,6 +463,14 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         result = oceanbase_parser.parse(sql)
         assert isinstance(result, Statement)
 
+    def test_boolean_expression(self):
+        sql = """
+        SELECT T1.list_followers, T2.user_subscriber = 1 FROM lists AS T1 INNER JOIN lists_users AS T2 ON T1.user_id = T2.user_id AND T2.list_id = T2.list_id WHERE T2.user_id = 4208563 ORDER BY T1.list_followers DESC LIMIT 1
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
 
 if __name__ == '__main__':
     unittest.main()
