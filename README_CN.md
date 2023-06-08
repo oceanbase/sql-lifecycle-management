@@ -21,6 +21,11 @@
 
 # 快速入门
 - 执行环境: 推荐版本python >= v3.6.3
+建议使用[conda](https://github.com/conda/conda)来创建虚拟环境
+```shell
+conda create --name slm_3.6.3 python=3.6.3
+conda activate slm_3.6.3
+```
 - 依赖安装
 ```shell
 git clone https://github.com/oceanbase/sql-lifecycle-management.git
