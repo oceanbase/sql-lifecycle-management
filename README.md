@@ -21,6 +21,11 @@ English | [简体中文](README_CN.md)
 
 # Quick Start
 - prerequisites: recommended python >= v3.6.3 (tested on 3.6.3)
+It is recommended to use [conda](https://github.com/conda/conda) to create virtual environment
+```shell
+conda create --name slm_3.6.3 python=3.6.3
+conda activate slm_3.6.3
+```
 - install
 ```shell
 git clone https://github.com/oceanbase/sql-lifecycle-management.git
