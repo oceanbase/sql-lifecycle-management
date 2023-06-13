@@ -552,7 +552,8 @@ def p_select_items(p):
 def p_select_item(p):
     r"""select_item : derived_column
                     | DISTINCT LPAREN derived_column RPAREN
-                    | DISTINCT derived_column"""
+                    | DISTINCT derived_column
+                    | predicate"""
     if len(p) == 2:
         p[0] = p[1]
     elif len(p) == 3:
