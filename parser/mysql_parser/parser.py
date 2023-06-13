@@ -1089,9 +1089,9 @@ def p_quoted_identifier(p):
 
 
 def p_number(p):
-    r"""number : DECIMAL
+    r"""number : DOUBLE
                | INTEGER"""
-    if p.slice[1].type == "DECIMAL":
+    if p.slice[1].type == "DOUBLE":
         p[0] = DoubleLiteral(p.lineno(1), p.lexpos(1), p[1])
     else:
         p[0] = LongLiteral(p.lineno(1), p.lexpos(1), p[1])

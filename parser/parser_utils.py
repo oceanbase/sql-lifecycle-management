@@ -108,24 +108,8 @@ class ParserUtils(object):
                     if isinstance(pattern, StringLiteral):
                         if not pattern.value.startswith('%'):
                             can_query_range = True
-                    qualifed_name = node.value.name
                     if can_query_range:
-                        if len(qualifed_name.parts) == 2:
-                            table_or_alias_name = qualifed_name.parts[0]
-                            for _table in self.table_list:
-                                if _table['alias'] == table_or_alias_name or _table[
-                                    'table_name'] == table_or_alias_name:
-                                    filter_column_list = _table['filter_column_list']
-                                    filter_column_list.append({
-                                        'column_name': qualifed_name.parts[1],
-                                        'opt': 'like'
-                                    })
-                        else:
-                            filter_column_list = self.table_list[-1]['filter_column_list']
-                            filter_column_list.append({
-                                'column_name': qualifed_name.parts[0],
-                                'opt': 'like'
-                            })
+                        self.add_filter_column_with_qualified_name_reference(node.value, 'like')
 
                 return self.visit_expression(node, context)
 
@@ -141,22 +125,7 @@ class ParserUtils(object):
                         self.in_count_list.append(len(node.value_list.values))
 
                     if isinstance(value, QualifiedNameReference):
-                        if len(value.name.parts) == 2:
-                            table_or_alias_name = value.name.parts[0]
-                            for _table in self.table_list:
-                                if _table['alias'] == table_or_alias_name or _table[
-                                    'table_name'] == table_or_alias_name:
-                                    filter_column_list = _table['filter_column_list']
-                                    filter_column_list.append({
-                                        'column_name': value.name.parts[1],
-                                        'opt': 'in'
-                                    })
-                        else:
-                            filter_column_list = self.table_list[-1]['filter_column_list']
-                            filter_column_list.append({
-                                'column_name': value.name.parts[0],
-                                'opt': 'in'
-                            })
+                        self.add_filter_column_with_qualified_name_reference(value, 'in')
 
                 self.process(node.value, None)
                 self.process(node.value_list, None)
@@ -257,6 +226,30 @@ class ParserUtils(object):
                 if node.where:
                     self.process(node.where, context)
                 return None
+
+            def visit_between_predicate(self, node, context):
+                if isinstance(node.value, QualifiedNameReference):
+                    self.add_filter_column_with_qualified_name_reference(node.value, 'between')
+                return None
+
+            def add_filter_column_with_qualified_name_reference(self, qualified_name_reference: QualifiedNameReference,
+                                                                opt):
+                if len(qualified_name_reference.name.parts) == 2:
+                    table_or_alias_name = qualified_name_reference.name.parts[0]
+                    for _table in self.table_list:
+                        if _table['alias'] == table_or_alias_name or _table[
+                            'table_name'] == table_or_alias_name:
+                            filter_column_list = _table['filter_column_list']
+                            filter_column_list.append({
+                                'column_name': qualified_name_reference.name.parts[1],
+                                'opt': opt
+                            })
+                else:
+                    filter_column_list = self.table_list[-1]['filter_column_list']
+                    filter_column_list.append({
+                        'column_name': qualified_name_reference.name.parts[0],
+                        'opt': opt
+                    })
 
         visitor = FormatVisitor()
         visitor.process(statement, None)
