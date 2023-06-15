@@ -15,10 +15,10 @@
 import json
 import unittest
 
-from metadata.catalog import Catalog
-from metadata.metadata_utils import MetaDataUtils
-from parser.mysql_parser import parser
-from parser.parser_utils import ParserUtils
+from src.metadata.catalog import Catalog
+from src.metadata.metadata_utils import MetaDataUtils
+from src.parser.mysql_parser import parser
+from src.parser.parser_utils import ParserUtils
 
 
 class MyTestCase(unittest.TestCase):

@@ -15,8 +15,8 @@
 import json
 import unittest
 
-from metadata.metadata_utils import MetaDataUtils
-from optimizer.optimizer import Optimizer
+from src.metadata.metadata_utils import MetaDataUtils
+from src.optimizer.optimizer import Optimizer
 
 
 class MyTestCase(unittest.TestCase):

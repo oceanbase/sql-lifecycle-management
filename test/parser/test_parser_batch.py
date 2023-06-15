@@ -15,10 +15,10 @@
 import os
 import unittest
 
-from consume.file_parse_common import get_encoding
-from parser.mysql_parser import parser
-from parser.parser_utils import ParserUtils
-from common.utils import Utils
+from src.consume.file_parse_common import get_encoding
+from src.parser.mysql_parser import parser
+from src.parser.parser_utils import ParserUtils
+from src.common.utils import Utils
 
 
 class MyTestCase(unittest.TestCase):

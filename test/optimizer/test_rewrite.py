@@ -1,10 +1,10 @@
 import json
 import unittest
 
-from metadata.metadata_utils import MetaDataUtils
-from optimizer.formatter import format_sql
-from optimizer.rewrite_rule import *
-from parser.mysql_parser import parser
+from src.metadata.metadata_utils import MetaDataUtils
+from src.optimizer.formatter import format_sql
+from src.optimizer.rewrite_rule import *
+from src.parser.mysql_parser import parser
 
 
 class MyTestCase(unittest.TestCase):

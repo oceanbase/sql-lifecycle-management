@@ -14,9 +14,9 @@
 
 import unittest
 
-from optimizer.formatter import format_sql
-from parser.mysql_parser import parser
-from parser.parser_utils import ParserUtils
+from src.optimizer.formatter import format_sql
+from src.parser.mysql_parser import parser
+from src.parser.parser_utils import ParserUtils
 
 
 class MyTestCase(unittest.TestCase):

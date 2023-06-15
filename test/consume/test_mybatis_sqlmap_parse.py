@@ -15,8 +15,8 @@
 import os
 import unittest
 from lxml.etree import tostring
-from consume.mybatis_xmlparse_base import MybatisXmlFile, get_include_define
-from consume.mybatis_sqlmap_parse import MybatisXmlParser
+from src.consume.mybatis_xmlparse_base import MybatisXmlFile, get_include_define
+from src.consume.mybatis_sqlmap_parse import MybatisXmlParser
 
 
 class MyTestCase(unittest.TestCase):

@@ -14,8 +14,7 @@
 
 import unittest
 
-from common.utils import Utils
-
+from src.common.utils import Utils
 
 class MyTestCase(unittest.TestCase):
 
