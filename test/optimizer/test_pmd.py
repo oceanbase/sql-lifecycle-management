@@ -1,7 +1,7 @@
 import unittest
 
-from optimizer.pmd_rule import *
-from parser.mysql_parser import parser
+from src.optimizer.pmd_rule import *
+from src.parser.mysql_parser import parser
 
 
 class MyTestCase(unittest.TestCase):

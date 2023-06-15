@@ -15,7 +15,7 @@
 import os
 import unittest
 
-from consume.mysql_slowlog_parse import SlowQueryParser
+from src.consume.mysql_slowlog_parse import SlowQueryParser
 
 
 class MyTestCase(unittest.TestCase):

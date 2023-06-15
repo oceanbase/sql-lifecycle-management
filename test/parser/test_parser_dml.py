@@ -14,13 +14,13 @@
 
 import unittest
 
-from common.utils import Utils
-from parser.mysql_parser import parser as mysql_parser
-from parser.oceanbase_parser import parser as oceanbase_parser
-from parser.tree.expression import *
-from parser.tree.relation import *
-from parser.tree.set_operation import *
-from parser.tree.statement import *
+from src.common.utils import Utils
+from src.parser.mysql_parser import parser as mysql_parser
+from src.parser.oceanbase_parser import parser as oceanbase_parser
+from src.parser.tree.expression import *
+from src.parser.tree.relation import *
+from src.parser.tree.set_operation import *
+from src.parser.tree.statement import *
 
 
 class MyTestCase(unittest.TestCase):

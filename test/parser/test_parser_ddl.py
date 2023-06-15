@@ -14,7 +14,7 @@
 
 import unittest
 
-from parser.mysql_parser import parser
+from src.parser.mysql_parser import parser
 
 
 class MyTestCase(unittest.TestCase):

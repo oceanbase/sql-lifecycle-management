@@ -3,7 +3,7 @@
 
 import unittest
 
-from common.db_decrypt_pswd import decrypt_password
+from src.common.db_decrypt_pswd import decrypt_password
 
 
 class TestEnDeTxt(unittest.TestCase):
