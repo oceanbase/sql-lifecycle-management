@@ -39,7 +39,7 @@ def schedule_func():
                                                            db_conf['version'], db_conf['host'],
                                                            db_conf['port'], db_conf['user']))
         # schedule_task oceanbase task
-        if db_conf['engine'] == 'oceanbase':
+        if db_conf['engine'] == 'OceanBase':
             # Currently only support 3.x and 4.x version
             if db_conf['version'] < '3':
                 log.error("oceanbase unsupport version: {}".format(db_conf['version']))
