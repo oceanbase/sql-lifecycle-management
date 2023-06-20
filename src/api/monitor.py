@@ -361,7 +361,7 @@ class DatabaseConnectionCheck(BaseAPI):
                             help="approveType only supports pull/push/manual!")
         parser.add_argument('approveScope')
         parser.add_argument('hostIp')
-        parser.add_argument('hostPort')
+        parser.add_argument('hostPort', type=int)
         parser.add_argument('userName')
         parser.add_argument('password')
         args = parser.parse_args()
