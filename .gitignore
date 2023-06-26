@@ -8,6 +8,7 @@
 *.so
 *.pyc
 __pycache__/
+agent/bin/sqless-agent
 
 # Packages #
 ############
