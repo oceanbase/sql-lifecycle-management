@@ -20,7 +20,7 @@ check: install-tools
 	@ echo "gofmt ..."
 	@ gofmt -s -l -w $(PACKAGE_DIRECTORIES)
 	@ echo "golines ..."
-	@ golines --max-len=100 --shorten-comments -w cmd
+	@ golines --max-len=100 --shorten-comments -w cmd pkg
 	@ echo "revive ..."
 	@ revive -formatter friendly -config revive.toml $(PACKAGES_WITHOUT_TOOLSET)
 
