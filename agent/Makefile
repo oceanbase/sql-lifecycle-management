@@ -11,7 +11,7 @@ install-tools:
 ALL_PKG := github.com/oceanbase/sql-lifecycle-management/agent
 PACKAGES := $(shell go list ./...)
 PACKAGE_DIRECTORIES := $(subst $(ALL_PKG)/,,$(PACKAGES))
-PACKAGES_WITHOUT_TOOLSET := $(shell go list ./... | sed '/^github.com\/oceanbase\/sql-lifecycle-management\/agent/d')
+PACKAGES_WITHOUT_TOOLSET := $(shell go list ./... | sed '/^github.com\/oceanbase\/sql-lifecycle-management\/agent\/toolset/d')
 
 LDFLAGS = -s -w
 
