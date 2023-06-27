@@ -1,3 +1,4 @@
+// package main is the entrance
 package main
 
 import "fmt"
