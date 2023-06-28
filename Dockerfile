@@ -22,6 +22,4 @@ WORKDIR /home/admin/sqless
 
 RUN make install
 
-CMD ["sh"，"./start.sh"]
-
 
