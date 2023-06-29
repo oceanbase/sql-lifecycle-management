@@ -73,7 +73,7 @@ def t_INTEGER(t):
 
 # String literal
 def t_SCONST(t):
-    r'\'([^\\\n]|(\\.))*?\''
+    r'\'([^\']|\'\')*\''
     t.type = "SCONST"
     return t
 
