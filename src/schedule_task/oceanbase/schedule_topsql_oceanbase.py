@@ -133,7 +133,7 @@ class DealUserInfoOceanbase():
             logical_reads_equation = """round(avg(row_cache_hit*2+bloom_filter_cache_hit*2+
                 block_cache_hit+disk_reads)) logical_reads,"""
         else:
-            sql_audit_table = "gv$$sql_audit"
+            sql_audit_table = "gv$sql_audit"
             logical_reads_equation = """round(avg(row_cache_hit*2+bloom_filter_cache_hit*2+
                 block_cache_hit+block_index_cache_hit+disk_reads)) logical_reads,"""
         sql = '''SELECT /*+ READ_CONSISTENCY(weak),QUERY_TIMEOUT(10000000) */
