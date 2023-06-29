@@ -16,7 +16,7 @@ re_trace = re.compile(r'''\/\*.*trace_id((?!\/\*).)*rpc_id.*\*\/''', re.VERBOSE)
 re_annotation = re.compile(r'''\/\*((?!\/\*).)*\*\/''', re.VERBOSE)
 
 re_interval = re.compile(
-    r'''interval[\?\s\d]*(day|hour|minute|second|microsecond|week|month|quarter|year|second_microsecond|minute_microsecond|minute_second|hour_microsecond|hour_second|hour_minute|day_microsecond|day_second|day_minute|day_hour|year_month)''',
+    r'''interval\s?(\?|\-?\d+)\s?(day|hour|minute|second|microsecond|week|month|quarter|year|second_microsecond|minute_microsecond|minute_second|hour_microsecond|hour_second|hour_minute|day_microsecond|day_second|day_minute|day_hour|year_month)''',
     re.VERBOSE)
 re_force_index = re.compile(r'''force[\s]index[\s][(]\w+[)]''', re.VERBOSE)
 re_cast_1 = re.compile(r'''cast\(.*?\(.*?\)\)''', re.VERBOSE)

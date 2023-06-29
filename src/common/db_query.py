@@ -18,7 +18,6 @@ import os
 import sys
 import time
 
-from src.common.db_decrypt_pswd import decrypt_password
 from src.common.db_pool import ConnDBOperate
 from src.common.db_pool import DBPool
 from src.common.logger import Logger
@@ -34,11 +33,6 @@ f = open(cfg_file, 'r', encoding='utf-8')
 cfg = f.read()
 cfg = eval(cfg)
 metadb = cfg['db']
-
-# encryption and decryption
-need_decrypt = cfg.get('need_decrypt', 0)
-if need_decrypt:
-    metadb['pswd'] = decrypt_password(metadb['pswd'])
 
 f.close()
 
@@ -425,7 +419,6 @@ class DealMetaDBInfo():
             rt_list = self.meta_conn.func_select_storedb(sql)
             # decrypt password
             for per_line in rt_list:
-                per_line['pswd'] = decrypt_password(per_line['pswd'])
                 per_line['charset'] = 'utf8'
         except Exception as e:
             log.exception(e)
