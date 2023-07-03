@@ -76,8 +76,6 @@ def schedule_func():
 
 
 if __name__ == '__main__':
-    schedule.every(1).minutes.do(schedule_func)
-
     while True:
-        schedule.run_pending()
+        schedule_func()
         time.sleep(60)

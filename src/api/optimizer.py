@@ -141,9 +141,9 @@ class Parse(BaseAPI):
     def __init__(self, *args, **kwargs):
         super(Parse, self).__init__(*args, **kwargs)
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('sqlText', required=True, help="sqlText cannot be blank!")
+        parser.add_argument('sqlText', required=True, help="sqlText cannot be blank!", location='args')
         parser.add_argument('databaseEngine', required=True, choices=['MySQL', 'OceanBase']
-                            , help="The databaseEngine only supports MySQL/OceanBase")
+                            , help="The databaseEngine only supports MySQL/OceanBase", location='args')
         args = parser.parse_args()
         self.sql_text = args['sqlText']
         self.database_engine = args['databaseEngine']

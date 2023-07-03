@@ -67,22 +67,24 @@ class TopSQL(BaseAPI):
                    description: get top sql result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
-        parser.add_argument('startTimeTs', required=True, help="startTimeTs cannot be blank!", type=int)
-        parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int)
-        parser.add_argument('searchSQLText')
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
+        parser.add_argument('startTimeTs', required=True, help="startTimeTs cannot be blank!", type=int,
+                            location='args')
+        parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int, location='args')
+        parser.add_argument('searchSQLText', location='args')
         parser.add_argument('searchName', choices=["sqlId", "userName", "clientIp", "executions", "elapsedTime",
                                                    "cpuTime", "queueTime", "getplanTime", "totalWaitTime",
                                                    "netwaitTime", "iowaitTime", "returnRows", "affectedRows",
                                                    "logicalReads", "retryCnt", "failTimes", "rpcCount",
                                                    "remotePlans", "missPlans"],
-                            help='''The searchName only supports "sqlId", "userName", "clientIp", "executions", 
-                            "elapsedTime", "cpuTime", "queueTime", "getplanTime", "totalWaitTime", "netwaitTime", 
-                            "iowaitTime", "returnRows", "affectedRows", "logicalReads", "retryCnt", "failTimes", 
-                            "rpcCount", "remotePlans", "missPlans"''')
+                            help='''The searchName only supports "sqlId", "userName", "clientIp", "executions",
+                            "elapsedTime", "cpuTime", "queueTime", "getplanTime", "totalWaitTime", "netwaitTime",
+                            "iowaitTime", "returnRows", "affectedRows", "logicalReads", "retryCnt", "failTimes",
+                            "rpcCount", "remotePlans", "missPlans"''', location='args')
         parser.add_argument('searchSymbol', choices=["=", ">", ">=", "<", "<=", "!=", " like ", " not like "],
-                            help='''The searchName only supports "=", ">", ">=", "<", "<=", "!=", " like ", " not like " ''')
-        parser.add_argument('searchContext')
+                            help='''The searchName only supports "=", ">", ">=", "<", "<=", "!=", " like ", " not like " ''',
+                            location='args')
+        parser.add_argument('searchContext', location='args')
         args = parser.parse_args()
 
         data = MonitorDBInfo().get_top_sql(database_alias=args['databaseAlias'], user_id=self.user_id,
@@ -121,8 +123,8 @@ class SQLPlan(BaseAPI):
                    description: get sql plan result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
-        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!")
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
+        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!", location='args')
         args = parser.parse_args()
 
         data = MonitorDBInfo().get_sql_plan(database_alias=args['databaseAlias'], user_id=self.user_id,
@@ -158,8 +160,8 @@ class SQLText(BaseAPI):
                    description: get sql text result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
-        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!")
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
+        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!", location='args')
         args = parser.parse_args()
 
         data = MonitorDBInfo().get_sql_text(database_alias=args['databaseAlias'], user_id=self.user_id,
@@ -210,10 +212,11 @@ class SQLDetail(BaseAPI):
                    description: get sql detail result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
-        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!")
-        parser.add_argument('startTimeTs', required=True, help="startTimeTs cannot be blank!", type=int)
-        parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int)
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
+        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!", location='args')
+        parser.add_argument('startTimeTs', required=True, help="startTimeTs cannot be blank!", type=int,
+                            location='args')
+        parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int, location='args')
         args = parser.parse_args()
 
         data = MonitorDBInfo().get_sql_detail(database_alias=args['databaseAlias'], user_id=self.user_id,
@@ -249,8 +252,8 @@ class TableIndex(BaseAPI):
                    description: get table index result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
-        parser.add_argument('tableName', required=True, help="tableName cannot be blank!")
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
+        parser.add_argument('tableName', required=True, help="tableName cannot be blank!", location='args')
         args = parser.parse_args()
 
         data = MonitorDBInfo().get_table_index(database_alias=args['databaseAlias'], user_id=self.user_id,
@@ -286,8 +289,8 @@ class TableStatistics(BaseAPI):
                    description: get table statistics result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
-        parser.add_argument('tableName', required=True, help="tableName cannot be blank!")
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
+        parser.add_argument('tableName', required=True, help="tableName cannot be blank!", location='args')
         args = parser.parse_args()
 
         data = MonitorDBInfo().get_table_statistics(database_alias=args['databaseAlias'], user_id=self.user_id,

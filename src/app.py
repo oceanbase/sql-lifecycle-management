@@ -38,7 +38,7 @@ swagger = Swagger(app)
 api = Api(app)
 # Set the size limit of the requested content, which limits the size of the uploaded file
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
-app.json_encoder = ComplexEncoder
+app.json_provider_class = ComplexEncoder
 
 CORS(app, supports_credentials=True)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -47,8 +47,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 @app.route('/')
 @app.route('/console/workbench')
 @app.route('/console/optimize')
+@app.route('/console/optimize/report')
 @app.route('/console/review')
+@app.route('/console/review/report')
 @app.route('/console/analysis')
+@app.route('/console/analysis/report')
 @app.route('/console/database')
 @app.route('/console/monitor')
 def index():
