@@ -20,6 +20,7 @@ English | [简体中文](README_CN.md)
 - MySQL
 
 # Quick Start
+## Local installation
 - prerequisites: recommended python >= v3.6.3 (tested on 3.6.3)
 It is recommended to use [conda](https://github.com/conda/conda) to create virtual environment
 ```shell
@@ -32,11 +33,12 @@ git clone https://github.com/oceanbase/sql-lifecycle-management.git
 
 cd sql-lifecycle-management && make install
 ```
-- meta database init
+- meta database config
 ```shell
-# meta database config
 cd sql-lifecycle-management && vim db.cfg
-# meta database schema init
+```
+- meta database schema init
+```shell
 mysql -h host_ip -u user_name -p
 source init/init.sql
 ```
@@ -45,6 +47,39 @@ source init/init.sql
 cd sql-lifecycle-management && sh ./start.sh
 ```
 visit http://localhost:8989
+
+## Deploy with docker
+- build
+```shell
+git clone https://github.com/oceanbase/sql-lifecycle-management.git
+cd sql-lifecycle-management
+docker build -t <your_tag> .
+```
+- run
+```shell
+docker run -itd -p 8989:8989 <image_id> /bin/bash
+docker exec -it <container_id> /bin/bash
+```
+- meta database config
+```shell
+# in docker
+vim db.cfg
+```
+- meta database init
+```shell
+mysql -h host_ip -u user_name -p
+source init/init.sql
+```
+If you don't have an existing metabase. you can also install mysql service locally using Docker
+```shell
+docker run --name=mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=<your_password> -dit mysql:latest
+```
+- visit web
+```shell
+sh ./start.sh
+```
+visit http://localhost:8989
+
 
 # Configuration
 Please refer to the [Configuration Guide](https://github.com/oceanbase/sql-lifecycle-management/blob/main/CONTRIBUTING.md) for an overview on how to configure SQL-Lifecycle-Management.
