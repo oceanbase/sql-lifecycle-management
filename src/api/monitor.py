@@ -357,16 +357,16 @@ class DatabaseConnectionCheck(BaseAPI):
                    description: database connection check result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='form')
-        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!", location='form')
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
+        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!")
         parser.add_argument('approveType', required=True,
                             choices=["pull", "push", "manual"],
-                            help="approveType only supports pull/push/manual!", location='form')
-        parser.add_argument('approveScope', location='form')
-        parser.add_argument('hostIp', location='form')
-        parser.add_argument('hostPort', type=int, location='form')
-        parser.add_argument('userName', location='form')
-        parser.add_argument('password', location='form')
+                            help="approveType only supports pull/push/manual!")
+        parser.add_argument('approveScope')
+        parser.add_argument('hostIp')
+        parser.add_argument('hostPort', type=int)
+        parser.add_argument('userName')
+        parser.add_argument('password')
         args = parser.parse_args()
 
         approve_type = args['approveType']

@@ -147,12 +147,12 @@ class Database(BaseAPI):
                    description: update database result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='form')
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
         parser.add_argument('databaseEngine', required=True, choices=['MySQL', 'OceanBase'],
-                            help="The databaseEngine only supports MySQL/OceanBase", location='form')
-        parser.add_argument('databaseVersion', required=True, help="databaseVersion cannot be blank!", location='form')
-        parser.add_argument('platform', required=True, help="platform cannot be blank!", location='form')
-        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!", location='form')
+                            help="The databaseEngine only supports MySQL/OceanBase")
+        parser.add_argument('databaseVersion', required=True, help="databaseVersion cannot be blank!")
+        parser.add_argument('platform', required=True, help="platform cannot be blank!")
+        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!")
         args = parser.parse_args()
         success, error_message = update_user_database(args['databaseAlias'], args['databaseEngine'],
                                                       args['databaseVersion'], args['platform'], self.user_id)
@@ -180,7 +180,6 @@ class UserOptimization(BaseAPI):
                   enum: ['MySQL', 'OceanBase']
                   type: string
                   description: 数据库类型
-                  required: true
                 - in: query
                   name: optimizationType
                   type: string
@@ -216,7 +215,7 @@ class UserOptimization(BaseAPI):
                    description: get optimization result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseEngine', required=True, choices=['MySQL', 'OceanBase']
+        parser.add_argument('databaseEngine', choices=['MySQL', 'OceanBase']
                             , help="The databaseEngine only supports MySQL/OceanBase", location='args')
         parser.add_argument('optimizationType', choices=['optimize', 'analysis', 'review']
                             , help="The optimizationType only supports optimize/analysis/review", location='args')

@@ -44,6 +44,7 @@ class Analyzer(BaseAPI):
         catalog = args.get('catalogJson', '{}')
         try:
             self.catalog_json = json.loads(catalog) if catalog else None
+            self.schema_sql = ''
         except Exception as e:
             self.catalog_json = ''
             self.schema_sql = args.get('catalogJson', '')

@@ -141,7 +141,7 @@ def update_user_database(db_alias, engine, version, platform, user_id):
 def get_user_optimization(user_id, engine, start_time, end_time):
     sql = """
     SELECT 
-    database_alias AS dbAlias,tag,sql_text_list AS sqlText,type,status,
+    database_alias AS dbAlias,tag,sql_text_list AS sqlText,type,status,engine,
     optimization_detail as report,UNIX_TIMESTAMP(deal_time) as dealTime,is_read as isRead
     FROM user_optimization
     WHERE 
