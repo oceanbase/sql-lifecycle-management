@@ -21,7 +21,7 @@ English | [简体中文](README_CN.md)
 
 # Quick Start
 ## Local installation
-- prerequisites: recommended python >= v3.8 (tested on 3.8)
+- prerequisites: recommended python == v3.8 (tested on 3.8)
 It is recommended to use [conda](https://github.com/conda/conda) to create virtual environment
 ```shell
 conda create --name slm_3.8 python=3.8

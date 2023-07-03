@@ -21,7 +21,7 @@
 
 # 快速入门
 ## 本地安装
-- 执行环境: 推荐版本python >= v3.8
+- 执行环境: 推荐版本python == v3.8(tested on 3.8)
 建议使用[conda](https://github.com/conda/conda)来创建虚拟环境
 ```shell
 conda create --name slm_3.8 python=3.8
