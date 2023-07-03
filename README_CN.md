@@ -46,6 +46,38 @@ cd sql-lifecycle-management && sh ./start.sh
 ```
 访问页面http://localhost:8989
 
+## 使用容器部署
+- build
+```shell
+git clone https://github.com/oceanbase/sql-lifecycle-management.git
+cd sql-lifecycle-management
+docker build -t <your_tag> .
+```
+- run
+```shell
+docker run -itd -p 8989:8989 <image_id> /bin/bash
+docker exec -it <container_id> /bin/bash
+```
+- 元数据库配置
+```shell
+# in docker
+vim db.cfg
+```
+- 元数据库初始化
+```shell
+mysql -h host_ip -u user_name -p
+source init/init.sql
+```
+如果没有现成的元数据库，您也可以使用Docker在本地安装mysql服务
+```shell
+docker run --name=mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=<your_password> -dit mysql:latest
+```
+- visit web
+```shell
+sh ./start.sh
+```
+visit http://localhost:8989
+
 # 开发参与
 欢迎开发者参与我们的开源社区，为我们的产品开发和维护做出贡献。
 了解如何参与开发：[贡献指南](https://github.com/oceanbase/sql-lifecycle-management/blob/main/CONTRIBUTING.md) 
