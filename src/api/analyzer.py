@@ -32,11 +32,11 @@ class Analyzer(BaseAPI):
         super(Analyzer, self).__init__(*args, **kwargs)
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
         parser.add_argument('fileType', required=True, choices=['xml', 'slow_log'],
-                            help="The fileType only supports xml/slow_log")
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
-        parser.add_argument('schemaSQL')
-        parser.add_argument('catalogJson')
-        parser.add_argument('ormFrame')
+                            help="The fileType only supports xml/slow_log", location='form')
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='form')
+        parser.add_argument('schemaSQL', location='form')
+        parser.add_argument('catalogJson', location='form')
+        parser.add_argument('ormFrame', location='form')
         args = parser.parse_args()
         self.file = request.files['file']
         self.file_type = args['fileType']

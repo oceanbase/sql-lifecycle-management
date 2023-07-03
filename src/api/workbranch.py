@@ -42,8 +42,8 @@ class Database(BaseAPI):
                    description: get database result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('currentPage')
-        parser.add_argument('pageSize')
+        parser.add_argument('currentPage', location='args')
+        parser.add_argument('pageSize', location='args')
         args = parser.parse_args()
         db_list = get_user_database(self.user_id, args['currentPage'], args['pageSize'])
         data = {
@@ -93,12 +93,12 @@ class Database(BaseAPI):
                    description: add database result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='form')
         parser.add_argument('databaseEngine', required=True, choices=['MySQL', 'OceanBase'],
-                            help="The databaseEngine only supports MySQL/OceanBase")
-        parser.add_argument('databaseVersion', required=True, help="databaseVersion cannot be blank!")
-        parser.add_argument('platform', required=True, help="platform cannot be blank!")
-        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!")
+                            help="The databaseEngine only supports MySQL/OceanBase", location='form')
+        parser.add_argument('databaseVersion', required=True, help="databaseVersion cannot be blank!", location='form')
+        parser.add_argument('platform', required=True, help="platform cannot be blank!", location='form')
+        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!", location='form')
         args = parser.parse_args()
         is_insert_success, error_message = insert_user_database(self.user_id, args['databaseAlias'],
                                                                 args['databaseEngine'],
@@ -147,12 +147,12 @@ class Database(BaseAPI):
                    description: update database result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='form')
         parser.add_argument('databaseEngine', required=True, choices=['MySQL', 'OceanBase'],
-                            help="The databaseEngine only supports MySQL/OceanBase")
-        parser.add_argument('databaseVersion', required=True, help="databaseVersion cannot be blank!")
-        parser.add_argument('platform', required=True, help="platform cannot be blank!")
-        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!")
+                            help="The databaseEngine only supports MySQL/OceanBase", location='form')
+        parser.add_argument('databaseVersion', required=True, help="databaseVersion cannot be blank!", location='form')
+        parser.add_argument('platform', required=True, help="platform cannot be blank!", location='form')
+        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!", location='form')
         args = parser.parse_args()
         success, error_message = update_user_database(args['databaseAlias'], args['databaseEngine'],
                                                       args['databaseVersion'], args['platform'], self.user_id)
@@ -217,14 +217,14 @@ class UserOptimization(BaseAPI):
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
         parser.add_argument('databaseEngine', required=True, choices=['MySQL', 'OceanBase']
-                            , help="The databaseEngine only supports MySQL/OceanBase")
+                            , help="The databaseEngine only supports MySQL/OceanBase", location='args')
         parser.add_argument('optimizationType', choices=['optimize', 'analysis', 'review']
-                            , help="The optimizationType only supports optimize/analysis/review")
-        parser.add_argument('optimizationStatus')
-        parser.add_argument('databaseAlias')
-        parser.add_argument('sqlText')
-        parser.add_argument('startTimeTs', required=True, help="startTimeTs cannot be blank!", type=int)
-        parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int)
+                            , help="The optimizationType only supports optimize/analysis/review", location='args')
+        parser.add_argument('optimizationStatus', location='args')
+        parser.add_argument('databaseAlias', location='args')
+        parser.add_argument('sqlText', location='args')
+        parser.add_argument('startTimeTs', required=True, help="startTimeTs cannot be blank!", type=int, location='args')
+        parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int, location='args')
         args = parser.parse_args()
 
         optimization_list, total_count = get_user_optimization(self.user_id, args['databaseEngine'],
