@@ -28,12 +28,13 @@ class Utils(object):
 
     @staticmethod
     def remove_sql_text_affects_parser(sql):
-        sql = sql.lower()
+        sql = sql.lower().strip()
         sql = Utils.remove_hint_and_annotate(sql)
         sql = Utils.replace_interval_day(sql)
         sql = Utils.remove_force_index(sql)
         sql = Utils.remove_cast(sql)
         sql = Utils.remove_now_in_insert(sql)
+        sql = Utils.remove_semicolon(sql)
         return sql
 
     @staticmethod
@@ -72,6 +73,11 @@ class Utils(object):
     @staticmethod
     def get_db_id(database_alias, user_id):
         return database_alias + '-' + user_id
+
+    @staticmethod
+    def remove_semicolon(sql):
+        sql = sql.strip()
+        return sql[:-1] if sql[-1] == ';' else sql
 
 
 def fun_diff_secs(date1, date2):

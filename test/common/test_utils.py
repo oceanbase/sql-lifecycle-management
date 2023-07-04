@@ -16,6 +16,7 @@ import unittest
 
 from src.common.utils import Utils
 
+
 class MyTestCase(unittest.TestCase):
 
     def test_remove_hint_and_annotate(self):
@@ -74,6 +75,15 @@ class MyTestCase(unittest.TestCase):
         SELECT /*+ index(midas_record_value idx_tenant_time) */                 DISTINCT(trace_id)             FROM                 midas_record_value where tenant='insttrade' and is_expired=1  order by gmt_modified asc limit 500        """
         sql = Utils.remove_sql_text_affects_parser(sql)
         assert sql == """select                  distinct(trace_id)             from                 midas_record_value where tenant=\'insttrade\' and is_expired=1  order by gmt_modified asc limit 500        """
+
+    def test_semicolon(self):
+        sql = """SELECT * FROM a;"""
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        assert sql == """select * from a"""
+
+        sql = """SELECT * FROM a"""
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        assert sql == """select * from a"""
 
 
 if __name__ == '__main__':
