@@ -313,7 +313,7 @@ def table_stats_groupby(list_dict):
     return rt_dict
 
 
-def monitor_database_connection_check(host_ip, host_port, user_name, password, database_name):
+def check_monitor_database(host_ip, host_port, user_name, password, database_name, database_alias, user_id):
     """
     connect the database
     :param host_ip:
@@ -321,11 +321,15 @@ def monitor_database_connection_check(host_ip, host_port, user_name, password, d
     :param user_name:
     :param password:
     :param database_name:
+    :param database_alias:
+    :param user_id:
     :return:
     """
-    # TODO: Need to check the database type when connecting,
-    #  and the connection methods of different databases will be different,
-    #  now only consider the oceanbase type
+    db_info = get_db_info(user_id, database_alias)
+
+    engine = 'OceanBase'
+    if db_info:
+        engine = db_info['engine']
 
     message = ''
     grant_action = ''
@@ -341,31 +345,29 @@ def monitor_database_connection_check(host_ip, host_port, user_name, password, d
     }
 
     try:
+        if engine == 'OceanBase':
+            user_name = user_name.split('@')[0]
         conn = DBPool(db_conf)
-        if not conn:
-            message = 'Database connection error, please check the database configuration'
-            grant_action = '''
-            CREATE USER sqless IDENTIFIED BY password '{password}' ;
-            GRANT SELECT ON *.* to sqless;
-            '''.format(password=SQLESS_DEFULT_PASSWORD)
-            success = False
-        else:
-            result = conn.get_all("show grants for {user_name}".format(user_name=user_name))
-            if result and result[0] != "GRANT SELECT ON *.* TO '{user_name}'".format(user_name=user_name):
-                message = 'The current user query permission is limited, ' \
-                          'please click the copy button to query the authorization statement'
-                grant_action = '''
-                GRANT SELECT ON *.* to {user_name};
-                '''.format(user_name=user_name)
-                success = False
+        if conn:
+            result = conn.get_all("select priv_select from oceanbase.__all_user where user_name = '{user_name}'".format(
+                user_name=user_name))
+            if result:
+                priv_select = result[0]['priv_select']
+                if priv_select != 1:
+                    message = 'The current user query permission is limited, ' \
+                              'please click the copy button to query the authorization statement'
+                    grant_action = '''GRANT SELECT ON *.* to {user_name};'''.format(user_name=user_name)
+                    success = False
+            else:
+                # should not enter this branch
+                # While connecting, the username is deleted?
+                message = 'UserName does not exist'
 
     except Exception as e:
-        log.exception(e)
-        message = 'Database connection error, please check the database configuration'
-        grant_action = '''
-                    CREATE USER sqless IDENTIFIED BY password '{password}' ;
-                    GRANT SELECT ON *.* to {user_name};
-                    '''.format(password=SQLESS_DEFULT_PASSWORD, user_name=user_name)
+        message = 'Database connection error, please check the database configuration. ' \
+                  'You can also click the copy button to get the create user statement.'
+        grant_action = '''CREATE USER sqless IDENTIFIED BY password '{password}';GRANT SELECT ON *.* to sqless;'''.format(
+            password=SQLESS_DEFULT_PASSWORD)
         success = False
 
     return message, grant_action, success

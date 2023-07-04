@@ -376,12 +376,14 @@ class DatabaseConnectionCheck(BaseAPI):
                 message = "When approveType != null, approveScope/hostIp/hostPort/userName/password is required"
                 return self.construct_error_response_entity(code=400, message=message)
             else:
-                message, grant_action, success = monitor_database_connection_check(
+                message, grant_action, success = check_monitor_database(
                     host_ip=args['hostIp'],
                     host_port=args['hostPort'],
                     user_name=args['userName'],
                     password=args['password'],
-                    database_name=args['databaseName']
+                    database_name=args['databaseName'],
+                    database_alias=args['databaseAlias'],
+                    user_id = self.user_id
                 )
 
                 if success:
