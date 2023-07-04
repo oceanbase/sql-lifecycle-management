@@ -345,18 +345,26 @@ def check_monitor_database(host_ip, host_port, user_name, password, database_nam
     }
 
     try:
+        query = ''
+        grant_statement = ''
         if engine == 'OceanBase':
-            user_name = user_name.split('@')[0]
+            query_user_name = user_name.split('@')[0]
+            query = "select priv_select from oceanbase.__all_user where user_name = '{user_name}'".format(
+                user_name=query_user_name)
+            grant_statement = '''GRANT SELECT ON *.* to {user_name};'''.format(user_name=query_user_name)
+        elif engine == 'MySQL':
+            query = "select if(Select_priv='Y',1,0) as priv_select from mysql.user where user = '{user_name}'".format(
+                user_name=user_name)
+            grant_statement = '''GRANT SELECT ON *.* to {user_name};'''.format(user_name=user_name)
         conn = DBPool(db_conf)
         if conn:
-            result = conn.get_all("select priv_select from oceanbase.__all_user where user_name = '{user_name}'".format(
-                user_name=user_name))
+            result = conn.get_all(query)
             if result:
                 priv_select = result[0]['priv_select']
                 if priv_select != 1:
                     message = 'The current user query permission is limited, ' \
                               'please click the copy button to query the authorization statement'
-                    grant_action = '''GRANT SELECT ON *.* to {user_name};'''.format(user_name=user_name)
+                    grant_action = grant_statement
                     success = False
             else:
                 # should not enter this branch
@@ -364,10 +372,11 @@ def check_monitor_database(host_ip, host_port, user_name, password, database_nam
                 message = 'UserName does not exist'
 
     except Exception as e:
-        message = 'Database connection error, please check the database configuration. ' \
-                  'You can also click the copy button to get the create user statement.'
-        grant_action = '''CREATE USER sqless IDENTIFIED BY password '{password}';GRANT SELECT ON *.* to sqless;'''.format(
-            password=SQLESS_DEFULT_PASSWORD)
+        message = 'Database connection error: {message}, please check the database configuration. ' \
+                  'You can also click the copy button to get database connection commands.'.format(message=str(e))
+        grant_action = '''mysql -h{host} -u{user_name} -p{password} -P{port} -D{database_name}'''.format(
+            host=host_ip, user_name=user_name, password=password, port=host_port,
+            database_name=database_name)
         success = False
 
     return message, grant_action, success
