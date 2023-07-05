@@ -71,13 +71,13 @@ class Utils(object):
         return sql
 
     @staticmethod
-    def get_db_id(database_alias, user_id):
-        return database_alias + '-' + user_id
-
-    @staticmethod
     def remove_semicolon(sql):
         sql = sql.strip()
         return sql[:-1] if sql[-1] == ';' else sql
+
+    @staticmethod
+    def get_db_id(database_alias, user_id):
+        return database_alias + '-' + user_id
 
 
 def fun_diff_secs(date1, date2):
