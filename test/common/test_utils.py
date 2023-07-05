@@ -74,7 +74,7 @@ class MyTestCase(unittest.TestCase):
         /* trace_id=0b7c9b6f16766093900011105128699,rpc_id=0.9ef939e.8.5 */                      
         SELECT /*+ index(midas_record_value idx_tenant_time) */                 DISTINCT(trace_id)             FROM                 midas_record_value where tenant='insttrade' and is_expired=1  order by gmt_modified asc limit 500        """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        assert sql == """select                  distinct(trace_id)             from                 midas_record_value where tenant=\'insttrade\' and is_expired=1  order by gmt_modified asc limit 500        """
+        assert sql == """select                  distinct(trace_id)             from                 midas_record_value where tenant=\'insttrade\' and is_expired=1  order by gmt_modified asc limit 500"""
 
     def test_semicolon(self):
         sql = """SELECT * FROM a;"""
