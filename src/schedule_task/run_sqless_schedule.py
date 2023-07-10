@@ -78,4 +78,4 @@ def schedule_func():
 if __name__ == '__main__':
     while True:
         schedule_func()
-        time.sleep(60)
+        time.sleep(5)
