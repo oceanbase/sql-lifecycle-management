@@ -553,7 +553,10 @@ class DealMetaDBInfo():
         try:
             self.meta_conn.func_write_storedb(sql_list, store_sql)
         except Exception as e:
-            log.exception(e)
+            # In the process of repeated collection, data duplication is very common.
+            # In order to keep the log information clean, the log error of primary key conflict is not printed
+            if 'Duplicate entry' not in str(e):
+                log.exception(e)
 
     def disconn_storedb(self):
         try:
