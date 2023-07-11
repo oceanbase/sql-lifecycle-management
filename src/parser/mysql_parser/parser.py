@@ -58,8 +58,19 @@ def p_create_table(p):
 
 
 def p_create_table_end(p):
-    r""" create_table_end : ENGINE EQ identifier DEFAULT CHARSET EQ identifier
-                          | DEFAULT CHARSET EQ identifier COLLATE EQ identifier COMPRESSION EQ SCONST REPLICA_NUM EQ INTEGER BLOCK_SIZE EQ INTEGER USE_BLOOM_FILTER EQ FALSE TABLET_SIZE EQ INTEGER PCTFREE EQ INTEGER"""
+    r""" create_table_end : ENGINE EQ identifier create_table_end
+                          | DEFAULT CHARSET EQ identifier create_table_end
+                          | COLLATE EQ identifier create_table_end
+                          | AUTO_INCREMENT EQ INTEGER create_table_end
+                          | COMMENT EQ SCONST create_table_end
+                          | COMPRESSION EQ SCONST create_table_end
+                          | REPLICA_NUM EQ INTEGER create_table_end
+                          | BLOCK_SIZE EQ INTEGER create_table_end
+                          | USE_BLOOM_FILTER EQ FALSE create_table_end
+                          | TABLET_SIZE EQ INTEGER create_table_end
+                          | PCTFREE EQ INTEGER create_table_end
+                          | empty
+    """
     pass
 
 
@@ -115,6 +126,7 @@ def p_column_end(p):
                  | collate NOT NULL AUTO_INCREMENT comment_end
                  | collate NOT NULL DEFAULT CURRENT_TIMESTAMP comment_end
                  | collate NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment_end
+                 | CHARACTER SET IDENTIFIER column_end
                  | empty
     """
 
