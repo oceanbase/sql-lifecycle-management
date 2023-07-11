@@ -100,6 +100,7 @@ def p_column_type(p):
                     | VARCHAR LPAREN INTEGER RPAREN column_end
                     | CHAR LPAREN INTEGER RPAREN column_end
                     | TIMESTAMP column_end
+                    | DECIMAL LPAREN INTEGER COMMA INTEGER RPAREN column_end
     """
     p[0] = p[1].lower()
 
