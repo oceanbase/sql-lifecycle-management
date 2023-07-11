@@ -93,12 +93,12 @@ class Database(BaseAPI):
                    description: add database result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='form')
+        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
         parser.add_argument('databaseEngine', required=True, choices=['MySQL', 'OceanBase'],
-                            help="The databaseEngine only supports MySQL/OceanBase", location='form')
-        parser.add_argument('databaseVersion', required=True, help="databaseVersion cannot be blank!", location='form')
-        parser.add_argument('platform', required=True, help="platform cannot be blank!", location='form')
-        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!", location='form')
+                            help="The databaseEngine only supports MySQL/OceanBase")
+        parser.add_argument('databaseVersion', required=True, help="databaseVersion cannot be blank!")
+        parser.add_argument('platform', required=True, help="platform cannot be blank!")
+        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!")
         args = parser.parse_args()
         is_insert_success, error_message = insert_user_database(self.user_id, args['databaseAlias'],
                                                                 args['databaseEngine'],
