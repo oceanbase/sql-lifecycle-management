@@ -138,7 +138,7 @@ def update_user_database(db_alias, engine, version, platform, user_id):
     return True, None
 
 
-def get_user_optimization(user_id, engine, start_time, end_time):
+def get_user_optimization(user_id, start_time, end_time):
     sql = """
     SELECT 
     database_alias AS dbAlias,tag,sql_text_list AS sqlText,type,status,engine,
@@ -146,13 +146,12 @@ def get_user_optimization(user_id, engine, start_time, end_time):
     FROM user_optimization
     WHERE 
     user_id = %s
-    AND engine = %s
     AND gmt_create >= FROM_UNIXTIME({start_time})
     AND gmt_create <= FROM_UNIXTIME({end_time})
     order by dealTime desc
     """.format(start_time=start_time, end_time=end_time)
 
-    param = (user_id, engine)
+    param = user_id
 
     db_info = ConnDBOperate(metadb)
 
@@ -164,7 +163,6 @@ def get_user_optimization(user_id, engine, start_time, end_time):
             FROM user_optimization
             WHERE 
             user_id = %s
-            AND engine = %s
             """
         count_res = db_info.func_select_storedb(sql, param)
         return list(res), count_res[0]['c'] if count_res else 0

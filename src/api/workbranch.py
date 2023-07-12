@@ -176,11 +176,6 @@ class UserOptimization(BaseAPI):
               - Optimization
             parameters:
                 - in: query
-                  name: databaseEngine
-                  enum: ['MySQL', 'OceanBase']
-                  type: string
-                  description: 数据库类型
-                - in: query
                   name: optimizationType
                   type: string
                   description: 类型
@@ -215,8 +210,6 @@ class UserOptimization(BaseAPI):
                    description: get optimization result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseEngine', choices=['MySQL', 'OceanBase']
-                            , help="The databaseEngine only supports MySQL/OceanBase", location='args')
         parser.add_argument('optimizationType', choices=['optimize', 'analysis', 'review']
                             , help="The optimizationType only supports optimize/analysis/review", location='args')
         parser.add_argument('optimizationStatus', location='args')
@@ -226,8 +219,7 @@ class UserOptimization(BaseAPI):
         parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int, location='args')
         args = parser.parse_args()
 
-        optimization_list, total_count = get_user_optimization(self.user_id, args['databaseEngine'],
-                                                               args['startTimeTs'], args['endTimeTs'])
+        optimization_list, total_count = get_user_optimization(self.user_id, args['startTimeTs'], args['endTimeTs'])
 
         for optimization in optimization_list:
             export_list = []
