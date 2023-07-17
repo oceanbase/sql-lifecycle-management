@@ -256,8 +256,8 @@ def parse_eltree_to_text(tree: ElementTree, query_type):
                 uid = uuid.uuid4().hex
                 cmt = {**dict(elem.attrib), **{"tag": elem.tag}}
                 mybatis_info[uid] = cmt
-                if elem.text.strip():
-                    res += f" -- parse_uid:{uid};\n"
+                # if elem.text.strip():
+                #     res += f" -- parse_uid:{uid};\n"
             if elem.get("close"):
                 if elem.getchildren():
                     if elem.getchildren()[-1].tail:
