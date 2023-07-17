@@ -705,7 +705,9 @@ def p_search_condition(p):
     r"""search_condition : boolean_term
                          | LPAREN search_condition RPAREN
                          | search_condition OR search_condition
-                         | search_condition AND search_condition"""
+                         | search_condition AND search_condition
+                         | search_condition bit_operation search_condition
+                         | BIT_OPPOSITE search_condition"""
     if len(p) == 2:
         p[0] = p[1]
     elif p.slice[1].type == "LPAREN":
@@ -714,6 +716,17 @@ def p_search_condition(p):
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="OR", left=p[1], right=p[3])
     elif p.slice[2].type == "AND":
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="AND", left=p[1], right=p[3])
+    elif p.slice[2].type == 'bit_operation':
+        p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
+
+
+def p_bit_operation(p):
+    r"""bit_operation : BIT_AND
+                      | BIT_OR
+                      | BIT_XOR
+                      | BIT_MOVE_LEFT
+                      | BIT_MOVE_RIGHT"""
+    p[0] = p[1]
 
 
 def p_boolean_term(p):

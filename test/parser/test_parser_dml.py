@@ -502,6 +502,14 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         result = oceanbase_parser.parse(sql)
         assert isinstance(result, Statement)
 
+    def test_operator(self):
+        sql = """
+        select         count(1)         from train_order_info where  occupy_type in              (                   ?              )                                  and order_serial_no =  ?                                 and connect_type =  ?                                     and merchant_id = ''                                 and order_state in              (                   ?              )                                 and ticket_machine_id in              (                   ?              )                                 and lock_state =  ?                                 and phone_verify_status =  ?                                 and window_no =  ?                                 and passenger_info like concat('%',concat( ?,'%'))                                 and departure_station like concat('%',concat( ?,'%'))                                 and arrival_station like concat('%',concat( ?,'%'))                                 and merchant_id =  ?                                 and createtime >=  ?                                 and createtime <=  ?                                 and gmt_booked >=  ?                                 and gmt_booked <=  ?                                 and gmt_departure >=  ?                                 and gmt_departure <=  ?                                 and train_code =  ?                                 and pay_serial_no =  ?                                 and env =  ?                                  and gmt_distribute >=  ?                                 and gmt_distribute <=  ?                                  and inquire_type in              (                   ?              )                                 and merchant_business_type =  ?                                 and ability_require &  ? =  ?
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -26,6 +26,9 @@ tokens = ['INTEGER', 'NUMBER', 'DOUBLE',
           'GT', 'GE',
           'LT', 'LE',
           'EQ', 'NE',
+          'BIT_OR', 'BIT_AND',
+          'BIT_XOR', 'BIT_OPPOSITE',
+          'BIT_MOVE_LEFT', 'BIT_MOVE_RIGHT',
           'CONCAT', 'SLASH',
           'ASTERISK', 'PERCENT',
           'TOP',  # ADQL
@@ -54,6 +57,13 @@ t_QM = r'\?'
 t_CONCAT = r'\|\|'
 
 t_ignore = ' \t'
+
+t_BIT_OR = r'\|'
+t_BIT_AND = r'\&'
+t_BIT_XOR = r'\^'
+t_BIT_OPPOSITE = r'\~'
+t_BIT_MOVE_LEFT = R'<<'
+t_BIT_MOVE_RIGHT = R'>>'
 
 
 def t_DOUBLE(t):
