@@ -60,14 +60,14 @@ def p_create_table_end(p):
     r""" create_table_end : ENGINE EQ identifier create_table_end
                           | DEFAULT CHARSET EQ identifier create_table_end
                           | COLLATE EQ identifier create_table_end
-                          | AUTO_INCREMENT EQ INTEGER create_table_end
+                          | AUTO_INCREMENT EQ integer create_table_end
                           | COMMENT EQ SCONST create_table_end
                           | COMPRESSION EQ SCONST create_table_end
-                          | REPLICA_NUM EQ INTEGER create_table_end
-                          | BLOCK_SIZE EQ INTEGER create_table_end
+                          | REPLICA_NUM EQ integer create_table_end
+                          | BLOCK_SIZE EQ integer create_table_end
                           | USE_BLOOM_FILTER EQ FALSE create_table_end
-                          | TABLET_SIZE EQ INTEGER create_table_end
-                          | PCTFREE EQ INTEGER create_table_end
+                          | TABLET_SIZE EQ integer create_table_end
+                          | PCTFREE EQ integer create_table_end
                           | empty
     """
     pass
@@ -100,17 +100,17 @@ def p_column(p):
 def p_column_type(p):
     r"""
         column_type : INT column_end
-                    | INT LPAREN INTEGER RPAREN column_end
+                    | INT LPAREN integer RPAREN column_end
                     | FLOAT column_end
                     | BIGINT column_end
-                    | BIGINT LPAREN INTEGER RPAREN column_end
-                    | TINYINT LPAREN INTEGER RPAREN column_end
+                    | BIGINT LPAREN integer RPAREN column_end
+                    | TINYINT LPAREN integer RPAREN column_end
                     | DATETIME column_end
-                    | DATETIME LPAREN INTEGER RPAREN column_end
-                    | VARCHAR LPAREN INTEGER RPAREN column_end
-                    | CHAR LPAREN INTEGER RPAREN column_end
+                    | DATETIME LPAREN integer RPAREN column_end
+                    | VARCHAR LPAREN integer RPAREN column_end
+                    | CHAR LPAREN integer RPAREN column_end
                     | TIMESTAMP column_end
-                    | DECIMAL LPAREN INTEGER COMMA INTEGER RPAREN column_end
+                    | DECIMAL LPAREN integer COMMA integer RPAREN column_end
     """
     p[0] = p[1].lower()
 
@@ -195,7 +195,7 @@ def p_index_column_list(p):
 
 def p_index_end(p):
     r"""
-        index_end : BLOCK_SIZE INTEGER
+        index_end : BLOCK_SIZE integer
                   | empty
     """
 
@@ -326,7 +326,7 @@ def p_subquery(p):
 def p_for_update_opt(p):
     r"""for_update_opt : FOR UPDATE
                        | FOR UPDATE NOWAIT
-                       | FOR UPDATE WAIT INTEGER
+                       | FOR UPDATE WAIT integer
                        | LOCK IN SHARE MODE
                        | empty"""
     if len(p) == 3:
@@ -388,12 +388,12 @@ def p_null_ordering_opt(p):
 
 # LIMIT
 def p_limit_opt(p):
-    r"""limit_opt : LIMIT INTEGER
-                  | LIMIT INTEGER COMMA INTEGER
+    r"""limit_opt : LIMIT integer
+                  | LIMIT integer COMMA integer
                   | LIMIT QM
                   | LIMIT QM COMMA QM
                   | LIMIT ALL
-                  | LIMIT INTEGER OFFSET INTEGER
+                  | LIMIT integer OFFSET integer
                   | empty"""
     if len(p) < 5:
         p[0] = (0, p[2]) if p[1] else None
@@ -402,6 +402,17 @@ def p_limit_opt(p):
             p[0] = (p[2], p[4])
         else:
             p[0] = (p[4], p[2])
+
+
+# TODO: need to display the minus here?
+def p_integer(p):
+    r"""integer : INTEGER
+                | MINUS INTEGER
+    """
+    if len(p) == 2:
+        p[0] = p[1]
+    else:
+        p[0] = -int(p[2])
 
 
 # non-join query expression
@@ -1020,7 +1031,7 @@ def p_type_param_list(p):
 
 
 def p_type_parameter(p):
-    r"""type_parameter : INTEGER
+    r"""type_parameter : integer
                        | base_data_type"""
     p[0] = p[1]
 
@@ -1081,7 +1092,7 @@ def p_sign(p):
 
 
 def p_integer_param_opt(p):
-    """integer_param_opt : LPAREN INTEGER RPAREN
+    """integer_param_opt : LPAREN integer RPAREN
                          | LPAREN RPAREN
                          | empty"""
     p[0] = int(p[2]) if len(p) == 4 else None
@@ -1115,7 +1126,7 @@ def p_quoted_identifier(p):
 
 def p_number(p):
     r"""number : DOUBLE
-               | INTEGER"""
+               | integer"""
     if p.slice[1].type == "DOUBLE":
         p[0] = DoubleLiteral(p.lineno(1), p.lexpos(1), p[1])
     else:
