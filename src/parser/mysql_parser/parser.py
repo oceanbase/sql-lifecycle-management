@@ -404,15 +404,10 @@ def p_limit_opt(p):
             p[0] = (p[4], p[2])
 
 
-# TODO: need to display the minus here?
 def p_integer(p):
     r"""integer : INTEGER
-                | MINUS INTEGER
     """
-    if len(p) == 2:
-        p[0] = p[1]
-    else:
-        p[0] = -int(p[2])
+    p[0] = p[1]
 
 
 # non-join query expression
