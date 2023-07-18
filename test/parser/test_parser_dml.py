@@ -510,6 +510,14 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         result = oceanbase_parser.parse(sql)
         assert isinstance(result, Statement)
 
+    def test_negative_number_in_limit(self):
+        sql = """
+            select * from foo limit 10,-10
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
 
 if __name__ == '__main__':
     unittest.main()
