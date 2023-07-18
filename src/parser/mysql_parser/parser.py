@@ -253,7 +253,8 @@ def p_update(p):
 
 def p_update_set_list(p):
     r"""update_set_list : update_set
-                        | update_set_list COMMA update_set"""
+                        | update_set_list COMMA update_set
+                        | update_set_list AND update_set"""
     _item_list(p)
 
 
