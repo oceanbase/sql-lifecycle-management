@@ -593,6 +593,7 @@ class MyTestCase(unittest.TestCase):
         result = oceanbase_parser.parse(sql)
         assert isinstance(result, Statement)
 
+<<<<<<< HEAD
     def test_mysql_logical_opt(self):
         test_sqls = [
             """SELECT engine FROM move_title WHERE a XOR '29'""",
@@ -609,6 +610,16 @@ class MyTestCase(unittest.TestCase):
             sql = Utils.remove_sql_text_affects_parser(sql)
             result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
             assert isinstance(result, Statement)
+=======
+    def test_negative_number_in_limit(self):
+        sql = """
+            select * from foo limit 10,-10
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
+>>>>>>> 2af7bef (fix(parser):support negative number in limit" (#84))
 
     def test_mysql_regexp_opt(self):
         test_sqls = [
