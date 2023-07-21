@@ -48,6 +48,7 @@ Thumbs.db
 # Others #
 ##################
 .idea/
+.vscode/
 venv/*
 parser.out
 parsetab.py

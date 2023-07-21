@@ -523,10 +523,9 @@ def p_query_spec(p):
 
 def p_where_opt(p):
     r"""where_opt : WHERE search_condition
-                  | WHERE LPAREN search_condition RPAREN
                   | empty"""
     if p.slice[1].type == "WHERE":
-        p[0] = p[2] if len(p) == 3 else p[3]
+        p[0] = p[2]
     else:
         p[0] = None
 
@@ -718,8 +717,8 @@ def p_search_condition(p):
     r"""search_condition : boolean_term
                          | LPAREN search_condition RPAREN
                          | search_condition OR search_condition
-                         | search_condition AND search_condition
-                         | search_condition bit_operation search_condition
+                         | search_condition logical_and search_condition
+                         | search_condition XOR search_condition
                          | BIT_OPPOSITE search_condition"""
     if len(p) == 2:
         p[0] = p[1]
@@ -727,20 +726,16 @@ def p_search_condition(p):
         p[0] = p[2]
     elif p.slice[2].type == "OR":
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="OR", left=p[1], right=p[3])
-    elif p.slice[2].type == "AND":
+    elif p.slice[2].type == "logical_and":
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="AND", left=p[1], right=p[3])
-    elif p.slice[2].type == 'bit_operation':
-        p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
+    elif p.slice[2] == "XOR":
+        p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="XOR", left=p[1], right=p[3])
 
 
-def p_bit_operation(p):
-    r"""bit_operation : BIT_AND
-                      | BIT_OR
-                      | BIT_XOR
-                      | BIT_MOVE_LEFT
-                      | BIT_MOVE_RIGHT"""
+def p_logical_and(p):
+    r"""logical_and : AND
+                      | ANDAND"""
     p[0] = p[1]
-
 
 def p_boolean_term(p):
     r"""boolean_term : boolean_factor
@@ -821,9 +816,14 @@ def p_like_predicate(p):
 
 
 def p_regexp_predicate(p):
-    r"""regexp_predicate : value_expression REGEXP value_expression"""
+    r"""regexp_predicate : value_expression regexp_sym value_expression"""
     p[0] = RegexpPredicate(p.lineno(1), p.lexpos(1), value=p[1], pattern=p[3])
 
+
+def p_regexp_sym(p):
+    r"""regexp_sym : REGEXP
+                    | RLIKE"""
+    pass
 
 def _check_not(p):
     if p[2] and p.slice[2].type == "not_opt":
@@ -849,27 +849,38 @@ def p_value_expression(p):
 
 
 def p_numeric_value_expression(p):
-    r"""numeric_value_expression : numeric_value_expression PLUS term
-                                 | numeric_value_expression MINUS term
-                                 | term"""
-    if p.slice[1].type == "numeric_value_expression":
-        p[0] = ArithmeticBinaryExpression(p.lineno(1), p.lexpos(1),
-                                          type=p[2], left=p[1], right=p[3])
+    r"""numeric_value_expression : numeric_value_expression arithmetic_opt numeric_value_expression
+                                 | numeric_value_expression bit_opt numeric_value_expression
+                                 | factor"""
+    if len(p) == 4:
+        if p.slice[2].type == "arithmetic_opt":
+            p[0] = ArithmeticBinaryExpression(p.lineno(1), p.lexpos(1),
+                                              type=p[2], left=p[1], right=p[3])
+        elif p.slice[2].type == "bit_opt":
+            p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
     else:
         p[0] = p[1]
 
 
-def p_term(p):
-    r"""term : term ASTERISK factor
-             | term SLASH factor
-             | term PERCENT factor
-             | term CONCAT factor
-             | factor"""
-    if p.slice[1].type == "factor":
-        p[0] = p[1]
-    else:
-        p[0] = ArithmeticBinaryExpression(p.lineno(1), p.lexpos(1),
-                                          type=p[2], left=p[1], right=p[3])
+def p_arithmetic_opt(p):
+    r"""arithmetic_opt : PLUS
+                        | MINUS
+                        | ASTERISK 
+                        | SLASH
+                        | DIV
+                        | MOD
+                        | PERCENT 
+                        | CONCAT """
+    p[0] = p[1]
+
+
+def p_bit_opt(p):
+    r"""bit_opt : BIT_AND
+                      | BIT_OR
+                      | BIT_XOR
+                      | BIT_MOVE_LEFT
+                      | BIT_MOVE_RIGHT"""
+    p[0] = p[1]
 
 
 def p_factor(p):
@@ -1099,12 +1110,33 @@ def p_identifier(p):
                    | quoted_identifier
                    | non_reserved
                    | DIGIT_IDENTIFIER
+                   | resvered_word_can_use
                    | ASTERISK"""
     p[0] = p[1]
 
 
 def p_non_reserved(p):
     r"""non_reserved : NON_RESERVED """
+    p[0] = p[1]
+
+# resvered word in mysql but can be used as token
+def p_keyword_can_use(p):
+    r"""resvered_word_can_use : CAST
+                        | END
+                        | ESCAPE
+                        | FOR
+                        | FROM
+                        | GROUP
+                        | IF
+                        | IN
+                        | INTO
+                        | IS
+                        | ON
+                        | OR
+                        | USE
+                        | WITH
+                        | ENGINE
+                        """
     p[0] = p[1]
 
 

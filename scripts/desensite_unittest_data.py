@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 import os
 
-from src.consume import get_encoding
-from src.consume import MysqlSlowLogParse
+from src.consume.file_parse_common import get_encoding
+from src.consume.mysql_slowlog_parse  import MysqlSlowLogParse
 
 
 def func_desensitize_slowlog(file_list, db_version):

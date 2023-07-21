@@ -2,6 +2,7 @@ import unittest
 
 from src.optimizer.pmd_rule import *
 from src.parser.mysql_parser import parser
+from src.parser.mysql_parser import lexer
 
 
 class MyTestCase(unittest.TestCase):
@@ -110,10 +111,10 @@ where
         assert not match
 
     def test_arithmetic_binary(self):
-        statement = parser.parse("select count(a) from sqless_base where a * 2 > 1")
+        statement = parser.parse("select count(a) from sqless_base where a * 2 > 1",lexer=lexer.lexer)
         match = PMDArithmeticRule().match(statement)
         assert match
-        statement = parser.parse("select count(1) from sqless_base where a  > 1 * 2")
+        statement = parser.parse("select count(1) from sqless_base where a  > 1 * 2",lexer=lexer.lexer)
         match = PMDArithmeticRule().match(statement)
         assert not match
 
