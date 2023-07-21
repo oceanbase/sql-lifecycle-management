@@ -10,30 +10,39 @@
 ``SQL-Lifecycle-Management``是一款从蚂蚁业务场景孵化的SQL生命周期管理产品，提供了贯穿研发、集成、运维和持续优化各个阶段的SQL闭环能力。
 
 # 核心能力
+
 - SQL优化：支持SQL优化，提供索引建议、PMD建议、Rewrite重写等能力
 - SQL Review：支持多种ORM框架SQL Review能力
 - 慢查分析：支持Slow log分析功能
 - SQL监控：提供不同引擎的SQL监控服务，采集SQL、Plan、元数据、统计信息等数据帮助开发者实时分析SQL问题
 
 # 当前支持的数据库引擎
+
 - OceanBase(MySQL Mode)
 - MySQL
 
 # 快速入门
+
 ## 本地安装
+
 - 执行环境: 推荐版本python == v3.8(tested on 3.8)
 建议使用[conda](https://github.com/conda/conda)来创建虚拟环境
+
 ```shell
 conda create --name slm_3.8 python=3.8
 conda activate slm_3.8
 ```
+
 - 依赖安装
+
 ```shell
 git clone https://github.com/oceanbase/sql-lifecycle-management.git
 
 cd sql-lifecycle-management && make install
 ```
+
 - 数据库初始化
+
 ```shell
 # 填写本地元数据库链接方式
 cd sql-lifecycle-management && vim db.cfg
@@ -41,53 +50,72 @@ cd sql-lifecycle-management && vim db.cfg
 mysql -h host_ip -u user_name -p
 source init/init.sql
 ```
+
 - 访问页面
+
 ```shell
 cd sql-lifecycle-management && sh ./start.sh
 ```
-访问页面http://localhost:8989
+
+访问页面<http://localhost:8989>
 
 ## 使用容器部署
+
 - build
+
 ```shell
 git clone https://github.com/oceanbase/sql-lifecycle-management.git
 cd sql-lifecycle-management
 docker build -t <your_tag> .
 ```
+
 - run
+
 ```shell
 docker run -itd -p 8989:8989 <image_id> /bin/bash
 docker exec -it <container_id> /bin/bash
 ```
+
 - 元数据库配置
+
 ```shell
 # in docker
 vim db.cfg
 ```
+
 - 元数据库初始化
+
 ```shell
 mysql -h host_ip -u user_name -p
 source init/init.sql
 ```
+
 如果没有现成的元数据库，您也可以使用Docker在本地安装mysql服务
+
 ```shell
 docker run --name=mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=<your_password> -dit mysql:latest
 ```
+
 - visit web
+
 ```shell
 sh ./start.sh
 ```
-visit http://localhost:8989
+
+visit <http://localhost:8989>
 
 # 开发参与
+
 欢迎开发者参与我们的开源社区，为我们的产品开发和维护做出贡献。
-了解如何参与开发：[贡献指南](https://github.com/oceanbase/sql-lifecycle-management/blob/main/CONTRIBUTING.md) 
+了解如何参与开发：[贡献指南](https://github.com/oceanbase/sql-lifecycle-management/blob/main/CONTRIBUTING.md)
 部分规范：
-- [API规范](https://github.com/oceanbase/sql-lifecycle-management/blob/main/docs/api-style-guide.md) 
-- [Code Review规范](https://github.com/oceanbase/sql-lifecycle-management/blob/main/docs/code-review-guide.md) 
-- [拼写规范](https://github.com/oceanbase/sql-lifecycle-management/blob/main/docs/writing-guide.md) 
+
+- [API规范](https://github.com/oceanbase/sql-lifecycle-management/blob/main/docs/api-style-guide.md)
+- [Code Review规范](https://github.com/oceanbase/sql-lifecycle-management/blob/main/docs/code-review-guide.md)
+- [拼写规范](https://github.com/oceanbase/sql-lifecycle-management/blob/main/docs/writing-guide.md)
 
 # Roadmap
+
 - [ ] 数据库引擎扩展
   - [x] OceanBase
   - [x] MySQL
@@ -119,8 +147,9 @@ visit http://localhost:8989
   - [ ] IDE插件
 
 # 许可证
+
 ``SQL-Lifecycle-Management`` 使用 [Apache - 2.0](https://github.com/oceanbase/sql-lifecycle-management/blob/main/LICENSE) 许可证。
 
 # 联系我们
-钉钉群: 33920014194
 
+钉钉群: 33920014194
