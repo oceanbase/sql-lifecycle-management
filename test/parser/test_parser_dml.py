@@ -24,10 +24,6 @@ from src.parser.tree.statement import *
 
 
 class MyTestCase(unittest.TestCase):
-<<<<<<< HEAD
-=======
-
->>>>>>> main
     def test_and_in_update(self):
         sql = """
         update foo set t1 = '1' and t2 = '2' where t3 = '3'
@@ -100,7 +96,6 @@ INSERT IGNORE INTO bumonitor_risk_process_context (gmt_create, gmt_modified, row
 delete from execution_log          where                (                             record_id = 2000006         and           sub_job_id = -3                                             )
         """)
         assert isinstance(result, Statement)
-<<<<<<< HEAD
         
     def test_mysql_logical_opt(self):
         test_sqls = [
@@ -152,8 +147,6 @@ delete from execution_log          where                (                       
             sql = Utils.remove_sql_text_affects_parser(sql)
             result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
             assert isinstance(result, Statement)
-=======
->>>>>>> main
 
 
 if __name__ == "__main__":
