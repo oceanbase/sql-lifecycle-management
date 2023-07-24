@@ -63,11 +63,6 @@ def p_create_table_end(p):
                           | AUTO_INCREMENT EQ integer create_table_end
                           | COMMENT EQ SCONST create_table_end
                           | COMPRESSION EQ SCONST create_table_end
-                          | REPLICA_NUM EQ integer create_table_end
-                          | BLOCK_SIZE EQ integer create_table_end
-                          | USE_BLOOM_FILTER EQ FALSE create_table_end
-                          | TABLET_SIZE EQ integer create_table_end
-                          | PCTFREE EQ integer create_table_end
                           | empty
     """
     pass
@@ -1133,7 +1128,7 @@ def p_non_reserved(p):
                         | ANY
                         | AVG
                         | AVG_ROW_LENGTH
-                        | AUTO_INCREMENTACCOUNT
+                        | AUTO_INCREMENT
                         | BACKUP
                         | BEGIN
                         | BIT
@@ -1196,6 +1191,7 @@ def p_non_reserved(p):
                         | FILE
                         | FIRST
                         | FLUSH
+                        | FROM
                         | FOR
                         | FORMAT
                         | FOUND
@@ -1204,6 +1200,7 @@ def p_non_reserved(p):
                         | GENERAL
                         | GLOBAL
                         | GRANTS
+                        | GROUP
                         | HANDLER
                         | HASH
                         | HELP
@@ -1218,8 +1215,12 @@ def p_non_reserved(p):
                         | INVISIBLE
                         | IO
                         | IPC
+                        | IS
                         | ISOLATION
                         | ISSUER
+                        | IF
+                        | IN
+                        | INTO
                         | ITERATE
                         | JSON
                         | KEY_BLOCK_SIZE
@@ -1257,6 +1258,8 @@ def p_non_reserved(p):
                         | OF
                         | OFF
                         | OFFSET
+                        | ON
+                        | OR
                         | ON_DUPLICATE
                         | ONLINE
                         | ONLY
@@ -1330,8 +1333,6 @@ def p_non_reserved(p):
                         | SPECIFIC
                         | SQL_CALC_FOUND_ROWS
                         | SQL_AFTER_GTIDS
-                        | SQL_AFTER_MTS_GAPS
-                        | SQL_BEFORE_GTIDS
                         | SQL_BUFFER_RESULT
                         | SQL_CACHE
                         | SQL_NO_CACHE
@@ -1370,8 +1371,8 @@ def p_non_reserved(p):
                         | UNINSTALL
                         | UNKNOWN
                         | UNLOCK
+                        | USE
                         | USER
-                        | USER_RESOURCES
                         | VALIDATION
                         | VALUE
                         | VALUES
@@ -1380,6 +1381,7 @@ def p_non_reserved(p):
                         | WARNINGS
                         | WEEK
                         | WEIGHT_STRING
+                        | WITH
                         | WITHOUT
                         | WORK
                         | WRAPPER
@@ -1395,7 +1397,7 @@ def p_non_reserved(p):
     p[0] = p[1]
 
 def p_not_keyword(p):
-    r"""not_keyword: ADDDATE
+    r"""not_keyword : ADDDATE
                         | BRIEF
                         | CAST
                         | COPY
