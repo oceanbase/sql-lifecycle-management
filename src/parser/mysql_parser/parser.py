@@ -63,6 +63,14 @@ def p_create_table_end(p):
                           | AUTO_INCREMENT EQ integer create_table_end
                           | COMMENT EQ SCONST create_table_end
                           | COMPRESSION EQ SCONST create_table_end
+<<<<<<< HEAD
+=======
+                          | REPLICA_NUM EQ integer create_table_end
+                          | BLOCK_SIZE EQ integer create_table_end
+                          | USE_BLOOM_FILTER EQ FALSE create_table_end
+                          | TABLET_SIZE EQ integer create_table_end
+                          | PCTFREE EQ integer create_table_end
+>>>>>>> main
                           | empty
     """
     pass
@@ -190,7 +198,12 @@ def p_index_column_list(p):
 
 def p_index_end(p):
     r"""
+<<<<<<< HEAD
         index_end : empty
+=======
+        index_end : BLOCK_SIZE integer
+                  | empty
+>>>>>>> main
     """
 
 
