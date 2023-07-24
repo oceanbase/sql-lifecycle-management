@@ -63,11 +63,6 @@ def p_create_table_end(p):
                           | AUTO_INCREMENT EQ INTEGER create_table_end
                           | COMMENT EQ SCONST create_table_end
                           | COMPRESSION EQ SCONST create_table_end
-                          | REPLICA_NUM EQ INTEGER create_table_end
-                          | BLOCK_SIZE EQ INTEGER create_table_end
-                          | USE_BLOOM_FILTER EQ FALSE create_table_end
-                          | TABLET_SIZE EQ INTEGER create_table_end
-                          | PCTFREE EQ INTEGER create_table_end
                           | empty
     """
     pass
@@ -195,8 +190,7 @@ def p_index_column_list(p):
 
 def p_index_end(p):
     r"""
-        index_end : BLOCK_SIZE INTEGER
-                  | empty
+        index_end : empty
     """
 
 
@@ -1109,34 +1103,315 @@ def p_identifier(p):
     r"""identifier : IDENTIFIER
                    | quoted_identifier
                    | non_reserved
+                   | not_keyword
                    | DIGIT_IDENTIFIER
-                   | resvered_word_can_use
                    | ASTERISK"""
     p[0] = p[1]
 
-
+# resvered word in mysql but can be used as token
 def p_non_reserved(p):
-    r"""non_reserved : NON_RESERVED """
+    r"""non_reserved : ACCOUNT
+                        | ACTION
+                        | ADVISE
+                        | AFTER
+                        | AGAINST
+                        | AGO
+                        | ALGORITHM
+                        | ALWAYS
+                        | ANY
+                        | AVG
+                        | AVG_ROW_LENGTH
+                        | AUTO_INCREMENTACCOUNT
+                        | BACKUP
+                        | BEGIN
+                        | BIT
+                        | BOOL
+                        | BOOLEAN
+                        | BTREE
+                        | BYTE
+                        | CACHE
+                        | CALL
+                        | CAPTURE
+                        | CASCADED
+                        | CAUSAL
+                        | CHARSET
+                        | CLEANUP
+                        | CLIENT
+                        | COALESCE
+                        | COLLATION
+                        | COLUMN
+                        | COLUMN_FORMAT
+                        | COLUMNS
+                        | COMMENT
+                        | COMMIT
+                        | COMMITTED
+                        | COMPACT
+                        | COMPRESSED
+                        | COMPRESSION
+                        | CONCURRENCY
+                        | CONNECTION
+                        | CONSISTENCY
+                        | CONSISTENT
+                        | CONTEXT
+                        | CPU
+                        | CURRENT
+                        | CYCLE
+                        | DATA
+                        | DATE
+                        | DATETIME
+                        | DAY
+                        | DECLARE
+                        | DISABLE
+                        | DISABLED
+                        | DISCARD
+                        | DISK
+                        | DO
+                        | DUPLICATE
+                        | DYNAMIC
+                        | ENABLE
+                        | ENABLED
+                        | END
+                        | ENFORCED
+                        | ENGINE
+                        | ENUM
+                        | ERROR
+                        | ESCAPE
+                        | EVENT
+                        | EVENTS
+                        | EXECUTE
+                        | EXTENDED
+                        | FIELDS
+                        | FILE
+                        | FIRST
+                        | FLUSH
+                        | FOR
+                        | FORMAT
+                        | FOUND
+                        | FULL
+                        | FUNCTION
+                        | GENERAL
+                        | GLOBAL
+                        | GRANTS
+                        | HANDLER
+                        | HASH
+                        | HELP
+                        | HOSTS
+                        | HOUR
+                        | IDENTIFIED
+                        | IMPORT
+                        | INDEXES
+                        | INSERT_METHOD
+                        | INSTANCE
+                        | INVOKER
+                        | INVISIBLE
+                        | IO
+                        | IPC
+                        | ISOLATION
+                        | ISSUER
+                        | ITERATE
+                        | JSON
+                        | KEY_BLOCK_SIZE
+                        | LANGUAGE
+                        | LAST
+                        | LATERAL
+                        | LESS
+                        | LEVEL
+                        | LIST
+                        | LOCAL
+                        | LOCATION
+                        | LOCKED
+                        | LOGS
+                        | MASTER
+                        | MAX_ROWS
+                        | MB
+                        | MEMORY
+                        | MERGE
+                        | MICROSECOND
+                        | MIN_ROWS
+                        | MINUTE
+                        | MINVALUE
+                        | MODE
+                        | MODIFY
+                        | MONTH
+                        | NAMES
+                        | NATIONAL
+                        | NEVER
+                        | NEXT
+                        | NOWAIT
+                        | NODEGROUP
+                        | NONE
+                        | NULLS
+                        | NVARCHAR
+                        | OF
+                        | OFF
+                        | OFFSET
+                        | ON_DUPLICATE
+                        | ONLINE
+                        | ONLY
+                        | OPEN
+                        | OPTIONAL
+                        | PACK_KEYS
+                        | PAGE
+                        | PARAMETER
+                        | PARSER
+                        | PARTIAL
+                        | PARTITION
+                        | PARTITIONING
+                        | PARTITIONS
+                        | PASSWORD
+                        | PAUSE
+                        | PERCENT
+                        | PER_DB
+                        | PER_TABLE
+                        | PLUGINS
+                        | POINT
+                        | POLICY
+                        | PRECEDING
+                        | PRESERVE
+                        | PRIVILEGES
+                        | PROCESSLIST
+                        | PROFILE
+                        | PROXY
+                        | PURGE
+                        | QUARTER
+                        | QUERY
+                        | QUICK
+                        | READS
+                        | REBUILD
+                        | RECOVER
+                        | REDOFILE
+                        | REDUNDANT
+                        | RELOAD
+                        | REMOVE
+                        | REORGANIZE
+                        | REPAIR
+                        | REPLACE
+                        | REPLICATE
+                        | REPLICATION
+                        | RESET
+                        | RESOURCE
+                        | RESPECT
+                        | REVERSE
+                        | RESTORE
+                        | RESUME
+                        | RETURN
+                        | RETURNS
+                        | ROLLBACK
+                        | ROW_FORMAT
+                        | RTREE
+                        | SAVEPOINT
+                        | SECOND
+                        | SERIALIZABLE
+                        | SESSION
+                        | SHARE
+                        | SHUTDOWN
+                        | SIGNED
+                        | SIMPLE
+                        | SLAVE
+                        | SLOW
+                        | SNAPSHOT
+                        | SOME
+                        | SONAME
+                        | SOUNDS
+                        | SOURCE
+                        | SPATIAL
+                        | SPECIFIC
+                        | SQL_CALC_FOUND_ROWS
+                        | SQL_AFTER_GTIDS
+                        | SQL_AFTER_MTS_GAPS
+                        | SQL_BEFORE_GTIDS
+                        | SQL_BUFFER_RESULT
+                        | SQL_CACHE
+                        | SQL_NO_CACHE
+                        | SQL_SMALL_RESULT
+                        | SQL_THREAD
+                        | STACKED
+                        | START
+                        | STATS_AUTO_RECALC
+                        | STATS_PERSISTENT
+                        | STATS_SAMPLE_PAGES
+                        | STATUS
+                        | STOP
+                        | STORAGE
+                        | SUBJECT
+                        | STORED
+                        | STRAIGHT_JOIN
+                        | SUBCLASS_ORIGIN
+                        | SUPER
+                        | SUSPEND
+                        | TABLES
+                        | TABLESPACE
+                        | TABLE_CHECKSUM
+                        | TEMPORARY
+                        | TEMPTABLE
+                        | TIME
+                        | TIMESTAMP
+                        | TRANSACTION
+                        | TRIGGERS
+                        | TRUNCATE
+                        | TYPE
+                        | TYPES
+                        | UNCOMMITTED
+                        | UNDEFINED
+                        | UNDO
+                        | UNDO_BUFFER_SIZE
+                        | UNINSTALL
+                        | UNKNOWN
+                        | UNLOCK
+                        | USER
+                        | USER_RESOURCES
+                        | VALIDATION
+                        | VALUE
+                        | VALUES
+                        | VARIABLES
+                        | WAIT
+                        | WARNINGS
+                        | WEEK
+                        | WEIGHT_STRING
+                        | WITHOUT
+                        | WORK
+                        | WRAPPER
+                        | WRITE
+                        | X509
+                        | XA
+                        | XID
+                        | XML
+                        | XOR
+                        | YEAR
+                        | ZEROFILL
+                            """
     p[0] = p[1]
 
-# resvered word in mysql but can be used as token
-def p_keyword_can_use(p):
-    r"""resvered_word_can_use : CAST
-                        | END
-                        | ESCAPE
-                        | FOR
-                        | FROM
-                        | GROUP
-                        | IF
-                        | IN
-                        | INTO
-                        | IS
-                        | ON
-                        | OR
-                        | USE
-                        | WITH
-                        | ENGINE
-                        """
+def p_not_keyword(p):
+    r"""not_keyword: ADDDATE
+                        | BRIEF
+                        | CAST
+                        | COPY
+                        | CURTIME
+                        | CURDATE
+                        | DATE_ADD
+                        | DATE_SUB
+                        | EXTRACT
+                        | GET_FORMAT
+                        | GROUP_CONCAT
+                        | MIN
+                        | MAX
+                        | NOW
+                        | POSITION
+                        | SUBDATE
+                        | SUBSTRING
+                        | SUM
+                        | STD
+                        | STDDEV
+                        | STDDEV_POP
+                        | STDDEV_SAMP
+                        | VARIANCE
+                        | VAR_POP
+                        | VAR_SAMP
+                        | TIMESTAMPADD
+                        | TIMESTAMPDIFF
+                        | TOP
+                        | TRIM"""
     p[0] = p[1]
 
 

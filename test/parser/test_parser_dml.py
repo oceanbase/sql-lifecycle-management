@@ -17,6 +17,7 @@ import unittest
 from src.common.utils import Utils
 from src.parser.mysql_parser import parser as mysql_parser
 from src.parser.mysql_parser import lexer as mysql_lexer
+from src.parser.oceanbase_parser import lexer as oceanbase_lexer
 from src.parser.oceanbase_parser import parser as oceanbase_parser
 from src.parser.tree.expression import *
 from src.parser.tree.relation import *
@@ -27,9 +28,10 @@ from src.parser.tree.statement import *
 class MyTestCase(unittest.TestCase):
     def test_simple_sql(self):
         result = oceanbase_parser.parse(
-            "SELECT name,age,count(*),avg(age) FROM JOIN a ON a.id = blog.id "
+            "SELECT name,age,count(*),avg(age) FROM blog JOIN a ON a.id = blog.id "
             "WHERE a.b = 1 AND blog.c = 2 GROUP BY name,age "
-            "HAVING COUNT(*)>2 AND AVG(age)<20 ORDER BY a asc,b DESC LIMIT 1 OFFSET 3"
+            "HAVING COUNT(*)>2 AND AVG(age)<20 ORDER BY a asc,b DESC LIMIT 1 OFFSET 3",
+            lexer=oceanbase_lexer.lexer,debug=True
         )
         assert isinstance(result, Statement)
         assert isinstance(result.query_body.from_, Join)

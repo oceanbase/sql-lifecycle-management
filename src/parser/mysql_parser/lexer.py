@@ -16,10 +16,9 @@ from src.parser.mysql_parser.reserved import *
 
 reserved = sorted(set(presto_tokens).difference(presto_nonreserved))
 
-tokens = ['INTEGER', 'NUMBER', 'DOUBLE',
-          'IDENTIFIER', 'DIGIT_IDENTIFIER',
+tokens = ['IDENTIFIER', 'DIGIT_IDENTIFIER',
           'QUOTED_IDENTIFIER', 'BACKQUOTED_IDENTIFIER',
-          'STRING', 'PERIOD',
+          'PERIOD',
           'COMMA',
           'PLUS', 'MINUS',
           'LPAREN', 'RPAREN',
@@ -32,11 +31,10 @@ tokens = ['INTEGER', 'NUMBER', 'DOUBLE',
           'BIT_XOR', 'BIT_OPPOSITE', 'EXCLA_MARK',
           'BIT_MOVE_LEFT', 'BIT_MOVE_RIGHT',
           'CONCAT', 'SLASH',
-          'ASTERISK', 'PERCENT',
-          'TOP',  # ADQL
+          'ASTERISK', 
           'NON_RESERVED',
           'QM', 'SCONST'
-          ] + reserved + list(presto_nonreserved)
+          ] + list(presto_reserved) + list(presto_nonreserved) + list(presto_not_keyword_token)
 
 t_LPAREN = '\('
 t_RPAREN = '\)'
@@ -119,28 +117,26 @@ def t_SCONST(t):
 def t_IDENTIFIER(t):
     r"""[a-zA-Z\u4e00-\u9fa5_][a-zA-Z\u4e00-\u9fa50-9_@:]*"""
     val = t.value.lower()
-    if val.upper() in reserved:
+    if val.upper() in tokens:
         t.type = val.upper()
     if val in presto_nonreserved:
         t.type = "NON_RESERVED"
-    if val.upper() == "TOP":
-        t.type = "TOP"
     return t
 
 
 def t_QUOTED_IDENTIFIER(t):
     r'"([^"]|"")*"'
     val = t.value.lower()
-    if val in reserved:
-        t.type = reserved[val]
+    if val in tokens:
+        t.type =tokens[val]
     return t
 
 
 def t_BACKQUOTED_IDENTIFIER(t):
     r'`([^`]|``)*`'
     val = t.value.lower()
-    if val in reserved:
-        t.type = reserved[val]
+    if val in tokens:
+        t.type =tokens[val]
     return t
 
 
