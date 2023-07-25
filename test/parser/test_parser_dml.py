@@ -16,13 +16,14 @@ import unittest
 
 from src.common.utils import Utils
 from src.parser.mysql_parser import parser as mysql_parser
+from src.parser.mysql_parser import lexer as mysql_lexer
+from src.parser.oceanbase_parser import lexer as oceanbase_lexer
 from src.parser.oceanbase_parser import parser as oceanbase_parser
 from src.parser.tree.expression import *
 from src.parser.tree.statement import *
 
 
 class MyTestCase(unittest.TestCase):
-
     def test_and_in_update(self):
         sql = """
         update foo set t1 = '1' and t2 = '2' where t3 = '3'
@@ -95,7 +96,58 @@ INSERT IGNORE INTO bumonitor_risk_process_context (gmt_create, gmt_modified, row
 delete from execution_log          where                (                             record_id = 2000006         and           sub_job_id = -3                                             )
         """)
         assert isinstance(result, Statement)
+        
+    def test_mysql_logical_opt(self):
+        test_sqls = [
+            """SELECT engine FROM move_title WHERE a XOR '29'""",
+            """SELECT id FROM move_title WHERE id > '29' && name = 'test'""",
+            """SELECT id FROM move_title WHERE id > '29' AND name = 'test'""",
+            """SELECT id FROM move_title WHERE id > '29' OR name = 'test'""",
+            """SELECT id FROM move_title WHERE id > ('1' | '2')""",
+            """SELECT id FROM move_title WHERE id > ('1' & '2')""",
+            """SELECT id FROM move_title WHERE id > ('1' ^ '2')""",
+            """SELECT id FROM move_title WHERE id > ('1' << '2')""",
+            """SELECT id FROM move_title WHERE id > ('1' >> '2')""",
+        ]
+        for sql in test_sqls:
+            sql = Utils.remove_sql_text_affects_parser(sql)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
+            assert isinstance(result, Statement)
+            
+    def test_mysql_regexp_opt(self):
+        test_sqls = [
+            """SELECT * FROM t WHERE a RLIKE 'hello|world'""",
+            """SELECT * FROM t WHERE a REGEXP 'hello|world'""",
+        ]
+        for sql in test_sqls:
+            sql = Utils.remove_sql_text_affects_parser(sql)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
+            assert isinstance(result, Statement)
+
+    def test_mysql_resvered_word_can_used_as_token(self):
+        test_sqls = [
+            """SELECT FROM FROM t""",
+            """SELECT cast FROM t""",
+            """SELECT end FROM t""",
+            """SELECT escape FROM t""",
+            """SELECT for FROM t""",
+            """SELECT group FROM t""",
+            """SELECT if FROM t""",
+            """SELECT in FROM t""",
+            """SELECT id FROM t""",
+            """SELECT into FROM t""",
+            """SELECT is FROM t""",
+            """SELECT on FROM t""",
+            """SELECT or FROM t""",
+            """SELECT use FROM t""",
+            """SELECT with FROM t""",
+            """SELECT engine FROM t""",
+        ]
+        for sql in test_sqls:
+            sql = Utils.remove_sql_text_affects_parser(sql)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
+            assert isinstance(result, Statement)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

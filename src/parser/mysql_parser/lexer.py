@@ -16,29 +16,30 @@ from src.parser.mysql_parser.reserved import *
 
 reserved = sorted(set(presto_tokens).difference(presto_nonreserved))
 
-tokens = ['INTEGER', 'NUMBER', 'DOUBLE',
-          'IDENTIFIER', 'DIGIT_IDENTIFIER',
+tokens = ['IDENTIFIER', 'DIGIT_IDENTIFIER',
           'QUOTED_IDENTIFIER', 'BACKQUOTED_IDENTIFIER',
-          'STRING', 'PERIOD',
+          'PERIOD',
           'COMMA',
           'PLUS', 'MINUS',
           'LPAREN', 'RPAREN',
+          'ANDAND',
+          'ASSIGNMENTEQ',
           'GT', 'GE',
           'LT', 'LE',
           'EQ', 'NE',
           'BIT_OR', 'BIT_AND',
-          'BIT_XOR', 'BIT_OPPOSITE',
+          'BIT_XOR', 'BIT_OPPOSITE', 'EXCLA_MARK',
           'BIT_MOVE_LEFT', 'BIT_MOVE_RIGHT',
           'CONCAT', 'SLASH',
-          'ASTERISK', 'PERCENT',
-          'TOP',  # ADQL
+          'ASTERISK', 
           'NON_RESERVED',
           'QM', 'SCONST'
-          ] + reserved + list(presto_nonreserved)
+          ] + list(presto_reserved) + list(presto_nonreserved) + list(presto_not_keyword_token)
 
 t_LPAREN = '\('
 t_RPAREN = '\)'
 
+t_ASSIGNMENTEQ = r':='
 t_EQ = r'='
 t_NE = r'<>|!='
 t_LT = r'<'
@@ -54,17 +55,42 @@ t_SLASH = r'/'
 t_PERCENT = r'%'
 t_QM = r'\?'
 
+# TODO
+# By default, || is a logical OR operator. 
+# With PIPES_AS_CONCAT enabled, || is string concatenation.
+# Need support or semantics in future development
 t_CONCAT = r'\|\|'
 
 t_ignore = ' \t'
 
+t_ANDAND=r'\&\&'
 t_BIT_OR = r'\|'
 t_BIT_AND = r'\&'
 t_BIT_XOR = r'\^'
 t_BIT_OPPOSITE = r'\~'
-t_BIT_MOVE_LEFT = R'<<'
-t_BIT_MOVE_RIGHT = R'>>'
+t_BIT_MOVE_LEFT = r'<<'
+t_BIT_MOVE_RIGHT = r'>>'
+t_EXCLA_MARK =r'!'
 
+precedence = (
+    ('right','ASSIGNMENTEQ'),
+    ('left', 'CONCAT','OR'),
+    ('left', 'XOR'),
+    ('left', 'AND','ADNAND'),
+    ('right','NOT'),
+    ('left','BETWEEN','CASE','WHEN','THEN','ELSE'),
+    ('left','EQ','NE','LT','LE','GT','GE','IS','LIKE','RLIKE','REGEXP','IN'),
+    ('left','BIT_OR'),
+    ('left','BIT_AND'),
+    ('left','BIT_MOVE_LEFT','BIT_MOVE_RIGHT'),
+    ('left','PLUS','MINUS'),
+    ('left','ASTERISK','SLASH','PERCENT','DIV','MOD'),
+    ('left','BIT_XOR'),
+    ('left','BIT_OPPOSITE','NEG'),
+    ('left','EXCLA_MARK'),
+    ('left','LPAREN '),
+    ('right','RPAREN ')
+)
 
 def t_DOUBLE(t):
     r"""(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\d*(?:\.\d+)(?:[eE][+-]?\d+)?)"""
@@ -91,28 +117,26 @@ def t_SCONST(t):
 def t_IDENTIFIER(t):
     r"""[a-zA-Z\u4e00-\u9fa5_][a-zA-Z\u4e00-\u9fa50-9_@:]*"""
     val = t.value.lower()
-    if val.upper() in reserved:
+    if val.upper() in tokens:
         t.type = val.upper()
     if val in presto_nonreserved:
         t.type = "NON_RESERVED"
-    if val.upper() == "TOP":
-        t.type = "TOP"
     return t
 
 
 def t_QUOTED_IDENTIFIER(t):
     r'"([^"]|"")*"'
     val = t.value.lower()
-    if val in reserved:
-        t.type = reserved[val]
+    if val in tokens:
+        t.type =tokens[val]
     return t
 
 
 def t_BACKQUOTED_IDENTIFIER(t):
     r'`([^`]|``)*`'
     val = t.value.lower()
-    if val in reserved:
-        t.type = reserved[val]
+    if val in tokens:
+        t.type =tokens[val]
     return t
 
 

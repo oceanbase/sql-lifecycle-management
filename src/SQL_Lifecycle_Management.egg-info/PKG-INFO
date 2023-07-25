@@ -1,3 +1,18 @@
+Metadata-Version: 2.1
+Name: SQL-Lifecycle-Management
+Version: 1.0
+Summary: a SQL lifecycle management product hatched from the Ant group, providing SQL closed-loop capabilities throughout all stages of develop, integration, operation and maintenance, and continuous optimization.
+Home-page: https://github.com/oceanbase/sql-lifecycle-management
+License: Apache-2.0
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache-2.0 License
+Classifier: Programming Language :: SQL
+Classifier: Programming Language :: Python :: 3 :: Only
+Requires-Python: >=3.6.3
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
 # SQL-Lifecycle-Management
 
 English | [简体中文](README_CN.md)

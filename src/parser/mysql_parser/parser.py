@@ -63,11 +63,6 @@ def p_create_table_end(p):
                           | AUTO_INCREMENT EQ integer create_table_end
                           | COMMENT EQ SCONST create_table_end
                           | COMPRESSION EQ SCONST create_table_end
-                          | REPLICA_NUM EQ integer create_table_end
-                          | BLOCK_SIZE EQ integer create_table_end
-                          | USE_BLOOM_FILTER EQ FALSE create_table_end
-                          | TABLET_SIZE EQ integer create_table_end
-                          | PCTFREE EQ integer create_table_end
                           | empty
     """
     pass
@@ -195,8 +190,7 @@ def p_index_column_list(p):
 
 def p_index_end(p):
     r"""
-        index_end : BLOCK_SIZE integer
-                  | empty
+        index_end : empty
     """
 
 
@@ -530,10 +524,9 @@ def p_query_spec(p):
 
 def p_where_opt(p):
     r"""where_opt : WHERE search_condition
-                  | WHERE LPAREN search_condition RPAREN
                   | empty"""
     if p.slice[1].type == "WHERE":
-        p[0] = p[2] if len(p) == 3 else p[3]
+        p[0] = p[2]
     else:
         p[0] = None
 
@@ -725,8 +718,8 @@ def p_search_condition(p):
     r"""search_condition : boolean_term
                          | LPAREN search_condition RPAREN
                          | search_condition OR search_condition
-                         | search_condition AND search_condition
-                         | search_condition bit_operation search_condition
+                         | search_condition logical_and search_condition
+                         | search_condition XOR search_condition
                          | BIT_OPPOSITE search_condition"""
     if len(p) == 2:
         p[0] = p[1]
@@ -734,20 +727,16 @@ def p_search_condition(p):
         p[0] = p[2]
     elif p.slice[2].type == "OR":
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="OR", left=p[1], right=p[3])
-    elif p.slice[2].type == "AND":
+    elif p.slice[2].type == "logical_and":
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="AND", left=p[1], right=p[3])
-    elif p.slice[2].type == 'bit_operation':
-        p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
+    elif p.slice[2] == "XOR":
+        p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="XOR", left=p[1], right=p[3])
 
 
-def p_bit_operation(p):
-    r"""bit_operation : BIT_AND
-                      | BIT_OR
-                      | BIT_XOR
-                      | BIT_MOVE_LEFT
-                      | BIT_MOVE_RIGHT"""
+def p_logical_and(p):
+    r"""logical_and : AND
+                      | ANDAND"""
     p[0] = p[1]
-
 
 def p_boolean_term(p):
     r"""boolean_term : boolean_factor
@@ -828,9 +817,14 @@ def p_like_predicate(p):
 
 
 def p_regexp_predicate(p):
-    r"""regexp_predicate : value_expression REGEXP value_expression"""
+    r"""regexp_predicate : value_expression regexp_sym value_expression"""
     p[0] = RegexpPredicate(p.lineno(1), p.lexpos(1), value=p[1], pattern=p[3])
 
+
+def p_regexp_sym(p):
+    r"""regexp_sym : REGEXP
+                    | RLIKE"""
+    pass
 
 def _check_not(p):
     if p[2] and p.slice[2].type == "not_opt":
@@ -856,27 +850,38 @@ def p_value_expression(p):
 
 
 def p_numeric_value_expression(p):
-    r"""numeric_value_expression : numeric_value_expression PLUS term
-                                 | numeric_value_expression MINUS term
-                                 | term"""
-    if p.slice[1].type == "numeric_value_expression":
-        p[0] = ArithmeticBinaryExpression(p.lineno(1), p.lexpos(1),
-                                          type=p[2], left=p[1], right=p[3])
+    r"""numeric_value_expression : numeric_value_expression arithmetic_opt numeric_value_expression
+                                 | numeric_value_expression bit_opt numeric_value_expression
+                                 | factor"""
+    if len(p) == 4:
+        if p.slice[2].type == "arithmetic_opt":
+            p[0] = ArithmeticBinaryExpression(p.lineno(1), p.lexpos(1),
+                                              type=p[2], left=p[1], right=p[3])
+        elif p.slice[2].type == "bit_opt":
+            p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
     else:
         p[0] = p[1]
 
 
-def p_term(p):
-    r"""term : term ASTERISK factor
-             | term SLASH factor
-             | term PERCENT factor
-             | term CONCAT factor
-             | factor"""
-    if p.slice[1].type == "factor":
-        p[0] = p[1]
-    else:
-        p[0] = ArithmeticBinaryExpression(p.lineno(1), p.lexpos(1),
-                                          type=p[2], left=p[1], right=p[3])
+def p_arithmetic_opt(p):
+    r"""arithmetic_opt : PLUS
+                        | MINUS
+                        | ASTERISK 
+                        | SLASH
+                        | DIV
+                        | MOD
+                        | PERCENT 
+                        | CONCAT """
+    p[0] = p[1]
+
+
+def p_bit_opt(p):
+    r"""bit_opt : BIT_AND
+                      | BIT_OR
+                      | BIT_XOR
+                      | BIT_MOVE_LEFT
+                      | BIT_MOVE_RIGHT"""
+    p[0] = p[1]
 
 
 def p_factor(p):
@@ -1105,13 +1110,322 @@ def p_identifier(p):
     r"""identifier : IDENTIFIER
                    | quoted_identifier
                    | non_reserved
+                   | not_keyword
                    | DIGIT_IDENTIFIER
                    | ASTERISK"""
     p[0] = p[1]
 
-
+# resvered word in mysql but can be used as token
 def p_non_reserved(p):
-    r"""non_reserved : NON_RESERVED """
+    r"""non_reserved : ACCOUNT
+                        | ACTION
+                        | ADVISE
+                        | AFTER
+                        | AGAINST
+                        | AGO
+                        | ALGORITHM
+                        | ALWAYS
+                        | ANY
+                        | AVG
+                        | AVG_ROW_LENGTH
+                        | AUTO_INCREMENT
+                        | BACKUP
+                        | BEGIN
+                        | BIT
+                        | BOOL
+                        | BOOLEAN
+                        | BTREE
+                        | BYTE
+                        | CACHE
+                        | CALL
+                        | CAPTURE
+                        | CASCADED
+                        | CAUSAL
+                        | CHARSET
+                        | CLEANUP
+                        | CLIENT
+                        | COALESCE
+                        | COLLATION
+                        | COLUMN
+                        | COLUMN_FORMAT
+                        | COLUMNS
+                        | COMMENT
+                        | COMMIT
+                        | COMMITTED
+                        | COMPACT
+                        | COMPRESSED
+                        | COMPRESSION
+                        | CONCURRENCY
+                        | CONNECTION
+                        | CONSISTENCY
+                        | CONSISTENT
+                        | CONTEXT
+                        | CPU
+                        | CURRENT
+                        | CYCLE
+                        | DATA
+                        | DATE
+                        | DATETIME
+                        | DAY
+                        | DECLARE
+                        | DISABLE
+                        | DISABLED
+                        | DISCARD
+                        | DISK
+                        | DO
+                        | DUPLICATE
+                        | DYNAMIC
+                        | ENABLE
+                        | ENABLED
+                        | END
+                        | ENFORCED
+                        | ENGINE
+                        | ENUM
+                        | ERROR
+                        | ESCAPE
+                        | EVENT
+                        | EVENTS
+                        | EXECUTE
+                        | EXTENDED
+                        | FIELDS
+                        | FILE
+                        | FIRST
+                        | FLUSH
+                        | FROM
+                        | FOR
+                        | FORMAT
+                        | FOUND
+                        | FULL
+                        | FUNCTION
+                        | GENERAL
+                        | GLOBAL
+                        | GRANTS
+                        | GROUP
+                        | HANDLER
+                        | HASH
+                        | HELP
+                        | HOSTS
+                        | HOUR
+                        | IDENTIFIED
+                        | IMPORT
+                        | INDEXES
+                        | INSERT_METHOD
+                        | INSTANCE
+                        | INVOKER
+                        | INVISIBLE
+                        | IO
+                        | IPC
+                        | IS
+                        | ISOLATION
+                        | ISSUER
+                        | IF
+                        | IN
+                        | INTO
+                        | ITERATE
+                        | JSON
+                        | KEY_BLOCK_SIZE
+                        | LANGUAGE
+                        | LAST
+                        | LATERAL
+                        | LESS
+                        | LEVEL
+                        | LIST
+                        | LOCAL
+                        | LOCATION
+                        | LOCKED
+                        | LOGS
+                        | MASTER
+                        | MAX_ROWS
+                        | MB
+                        | MEMORY
+                        | MERGE
+                        | MICROSECOND
+                        | MIN_ROWS
+                        | MINUTE
+                        | MINVALUE
+                        | MODE
+                        | MODIFY
+                        | MONTH
+                        | NAMES
+                        | NATIONAL
+                        | NEVER
+                        | NEXT
+                        | NOWAIT
+                        | NODEGROUP
+                        | NONE
+                        | NULLS
+                        | NVARCHAR
+                        | OF
+                        | OFF
+                        | OFFSET
+                        | ON
+                        | OR
+                        | ON_DUPLICATE
+                        | ONLINE
+                        | ONLY
+                        | OPEN
+                        | OPTIONAL
+                        | PACK_KEYS
+                        | PAGE
+                        | PARAMETER
+                        | PARSER
+                        | PARTIAL
+                        | PARTITION
+                        | PARTITIONING
+                        | PARTITIONS
+                        | PASSWORD
+                        | PAUSE
+                        | PERCENT
+                        | PER_DB
+                        | PER_TABLE
+                        | PLUGINS
+                        | POINT
+                        | POLICY
+                        | PRECEDING
+                        | PRESERVE
+                        | PRIVILEGES
+                        | PROCESSLIST
+                        | PROFILE
+                        | PROXY
+                        | PURGE
+                        | QUARTER
+                        | QUERY
+                        | QUICK
+                        | READS
+                        | REBUILD
+                        | RECOVER
+                        | REDOFILE
+                        | REDUNDANT
+                        | RELOAD
+                        | REMOVE
+                        | REORGANIZE
+                        | REPAIR
+                        | REPLACE
+                        | REPLICATE
+                        | REPLICATION
+                        | RESET
+                        | RESOURCE
+                        | RESPECT
+                        | REVERSE
+                        | RESTORE
+                        | RESUME
+                        | RETURN
+                        | RETURNS
+                        | ROLLBACK
+                        | ROW_FORMAT
+                        | RTREE
+                        | SAVEPOINT
+                        | SECOND
+                        | SERIALIZABLE
+                        | SESSION
+                        | SHARE
+                        | SHUTDOWN
+                        | SIGNED
+                        | SIMPLE
+                        | SLAVE
+                        | SLOW
+                        | SNAPSHOT
+                        | SOME
+                        | SONAME
+                        | SOUNDS
+                        | SOURCE
+                        | SPATIAL
+                        | SPECIFIC
+                        | SQL_CALC_FOUND_ROWS
+                        | SQL_AFTER_GTIDS
+                        | SQL_BUFFER_RESULT
+                        | SQL_CACHE
+                        | SQL_NO_CACHE
+                        | SQL_SMALL_RESULT
+                        | SQL_THREAD
+                        | STACKED
+                        | START
+                        | STATS_AUTO_RECALC
+                        | STATS_PERSISTENT
+                        | STATS_SAMPLE_PAGES
+                        | STATUS
+                        | STOP
+                        | STORAGE
+                        | SUBJECT
+                        | STORED
+                        | STRAIGHT_JOIN
+                        | SUBCLASS_ORIGIN
+                        | SUPER
+                        | SUSPEND
+                        | TABLES
+                        | TABLESPACE
+                        | TABLE_CHECKSUM
+                        | TEMPORARY
+                        | TEMPTABLE
+                        | TIME
+                        | TIMESTAMP
+                        | TRANSACTION
+                        | TRIGGERS
+                        | TRUNCATE
+                        | TYPE
+                        | TYPES
+                        | UNCOMMITTED
+                        | UNDEFINED
+                        | UNDO
+                        | UNDO_BUFFER_SIZE
+                        | UNINSTALL
+                        | UNKNOWN
+                        | UNLOCK
+                        | USE
+                        | USER
+                        | VALIDATION
+                        | VALUE
+                        | VALUES
+                        | VARIABLES
+                        | WAIT
+                        | WARNINGS
+                        | WEEK
+                        | WEIGHT_STRING
+                        | WITH
+                        | WITHOUT
+                        | WORK
+                        | WRAPPER
+                        | WRITE
+                        | X509
+                        | XA
+                        | XID
+                        | XML
+                        | XOR
+                        | YEAR
+                        | ZEROFILL
+                            """
+    p[0] = p[1]
+
+def p_not_keyword(p):
+    r"""not_keyword : ADDDATE
+                        | BRIEF
+                        | CAST
+                        | COPY
+                        | CURTIME
+                        | CURDATE
+                        | DATE_ADD
+                        | DATE_SUB
+                        | EXTRACT
+                        | GET_FORMAT
+                        | GROUP_CONCAT
+                        | MIN
+                        | MAX
+                        | NOW
+                        | POSITION
+                        | SUBDATE
+                        | SUBSTRING
+                        | SUM
+                        | STD
+                        | STDDEV
+                        | STDDEV_POP
+                        | STDDEV_SAMP
+                        | VARIANCE
+                        | VAR_POP
+                        | VAR_SAMP
+                        | TIMESTAMPADD
+                        | TIMESTAMPDIFF
+                        | TOP
+                        | TRIM"""
     p[0] = p[1]
 
 
