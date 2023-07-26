@@ -147,6 +147,18 @@ delete from execution_log          where                (                       
             sql = Utils.remove_sql_text_affects_parser(sql)
             result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
             assert isinstance(result, Statement)
+        
+    def test_mysql_vector_expression(self):
+        test_sqls= [
+            "select * from t where a in ('1','2','3')",
+            "select (1,2) > (2,3)",
+            "select * from t where ((a) > ('29'))",
+            "select * from t where (a,b,c)>('1','2','3')",
+        ]
+        for sql in test_sqls:
+            sql = Utils.remove_sql_text_affects_parser(sql)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer,debug=True)
+            assert isinstance(result, Statement)
 
 
 if __name__ == "__main__":

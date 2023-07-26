@@ -72,25 +72,7 @@ t_BIT_MOVE_LEFT = r'<<'
 t_BIT_MOVE_RIGHT = r'>>'
 t_EXCLA_MARK =r'!'
 
-precedence = (
-    ('right','ASSIGNMENTEQ'),
-    ('left', 'CONCAT','OR'),
-    ('left', 'XOR'),
-    ('left', 'AND','ADNAND'),
-    ('right','NOT'),
-    ('left','BETWEEN','CASE','WHEN','THEN','ELSE'),
-    ('left','EQ','NE','LT','LE','GT','GE','IS','LIKE','RLIKE','REGEXP','IN'),
-    ('left','BIT_OR'),
-    ('left','BIT_AND'),
-    ('left','BIT_MOVE_LEFT','BIT_MOVE_RIGHT'),
-    ('left','PLUS','MINUS'),
-    ('left','ASTERISK','SLASH','PERCENT','DIV','MOD'),
-    ('left','BIT_XOR'),
-    ('left','BIT_OPPOSITE','NEG'),
-    ('left','EXCLA_MARK'),
-    ('left','LPAREN '),
-    ('right','RPAREN ')
-)
+
 
 def t_DOUBLE(t):
     r"""(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\d*(?:\.\d+)(?:[eE][+-]?\d+)?)"""
