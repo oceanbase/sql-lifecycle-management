@@ -154,6 +154,7 @@ delete from execution_log          where                (                       
             "select (1,2) > (2,3)",
             "select * from t where ((a) > ('29'))",
             "select * from t where (a,b,c)>('1','2','3')",
+            "select * from t where (a,b,c) in ((1,2,3),(1,2,3),(1,2,3))",
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
