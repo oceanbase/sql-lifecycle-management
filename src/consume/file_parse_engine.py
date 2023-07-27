@@ -13,8 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from src.consume.mysql_slowlog_parse import SlowQueryParser
 
 
-class MySQLSlowlogParse():
-
+class MySQLSlowlogParse:
     def __new__(cls):
         singleton = cls.__dict__.get('__singleton__')
         if singleton is not None:

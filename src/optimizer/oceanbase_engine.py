@@ -11,12 +11,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
 from src.optimizer.engine import Engine
-from src.parser.oceanbase_parser import parser
+from src.parser.oceanbase_parser.parser import parser
 from .rewrite_rule import common_rules
 
 
 class OceanBaseEngine(Engine):
-
     def __new__(cls):
         singleton = cls.__dict__.get('__singleton__')
         if singleton is not None:
@@ -34,5 +33,7 @@ class OceanBaseEngine(Engine):
         if common_rules:
             for rewrite_rule in common_rules:
                 if rewrite_rule.match(statement, catalog):
-                    rule_explanation_list.append(rewrite_rule.match_action(statement, catalog))
+                    rule_explanation_list.append(
+                        rewrite_rule.match_action(statement, catalog)
+                    )
         return statement, rule_explanation_list

@@ -9,14 +9,15 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
+from api.exceptions import FileIsNoneException, FileTypeNotSupportsException
 from flask import request
 from flask_restful import reqparse
 from werkzeug.utils import secure_filename
 
 from src.api.api_utils import ApiUtils
 from src.api.base_api import APIArgument, BaseAPI
-from src.api.exceptions import *
-from src.common.db_query import *
+from src.common.db_query import get_db_info, insert_user_optimization
+import json, calendar, time, os
 from src.common.enum import AnalysisFileTypeEunm, OptimizationTypeEunm
 from src.common.security_check import allowed_file
 from src.consume.mybatis_sqlmap_parse import MybatisXmlParser
@@ -27,13 +28,22 @@ UPLOAD_FOLDER = './save'
 
 
 class Analyzer(BaseAPI):
-
     def __init__(self, *args, **kwargs):
         super(Analyzer, self).__init__(*args, **kwargs)
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('fileType', required=True, choices=['xml', 'slow_log'],
-                            help="The fileType only supports xml/slow_log", location='form')
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='form')
+        parser.add_argument(
+            'fileType',
+            required=True,
+            choices=['xml', 'slow_log'],
+            help="The fileType only supports xml/slow_log",
+            location='form',
+        )
+        parser.add_argument(
+            'databaseAlias',
+            required=True,
+            help="databaseAlias cannot be blank!",
+            location='form',
+        )
         parser.add_argument('schemaSQL', location='form')
         parser.add_argument('catalogJson', location='form')
         parser.add_argument('ormFrame', location='form')
@@ -45,67 +55,67 @@ class Analyzer(BaseAPI):
         try:
             self.catalog_json = json.loads(catalog) if catalog else None
             self.schema_sql = ''
-        except Exception as e:
+        except Exception:
             self.catalog_json = ''
             self.schema_sql = args.get('catalogJson', '')
 
     def post(self):
         """
-            sql analysis
-            ---
-            tags:
-              - Analyzer
-            parameters:
-                - in: body
-                  name: file
-                  type: file
-                  description: 文件
-                  required: true
-                - in: body
-                  name: fileType
-                  type: string
-                  enum: ['xml', 'slow_log']
-                  description: 文件类型
-                  required: true
-                - in: body
-                  name: databaseAlias
-                  type: string
-                  description: 数据库别名
-                  required: true
-                - in: body
-                  name: catalogJson
-                  type: string
-                  description: catalog信息
-                  example:
-                   "columns": [
-                     {"schema":"luli1","table":"adbase_ad_word","name":"id","type":"bigint(20) unsigned","nullable":false},
-                     {"schema":"luli1","table":"adbase_ad_word","name":"gmt_create","type":"datetime","nullable":false},
-                     {"schema":"luli1","table":"adbase_ad_word","name":"gmt_modified","type":"datetime","nullable":false},
-                     {"schema":"luli1","table":"adbase_ad_word","name":"word","type":"varchar(256)","nullable":false},
-                     {"schema":"luli1","table":"adbase_ad_word","name":"status","type":"tinyint(4)","nullable":false},
-                     {"schema":"luli1","table":"adbase_ad_word","name":"source","type":"tinyint(4)","nullable":true},
-                     {"schema":"luli1","table":"adbase_ad_word","name":"order_index","type":"bigint(20)","nullable":true}
-                    ]
-                   "indexes": [
-                    {"schema":"luli1","table":"adbase_ad_word","name":"PRIMARY","column":"id","cardinality":0,"unique":true},
-                    {"schema":"luli1","table":"adbase_ad_word","name":"uk_word","column":"word","cardinality":0,"unique":true},
-                    {"schema":"luli1","table":"adbase_ad_word","name":"idx_word","column":"word","cardinality":0,"unique":false},
-                    {"schema":"luli1","table":"adbase_ad_word","name":"idx_word_status","column":"word","cardinality":0,"unique":false},
-                    {"schema":"luli1","table":"adbase_ad_word","name":"idx_word_status","column":"status","cardinality":0,"unique":false}
-                   ]
-                   "tables": [
-                    {"schema":"luli1","table":"adbase_ad_word","rows":0,"engine":"InnoDB"}
-                   ]
-                   "version": "5.7.36"
-                  required: false
-                - in: body
-                  name: ormFrame
-                  type: string
-                  description: orm框架
-                  required: false
-            responses:
-                200:
-                   description: analysis result
+        sql analysis
+        ---
+        tags:
+          - Analyzer
+        parameters:
+            - in: body
+              name: file
+              type: file
+              description: 文件
+              required: true
+            - in: body
+              name: fileType
+              type: string
+              enum: ['xml', 'slow_log']
+              description: 文件类型
+              required: true
+            - in: body
+              name: databaseAlias
+              type: string
+              description: 数据库别名
+              required: true
+            - in: body
+              name: catalogJson
+              type: string
+              description: catalog信息
+              example:
+               "columns": [
+                 {"schema":"luli1","table":"adbase_ad_word","name":"id","type":"bigint(20) unsigned","nullable":false},
+                 {"schema":"luli1","table":"adbase_ad_word","name":"gmt_create","type":"datetime","nullable":false},
+                 {"schema":"luli1","table":"adbase_ad_word","name":"gmt_modified","type":"datetime","nullable":false},
+                 {"schema":"luli1","table":"adbase_ad_word","name":"word","type":"varchar(256)","nullable":false},
+                 {"schema":"luli1","table":"adbase_ad_word","name":"status","type":"tinyint(4)","nullable":false},
+                 {"schema":"luli1","table":"adbase_ad_word","name":"source","type":"tinyint(4)","nullable":true},
+                 {"schema":"luli1","table":"adbase_ad_word","name":"order_index","type":"bigint(20)","nullable":true}
+                ]
+               "indexes": [
+                {"schema":"luli1","table":"adbase_ad_word","name":"PRIMARY","column":"id","cardinality":0,"unique":true},
+                {"schema":"luli1","table":"adbase_ad_word","name":"uk_word","column":"word","cardinality":0,"unique":true},
+                {"schema":"luli1","table":"adbase_ad_word","name":"idx_word","column":"word","cardinality":0,"unique":false},
+                {"schema":"luli1","table":"adbase_ad_word","name":"idx_word_status","column":"word","cardinality":0,"unique":false},
+                {"schema":"luli1","table":"adbase_ad_word","name":"idx_word_status","column":"status","cardinality":0,"unique":false}
+               ]
+               "tables": [
+                {"schema":"luli1","table":"adbase_ad_word","rows":0,"engine":"InnoDB"}
+               ]
+               "version": "5.7.36"
+              required: false
+            - in: body
+              name: ormFrame
+              type: string
+              description: orm框架
+              required: false
+        responses:
+            200:
+               description: analysis result
         """
         if self.file is None:
             raise FileIsNoneException()
@@ -118,7 +128,9 @@ class Analyzer(BaseAPI):
         file = self.file
         catalog_object = ''
         if catalog_json:
-            catalog_object = MetaDataUtils.json_to_catalog(catalog_json) if catalog_json else None
+            catalog_object = (
+                MetaDataUtils.json_to_catalog(catalog_json) if catalog_json else None
+            )
         elif schema_sql:
             catalog_object = MetaDataUtils.schema_sql_to_catalog_index(schema_sql)
 
@@ -131,8 +143,13 @@ class Analyzer(BaseAPI):
         if self.file_type == AnalysisFileTypeEunm.XML.value:
             xml_parse = MybatisXmlParser()
             # remove illegal content from filename
-            file_name = self.user_id + '_' + str(calendar.timegm(time.gmtime())) + '_' + secure_filename(
-                file.filename)
+            file_name = (
+                self.user_id
+                + '_'
+                + str(calendar.timegm(time.gmtime()))
+                + '_'
+                + secure_filename(file.filename)
+            )
             file_path = os.path.join(UPLOAD_FOLDER, file_name)
             file.save(file_path)
 
@@ -144,12 +161,19 @@ class Analyzer(BaseAPI):
                     continue
                 if not first_sql_text:
                     first_sql_text = sql_text
-                review_detail_list.append(ApiUtils.get_xml_log_details(sql_text, catalog_object))
+                review_detail_list.append(
+                    ApiUtils.get_xml_log_details(sql_text, catalog_object)
+                )
             optimization_type = OptimizationTypeEunm.REVIEW.value
         elif self.file_type == AnalysisFileTypeEunm.SLOW_LOG.value:
             db_info = get_db_info(self.user_id, self.db_alias)
-            file_name = str(self.user_id) + '_' + str(calendar.timegm(time.gmtime())) + '_' + secure_filename(
-                file.filename)
+            file_name = (
+                str(self.user_id)
+                + '_'
+                + str(calendar.timegm(time.gmtime()))
+                + '_'
+                + secure_filename(file.filename)
+            )
             file_path = os.path.join(UPLOAD_FOLDER, file_name)
             file.save(file_path)
             if db_info:
@@ -163,7 +187,9 @@ class Analyzer(BaseAPI):
                         continue
                     if not first_sql_text:
                         first_sql_text = sql_text
-                    review_detail_list.append(ApiUtils.get_xml_log_details(sql_text, catalog_object))
+                    review_detail_list.append(
+                        ApiUtils.get_xml_log_details(sql_text, catalog_object)
+                    )
             optimization_type = OptimizationTypeEunm.ANALYSIS.value
 
         if review_detail_list:
@@ -172,10 +198,16 @@ class Analyzer(BaseAPI):
                 if review_detail['report']:
                     report = review_detail['report']
                     if report['indexOptimizeationRecommendations']:
-                        for _index_recommend in report['indexOptimizeationRecommendations']:
-                            review_summary_set.add(_index_recommend['index_recommendation'])
+                        for _index_recommend in report[
+                            'indexOptimizeationRecommendations'
+                        ]:
+                            review_summary_set.add(
+                                _index_recommend['index_recommendation']
+                            )
                     if report['developmentSpecificationRecommendations']:
-                        for _spec_recommend in report['developmentSpecificationRecommendations']:
+                        for _spec_recommend in report[
+                            'developmentSpecificationRecommendations'
+                        ]:
                             review_summary_set.add(_spec_recommend['pmdRule'])
 
             total_grade = int(total_grade / len(review_detail_list))
@@ -183,10 +215,11 @@ class Analyzer(BaseAPI):
         data = {
             "grade": total_grade,
             "reviewSummary": list(review_summary_set),
-            "reviewDetail": review_detail_list
+            "reviewDetail": review_detail_list,
         }
 
-        insert_user_optimization(self.user_id, self.db_alias, first_sql_text, data,
-                                 optimization_type)
+        insert_user_optimization(
+            self.user_id, self.db_alias, first_sql_text, data, optimization_type
+        )
 
         return self.construct_success_response_entity(data=data)

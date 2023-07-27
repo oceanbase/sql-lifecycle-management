@@ -10,6 +10,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
+
 class JoinCriteria(object):
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -49,7 +50,9 @@ class JoinOn(JoinCriteria):
         self.expression = expression
 
     def __str__(self):
-        return "{}{{expression={}}}".format(self.__class__.__name__, str(self.expression))
+        return "{}{{expression={}}}".format(
+            self.__class__.__name__, str(self.expression)
+        )
 
     def __repr__(self):
         clz = self.__class__

@@ -38,6 +38,7 @@ class DBPool(object):
             charset: *
         }
     """
+
     __pool = None
 
     def __init__(self, storeob, minsess=1, maxsess=5, autocommit=0):
@@ -50,17 +51,46 @@ class DBPool(object):
         self.minsess = minsess
         self.maxsess = maxsess
         self.autocommit = autocommit
-        self._conn = DBPool.__get_conn(self.db_host, self.db_port, self.db_user, self.db_pwd, self.db_name,
-                                       self.db_charset, self.minsess, self.maxsess, self.autocommit)
+        self._conn = DBPool.__get_conn(
+            self.db_host,
+            self.db_port,
+            self.db_user,
+            self.db_pwd,
+            self.db_name,
+            self.db_charset,
+            self.minsess,
+            self.maxsess,
+            self.autocommit,
+        )
         self._cursor = self._conn.cursor()
 
     @staticmethod
-    def __get_conn(db_host, db_port, db_user, db_pwd, db_name, db_charset, minsess, maxsess, autocommit):
+    def __get_conn(
+        db_host,
+        db_port,
+        db_user,
+        db_pwd,
+        db_name,
+        db_charset,
+        minsess,
+        maxsess,
+        autocommit,
+    ):
         if DBPool.__pool is None:
-            __pool = PooledDB(creator=pymysql, mincached=minsess, maxcached=maxsess,
-                              host=db_host, port=db_port, user=db_user, passwd=db_pwd,
-                              db=db_name, use_unicode=True, charset=db_charset, cursorclass=DictCursor,
-                              setsession=['SET AUTOCOMMIT = ' + str(autocommit)])
+            __pool = PooledDB(
+                creator=pymysql,
+                mincached=minsess,
+                maxcached=maxsess,
+                host=db_host,
+                port=db_port,
+                user=db_user,
+                passwd=db_pwd,
+                db=db_name,
+                use_unicode=True,
+                charset=db_charset,
+                cursorclass=DictCursor,
+                setsession=['SET AUTOCOMMIT = ' + str(autocommit)],
+            )
             return __pool.connection()
         else:
             return DBPool.__pool.connection()
@@ -149,10 +179,10 @@ class DBPool(object):
         self._conn.close()
 
 
-class ConnDBOperate():
+class ConnDBOperate:
     """
-        simple connection class
-        add retry times and batch operate
+    simple connection class
+    add retry times and batch operate
     """
 
     def __init__(self, dbconf, dbpool_size=1, retry_times=3, get_retry=1, autocommit=0):
@@ -163,10 +193,12 @@ class ConnDBOperate():
         self.autocommit = autocommit
         self.stconn_cnt = 0
         self.stconn_mark = 0
-        while (self.stconn_mark == 0 and self.stconn_cnt <= self.retry_times):
+        while self.stconn_mark == 0 and self.stconn_cnt <= self.retry_times:
             self.stconn_cnt = self.stconn_cnt + 1
             try:
-                self.storeconn = DBPool(self.dbconf, self.dbpool_size, self.dbpool_size, self.autocommit)
+                self.storeconn = DBPool(
+                    self.dbconf, self.dbpool_size, self.dbpool_size, self.autocommit
+                )
                 self.stconn_mark = 1
             except Exception as e:
                 self.stconn_mark = 0
@@ -185,7 +217,7 @@ class ConnDBOperate():
                 # retry
                 get_cnt = 0
                 get_mark = 0
-                while (result == '' and get_mark == 0 and get_cnt <= self.get_retry):
+                while result == '' and get_mark == 0 and get_cnt <= self.get_retry:
                     get_cnt = get_cnt + 1
                     self.storeconn.ping()
                     if check_param is None:

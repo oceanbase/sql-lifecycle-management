@@ -9,7 +9,7 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
-from src.parser.tree import *
+from src.parser.tree.statement import Query, Statement
 from src.parser.tree.visitor import DefaultTraversalVisitor
 from ..abstract_rule import AbstractRewriteRule
 
@@ -26,7 +26,6 @@ class RemoveOrderByInDeleteUpdateRule(AbstractRewriteRule):
     """
 
     def match(self, root: Statement, catalog=None) -> bool:
-
         class Visitor(DefaultTraversalVisitor):
             def __init__(self):
                 self.is_match = False

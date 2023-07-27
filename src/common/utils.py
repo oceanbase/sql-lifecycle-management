@@ -17,7 +17,8 @@ re_annotation = re.compile(r'''\/\*((?!\/\*).)*\*\/''', re.VERBOSE)
 
 re_interval = re.compile(
     r'''interval\s?(\?|\-?\d+)\s?(day|hour|minute|second|microsecond|week|month|quarter|year|second_microsecond|minute_microsecond|minute_second|hour_microsecond|hour_second|hour_minute|day_microsecond|day_second|day_minute|day_hour|year_month)''',
-    re.VERBOSE)
+    re.VERBOSE,
+)
 re_force_index = re.compile(r'''force[\s]index[\s][(]\w+[)]''', re.VERBOSE)
 re_cast_1 = re.compile(r'''cast\(.*?\(.*?\)\)''', re.VERBOSE)
 re_cast_2 = re.compile(r'''cast\(.*?\)''', re.VERBOSE)
@@ -25,7 +26,6 @@ re_now = re.compile(r'''now\(\)''', re.VERBOSE)
 
 
 class Utils(object):
-
     @staticmethod
     def remove_sql_text_affects_parser(sql):
         sql = sql.lower().strip()
@@ -81,14 +81,14 @@ class Utils(object):
 
 
 def fun_diff_secs(date1, date2):
-    """ calculate the second gap for date2 - date1, datetime type """
+    """calculate the second gap for date2 - date1, datetime type"""
     secs = int(round((date2 - date1).seconds))
     days = int((date2 - date1).days * 24 * 60 * 60)
     return days + secs
 
 
 def div_list(ls, n):
-    """ Shard list group to sub_list """
+    """Shard list group to sub_list"""
     ls_len = len(ls)
     if n <= 0 or 0 == ls_len:
         return []
@@ -98,9 +98,9 @@ def div_list(ls, n):
         return [[i] for i in ls]
     else:
         j = int(ls_len / n)
-        k = ls_len % n
+        ls_len % n
         ls_return = []
         for i in range(0, (n - 1) * j, j):
-            ls_return.append(ls[i:i + j])
-        ls_return.append(ls[(n - 1) * j:])
+            ls_return.append(ls[i : i + j])
+        ls_return.append(ls[(n - 1) * j :])
         return ls_return

@@ -16,7 +16,6 @@ from src.parser.tree.statement import Statement
 
 
 class AbstractRewriteRule(metaclass=ABCMeta):
-
     def match(self, root: Statement, catalog=None) -> bool:
         return True
 

@@ -27,10 +27,15 @@ class UniqueIndexWithIndexBackRule(AbstractRewriteRule):
             _index_type = _index.index_type
             _index_name = _index.index_name
             _column_list = _index.column_list
-            if _index_type == IndexType.PRIMARY.value or _index_type == IndexType.UNIQUE.value:
+            if (
+                _index_type == IndexType.PRIMARY.value
+                or _index_type == IndexType.UNIQUE.value
+            ):
                 _index_all_match = _index.index_all_match
                 if _index_all_match:
-                    return HeuristicRuleReturnResult(index_name=_index_name,
-                                                     index_column_list=_column_list,
-                                                     rule="UniqueIndexWithIndexBackRule",
-                                                     message="")
+                    return HeuristicRuleReturnResult(
+                        index_name=_index_name,
+                        index_column_list=_column_list,
+                        rule="UniqueIndexWithIndexBackRule",
+                        message="",
+                    )

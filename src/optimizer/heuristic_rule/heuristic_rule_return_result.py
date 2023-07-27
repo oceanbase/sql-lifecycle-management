@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 
 class HeuristicRuleReturnResult(object):
-
     def __init__(self, index_name, index_column_list, rule, message):
         self.index_name = index_name
         self.index_column_list = index_column_list

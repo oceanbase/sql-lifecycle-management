@@ -12,29 +12,50 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 from ply import lex
 
-from src.parser.mysql_parser.reserved import *
+from src.parser.mysql_parser.reserved import (
+    presto_reserved,
+    presto_nonreserved,
+    presto_not_keyword_token,
+)
 
-reserved = sorted(set(presto_tokens).difference(presto_nonreserved))
-
-tokens = ['IDENTIFIER', 'DIGIT_IDENTIFIER',
-          'QUOTED_IDENTIFIER', 'BACKQUOTED_IDENTIFIER',
-          'PERIOD',
-          'COMMA',
-          'PLUS', 'MINUS',
-          'LPAREN', 'RPAREN',
-          'ANDAND',
-          'ASSIGNMENTEQ',
-          'GT', 'GE',
-          'LT', 'LE',
-          'EQ', 'NE',
-          'BIT_OR', 'BIT_AND',
-          'BIT_XOR', 'BIT_OPPOSITE', 'EXCLA_MARK',
-          'BIT_MOVE_LEFT', 'BIT_MOVE_RIGHT',
-          'CONCAT', 'SLASH',
-          'ASTERISK', 
-          'NON_RESERVED',
-          'QM', 'SCONST'
-          ] + list(presto_reserved) + list(presto_nonreserved) + list(presto_not_keyword_token)
+tokens = (
+    [
+        'IDENTIFIER',
+        'DIGIT_IDENTIFIER',
+        'QUOTED_IDENTIFIER',
+        'BACKQUOTED_IDENTIFIER',
+        'PERIOD',
+        'COMMA',
+        'PLUS',
+        'MINUS',
+        'LPAREN',
+        'RPAREN',
+        'ANDAND',
+        'ASSIGNMENTEQ',
+        'GT',
+        'GE',
+        'LT',
+        'LE',
+        'EQ',
+        'NE',
+        'BIT_OR',
+        'BIT_AND',
+        'BIT_XOR',
+        'BIT_OPPOSITE',
+        'EXCLA_MARK',
+        'BIT_MOVE_LEFT',
+        'BIT_MOVE_RIGHT',
+        'CONCAT',
+        'SLASH',
+        'ASTERISK',
+        'NON_RESERVED',
+        'QM',
+        'SCONST',
+    ]
+    + list(presto_reserved)
+    + list(presto_nonreserved)
+    + list(presto_not_keyword_token)
+)
 
 t_LPAREN = '\('
 t_RPAREN = '\)'
@@ -56,22 +77,21 @@ t_PERCENT = r'%'
 t_QM = r'\?'
 
 # TODO
-# By default, || is a logical OR operator. 
+# By default, || is a logical OR operator.
 # With PIPES_AS_CONCAT enabled, || is string concatenation.
 # Need support or semantics in future development
 t_CONCAT = r'\|\|'
 
 t_ignore = ' \t'
 
-t_ANDAND=r'\&\&'
+t_ANDAND = r'\&\&'
 t_BIT_OR = r'\|'
 t_BIT_AND = r'\&'
 t_BIT_XOR = r'\^'
 t_BIT_OPPOSITE = r'\~'
 t_BIT_MOVE_LEFT = r'<<'
 t_BIT_MOVE_RIGHT = r'>>'
-t_EXCLA_MARK =r'!'
-
+t_EXCLA_MARK = r'!'
 
 
 def t_DOUBLE(t):
@@ -91,7 +111,7 @@ def t_INTEGER(t):
 
 # String literal
 def t_SCONST(t):
-    r'\'([^\\\n]|(\\.))*?\''
+    r'\'([^\\\n]|(\\.))*?\' '
     t.type = "SCONST"
     return t
 
@@ -110,7 +130,7 @@ def t_QUOTED_IDENTIFIER(t):
     r'"([^"]|"")*"'
     val = t.value.lower()
     if val in tokens:
-        t.type =tokens[val]
+        t.type = tokens[val]
     return t
 
 
@@ -118,7 +138,7 @@ def t_BACKQUOTED_IDENTIFIER(t):
     r'`([^`]|``)*`'
     val = t.value.lower()
     if val in tokens:
-        t.type =tokens[val]
+        t.type = tokens[val]
     return t
 
 

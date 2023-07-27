@@ -10,28 +10,40 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
+from src.parser.tree.explain import ExplainFormat, ExplainType
+from src.parser.tree.grouping import SimpleGroupBy
+from src.parser.tree.join_criteria import JoinOn, JoinUsing, NaturalJoin
+from src.parser.tree.table import Table, TableSubquery
+from src.parser.tree.visitor import AstVisitor
 from src.parser.parser_utils import FIELD_REFERENCE_PREFIX
-from src.parser.tree import *
 
 
 class Formatter(AstVisitor):
-
     def visit_row(self, row, unmangle=True):
-        return "ROW (%s)" % ", ".join([self.process(item, unmangle) for item in row.items])
+        return "ROW (%s)" % ", ".join(
+            [self.process(item, unmangle) for item in row.items]
+        )
 
     def visit_expression(self, node, unmangle_names):
         raise NotImplementedError(
-            "not implemented: %s.visit%s" % (self.__class__.__name__, node.__class__.__name__))
+            "not implemented: %s.visit%s"
+            % (self.__class__.__name__, node.__class__.__name__)
+        )
 
     def visit_at_time_zone(self, node, context):
-        return "%s AT TIME ZONE %s" \
-               % (self.process(node.value, context), self.process(node.time_zone, context))
+        return "%s AT TIME ZONE %s" % (
+            self.process(node.value, context),
+            self.process(node.time_zone, context),
+        )
 
     def visit_current_time(self, node, unmangle_names):
         return "%s%s" % (node.type, "(%s)" % node.precision if node.precision else "")
 
     def visit_extract(self, node, unmangle_names):
-        return "EXTRACT(%s FROM %s )" % (node.field, self.process(node.expression, unmangle_names))
+        return "EXTRACT(%s FROM %s )" % (
+            node.field,
+            self.process(node.expression, unmangle_names),
+        )
 
     def visit_boolean_literal(self, node, unmangle_names):
         return str(node.value)
@@ -40,8 +52,9 @@ class Formatter(AstVisitor):
         return format_string_literal(node.value)
 
     def visit_subscript_expression(self, node, unmangle_names):
-        return format_sql(node.base, unmangle_names) \
-               + "[%s]" % format_sql(node.index, unmangle_names)
+        return format_sql(node.base, unmangle_names) + "[%s]" % format_sql(
+            node.index, unmangle_names
+        )
 
     def visit_long_literal(self, node, unmangle_names):
         return str(node.value)
@@ -71,7 +84,7 @@ class Formatter(AstVisitor):
 
     def visit_exists(self, node, unmangle_names):
         predicate_name = "EXISTS" if not node.is_not else "NOT EXISTS"
-        return predicate_name+" (" + format_sql(node.subquery, unmangle_names) + ")"
+        return predicate_name + " (" + format_sql(node.subquery, unmangle_names) + ")"
 
     def visit_qualified_name_reference(self, node, unmangle_names):
         return _format_qualified_name(node.name)
@@ -99,32 +112,56 @@ class Formatter(AstVisitor):
         return ret
 
     def visit_logical_binary_expression(self, node, unmangle_names):
-        return self._format_binary_expression(node.type, node.left, node.right, unmangle_names)
+        return self._format_binary_expression(
+            node.type, node.left, node.right, unmangle_names
+        )
 
     def visit_not_expression(self, node, unmangle_names):
-        return self.process(node.value.value, unmangle_names) + " NOT IN " + self.process(node.value.value_list, unmangle_names)
+        return (
+            self.process(node.value.value, unmangle_names)
+            + " NOT IN "
+            + self.process(node.value.value_list, unmangle_names)
+        )
 
     def visit_comparison_expression(self, node, unmangle_names):
-        return self._format_binary_expression(node.type, node.left, node.right, unmangle_names)
+        return self._format_binary_expression(
+            node.type, node.left, node.right, unmangle_names
+        )
 
     def visit_assignment_expression(self, node, unmangle_names):
-        return self._format_binary_expression(node.type, node.left, node.right, unmangle_names)
+        return self._format_binary_expression(
+            node.type, node.left, node.right, unmangle_names
+        )
 
     def visit_regexp_predicate(self, node, unmangle_names):
         predicate_name = "REGEXP" if not node.is_not else "NOT REGEXP"
-        return " ".join([self.process(node.value,unmangle_names),predicate_name,self.process(node.pattern,unmangle_names)])
+        return " ".join(
+            [
+                self.process(node.value, unmangle_names),
+                predicate_name,
+                self.process(node.pattern, unmangle_names),
+            ]
+        )
 
     def visit_is_null_predicate(self, node, unmangle_names):
         predicate_name = "IS NULL" if not node.is_not else "IS NOT NULL"
-        return "(" + self.process(node.value, unmangle_names) + " "+predicate_name+")"
+        return (
+            "(" + self.process(node.value, unmangle_names) + " " + predicate_name + ")"
+        )
 
     def visit_none_if_expression(self, node, unmangle_names):
-        return "NULLIF(%s, %s)" % (self.process(node.first, unmangle_names),
-                                   self.process(node.second, unmangle_names))
+        return "NULLIF(%s, %s)" % (
+            self.process(node.first, unmangle_names),
+            self.process(node.second, unmangle_names),
+        )
 
     def visit_if_expression(self, node, unmangle_names):
         ret = "IF(" + self.process(node.condition, unmangle_names)
-        ret += ", " + self.process(node.true_value, unmangle_names) if node.true_value else ""
+        ret += (
+            ", " + self.process(node.true_value, unmangle_names)
+            if node.true_value
+            else ""
+        )
         if node.false_value:
             ret += ", " + self.process(node.false_value, unmangle_names)
         ret += ")"
@@ -146,17 +183,23 @@ class Formatter(AstVisitor):
         return "+" + value
 
     def visit_arithmetic_binary(self, node, unmangle_names):
-        return self._format_binary_expression(node.type, node.left, node.right, unmangle_names)
+        return self._format_binary_expression(
+            node.type, node.left, node.right, unmangle_names
+        )
 
     def visit_like_predicate(self, node, unmangle_names):
         ret = ""
 
-        not_opt=""
+        not_opt = ""
         if node.is_not:
-            not_opt=" NOT"
+            not_opt = " NOT"
 
-        ret += self.process(node.value, unmangle_names) + \
-               not_opt+" LIKE " + self.process(node.pattern, unmangle_names)
+        ret += (
+            self.process(node.value, unmangle_names)
+            + not_opt
+            + " LIKE "
+            + self.process(node.pattern, unmangle_names)
+        )
 
         if node.escape is not None:
             ret += " ESCAPE " + self.process(node.escape, unmangle_names)
@@ -169,8 +212,14 @@ class Formatter(AstVisitor):
         return "*"
 
     def visit_cast(self, node, unmangle_names):
-        return ("TRY_CAST" if node.safe else "CAST") + \
-               "(" + self.process(node.expression, unmangle_names) + " AS " + node.data_type + ")"
+        return (
+            ("TRY_CAST" if node.safe else "CAST")
+            + "("
+            + self.process(node.expression, unmangle_names)
+            + " AS "
+            + node.data_type
+            + ")"
+        )
 
     def visit_searched_case_expression(self, node, unmangle_names):
         parts = ["CASE"]
@@ -200,28 +249,34 @@ class Formatter(AstVisitor):
         return "(" + ' '.join(parts) + ")"
 
     def visit_when_clause(self, node, unmangle_names):
-        return "WHEN %s THEN %s" % (self.process(node.operand, unmangle_names),
-                                    self.process(node.result, unmangle_names))
+        return "WHEN %s THEN %s" % (
+            self.process(node.operand, unmangle_names),
+            self.process(node.result, unmangle_names),
+        )
 
     def visit_between_predicate(self, node, unmangle_names):
         predicate_name = "BETWEEN" if not node.is_not else "NOT BETWEEN"
-        return "(%s %s %s AND %s)" % (self.process(node.value, unmangle_names),
-                                      predicate_name,
-                                      self.process(node.min, unmangle_names),
-                                      self.process(node.max, unmangle_names))
+        return "(%s %s %s AND %s)" % (
+            self.process(node.value, unmangle_names),
+            predicate_name,
+            self.process(node.min, unmangle_names),
+            self.process(node.max, unmangle_names),
+        )
 
     def visit_in_predicate(self, node, unmangle_names):
         predicate_name = "IN" if not node.is_not else "NOT IN"
-        return "%s %s %s" % (self.process(node.value, unmangle_names),
-                             predicate_name,
-                             self.process(node.value_list, unmangle_names))
+        return "%s %s %s" % (
+            self.process(node.value, unmangle_names),
+            predicate_name,
+            self.process(node.value_list, unmangle_names),
+        )
 
     def visit_in_list_expression(self, node, unmangle_names):
         return "(%s)" % self._join_expressions(node.values, unmangle_names)
-    
+
     def visit_list_expression(self, node, unmangle_names):
         if len(node.values) == 1:
-            return "%s" % self._join_expressions(node.values,unmangle_names)
+            return "%s" % self._join_expressions(node.values, unmangle_names)
         else:
             return "(%s)" % self._join_expressions(node.values, unmangle_names)
 
@@ -230,7 +285,9 @@ class Formatter(AstVisitor):
 
         if node.partition_by:
             parts.append(
-                "PARTITION BY " + self._join_expressions(node.partition_by, unmangle_names))
+                "PARTITION BY "
+                + self._join_expressions(node.partition_by, unmangle_names)
+            )
         if node.order_by:
             parts.append("ORDER BY " + format_sort_items(node.order_by, unmangle_names))
         if node.frame:
@@ -242,17 +299,21 @@ class Formatter(AstVisitor):
         ret = node.type + " "
 
         if node.end:
-            ret += "BETWEEN %s AND %s" % (self.process(node.start, unmangle_names),
-                                          self.process(node.end, unmangle_names))
+            ret += "BETWEEN %s AND %s" % (
+                self.process(node.start, unmangle_names),
+                self.process(node.end, unmangle_names),
+            )
         else:
             ret += self.process(node.start, unmangle_names)
 
         return ret
 
     def _format_binary_expression(self, operator, left, right, unmangle_names):
-        return "%s %s %s" % (self.process(left, unmangle_names),
-                             operator,
-                             self.process(right, unmangle_names))
+        return "%s %s %s" % (
+            self.process(left, unmangle_names),
+            operator,
+            self.process(right, unmangle_names),
+        )
 
     def _join_expressions(self, expressions, unmangle_names):
         return ", ".join([self.process(e, unmangle_names) for e in expressions])
@@ -475,7 +536,7 @@ class SqlFormatter(AstVisitor):
 
     def visit_union(self, node, indent):
         all = node.all
-        for (i, relation) in enumerate(node.relations):
+        for i, relation in enumerate(node.relations):
             self._process_relation(relation, indent)
             if i != len(node.relations) - 1:
                 if all:
@@ -493,7 +554,7 @@ class SqlFormatter(AstVisitor):
         return None
 
     def visit_subquery_expression(self, node, indent):
-        self._append(indent,"(" + format_sql(node.query) + ")")
+        self._append(indent, "(" + format_sql(node.query) + ")")
         return None
 
     def visit_update(self, node, indent):
@@ -508,7 +569,7 @@ class SqlFormatter(AstVisitor):
 
         if set_list:
             self.builder.append(" SET ")
-            for (i, _set) in enumerate(set_list):
+            for i, _set in enumerate(set_list):
                 self.builder.append(format_expression(_set))
                 if i != len(set_list) - 1:
                     self.builder.append(" , ")
@@ -534,7 +595,9 @@ class SqlFormatter(AstVisitor):
         return None
 
     def visit_intersect(self, node, indent):
-        relations = [self._process_relation(relation, indent) for relation in node.relations]
+        relations = [
+            self._process_relation(relation, indent) for relation in node.relations
+        ]
         intersect = "INTERSECT " + "ALL " if not node.distinct else ""
         self.builder.append(intersect.join(relations))
         return None
@@ -659,7 +722,8 @@ class SqlFormatter(AstVisitor):
         if node.properties:
             self.builder.append(" WITH (")
             self.builder.append(
-                ", ".join(["%s = %s" % (k, v) for k, v in node.properties.items()]))
+                ", ".join(["%s = %s" % (k, v) for k, v in node.properties.items()])
+            )
             self.builder.append(")")
 
         self.builder.append(" AS ")
@@ -677,14 +741,17 @@ class SqlFormatter(AstVisitor):
         self.builder.append(node.name)
         self.builder.append(" (")
 
-        self.builder.append(", ".join(["%s %s" % (e.name, e.type) for e in node.elements]))
+        self.builder.append(
+            ", ".join(["%s %s" % (e.name, e.type) for e in node.elements])
+        )
 
         self.builder.append(")")
 
         if node.properties:
             self.builder.append(" WITH (")
             self.builder.append(
-                ", ".join(["%s = %s" % (k, v) for k, v in node.properties.items()]))
+                ", ".join(["%s = %s" % (k, v) for k, v in node.properties.items()])
+            )
             self.builder.append(")")
 
         return None
@@ -837,8 +904,10 @@ def format_expression(expression, unmangle_names=True):
 
 
 def sort_item_formatter(sort_item, unmangle_names):
-    builder = [format_expression(sort_item.sort_key, unmangle_names),
-               " ASC" if sort_item.ordering.lower() == "asc" else " DESC"]
+    builder = [
+        format_expression(sort_item.sort_key, unmangle_names),
+        " ASC" if sort_item.ordering.lower() == "asc" else " DESC",
+    ]
     return "".join(builder)
 
 
@@ -854,7 +923,6 @@ def _format_qualified_name(name):
 def format_group_by(grouping_element):
     result_strings = []
 
-    result = ""
     if isinstance(grouping_element, SimpleGroupBy):
         columns = grouping_element.columns
         for column in columns:
@@ -871,7 +939,9 @@ def _indent_string(indent):
 
 
 def format_sort_items(sort_items, unmangle_names=True):
-    return ", ".join([sort_item_formatter(sort_item, unmangle_names) for sort_item in sort_items])
+    return ", ".join(
+        [sort_item_formatter(sort_item, unmangle_names) for sort_item in sort_items]
+    )
 
 
 def format_sql(root, unmangle_names=True):

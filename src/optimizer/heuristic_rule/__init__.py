@@ -17,5 +17,5 @@ from .unique_index_with_index_back import UniqueIndexWithIndexBackRule
 heuristic_rule_list = [
     FullScanRule(),
     NormalIndexWithoutIndexBackRule(),
-    UniqueIndexWithIndexBackRule()
+    UniqueIndexWithIndexBackRule(),
 ]

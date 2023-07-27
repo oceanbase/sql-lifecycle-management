@@ -14,13 +14,13 @@
 
 import unittest
 
-from src.parser.mysql_parser import parser
+from src.parser.mysql_parser.parser import parser
 
 
 class MyTestCase(unittest.TestCase):
-
     def test_create_table(self):
-        result = parser.parse("""
+        result = parser.parse(
+            """
                               CREATE TABLE `tars_user_sql_hash_level` (
                                 `obregion_group` varchar(32) NOT NULL,
                                 `tenant_group` varchar(64) NOT NULL,
@@ -39,10 +39,15 @@ class MyTestCase(unittest.TestCase):
                                 UNIQUE KEY `sql_id` (`cluster`, `tenant_name`, `sql_id`),
                                 KEY `pure_dbname` (`pure_dbname`) ) 
                                 ENGINE=InnoDB DEFAULT CHARSET=utf8
-                        """)
+                        """
+        )
         assert result['index_list'][0][0].value == '1.primary'
         assert result['index_list'][0][1] == 'PRIMARY'
-        assert result['index_list'][0][2] == ['obregion_group', 'tenant_group', 'sql_hash']
+        assert result['index_list'][0][2] == [
+            'obregion_group',
+            'tenant_group',
+            'sql_hash',
+        ]
         assert result['index_list'][1][0].value == '2.unique'
         assert result['index_list'][1][1] == 'sql_id'
         assert result['index_list'][1][2] == ['cluster', 'tenant_name', 'sql_id']
@@ -51,7 +56,8 @@ class MyTestCase(unittest.TestCase):
         assert result['index_list'][2][2] == ['pure_dbname']
 
     def test_create_table2(self):
-        result = parser.parse("""
+        result = parser.parse(
+            """
         CREATE TABLE `train_order_info` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `order_serial_no` varchar(64) NOT NULL DEFAULT '' COMMENT '订单号',
@@ -167,7 +173,8 @@ class MyTestCase(unittest.TestCase):
   KEY `i_type_state_id` (`occupy_type`,`order_state`,`ticket_machine_id`,`merchant_id`,`env`,`gmt_distribute`),
   KEY `I_machine_id_state_type_env_created` (`ticket_machine_id`,`merchant_id`,`order_state`,`occupy_type`,`env`,`gmt_created`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=3529344021213246782 COMMENT='订单表:订单相关信息存储' 
-    """)
+    """
+        )
         assert len(result['index_list']) == 29
         assert result['index_list'][0][0].value == '1.primary'
         assert result['index_list'][0][1] == 'PRIMARY'
@@ -177,8 +184,13 @@ class MyTestCase(unittest.TestCase):
         assert result['index_list'][1][2] == ['order_serial_no']
         assert result['index_list'][25][0].value == '3.normal'
         assert result['index_list'][25][1] == 'i_id_distribute_gmt_created'
-        assert result['index_list'][25][2] == ['ticket_machine_id', 'merchant_id', 'env', 'gmt_distribute',
-                                               'gmt_created']
+        assert result['index_list'][25][2] == [
+            'ticket_machine_id',
+            'merchant_id',
+            'env',
+            'gmt_distribute',
+            'gmt_created',
+        ]
 
 
 if __name__ == '__main__':

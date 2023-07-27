@@ -31,4 +31,3 @@ class ExplainFormat(ExplainOption):
     def __init__(self, line=None, pos=None, type=None):
         super(ExplainFormat, self).__init__(line, pos)
         self.type = type
-

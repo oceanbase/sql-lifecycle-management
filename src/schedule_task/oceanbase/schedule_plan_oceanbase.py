@@ -17,7 +17,7 @@ import sys
 
 from pymysql import escape_string
 
-from src.common.const import *
+from src.common.const import DB_CONNECT_RETRY
 from src.common.db_pool import ConnDBOperate
 from src.common.db_query import DealMetaDBInfo
 from src.common.logger import Logger
@@ -26,15 +26,15 @@ log_file = os.path.basename(sys.argv[0]).split(".")[0] + '.log'
 log = Logger(log_file)
 
 
-class DealUserInfoOceanbase():
-    """ read approved data from user database-oceanbase """
+class DealUserInfoOceanbase:
+    """read approved data from user database-oceanbase"""
 
     def __init__(self, conn_info, get_retry):
         self.conn_info = conn_info
         self.db_conn = ConnDBOperate(self.conn_info, get_retry=get_retry)
 
     def get_unit_list(self):
-        """ get schedule_task task to run """
+        """get schedule_task task to run"""
         result = []
         try:
             table_name = 'gv$unit'
@@ -45,7 +45,9 @@ class DealUserInfoOceanbase():
                 SVR_IP,SVR_PORT,TENANT_ID 
                 FROM {table_name} 
                 WHERE STATUS = 'NORMAL'
-                """.format(table_name=table_name)
+                """.format(
+                table_name=table_name
+            )
             result = self.db_conn.func_select_storedb(sql)
         except Exception as e:
             log.exception(e)
@@ -56,7 +58,9 @@ class DealUserInfoOceanbase():
         try:
             time_sql = ''
             if last_time:
-                time_sql = '''AND a.first_load_time >= \'{last_time}\''''.format(last_time=last_time)
+                time_sql = '''AND a.first_load_time >= \'{last_time}\''''.format(
+                    last_time=last_time
+                )
             inner_tab_db = '__all_database'
             tenant_db = 'gv$tenant'
             plan_cache_table = 'gv$plan_cache_plan_stat'
@@ -104,7 +108,8 @@ class DealUserInfoOceanbase():
                 inner_tab_db=inner_tab_db,
                 time_sql=time_sql,
                 svr_ip=svr_ip,
-                svr_port=svr_port)
+                svr_port=svr_port,
+            )
             result = self.db_conn.func_select_storedb(sql)
             if result:
                 plan_list = list(result)
@@ -113,7 +118,7 @@ class DealUserInfoOceanbase():
         return plan_list
 
     def get_plan_detail(self, svr_ip, svr_port, tenant_id, plan_id):
-        """ 根据四元组获取执行计划详情 """
+        """根据四元组获取执行计划详情"""
         detail_list = []
         try:
             table_name = 'gv$plan_cache_plan_explain'
@@ -132,10 +137,15 @@ class DealUserInfoOceanbase():
             {ip_column_name}  = '{svr_ip}'
             AND {port_column_name}      = {svr_port}
             AND tenant_id = {tenant_id}
-            AND plan_id   = {plan_id} ;'''.format(ip_column_name=ip_column_name, port_column_name=port_column_name,
-                                                  table_name=table_name,
-                                                  svr_port=svr_port, svr_ip=svr_ip, tenant_id=tenant_id,
-                                                  plan_id=plan_id)
+            AND plan_id   = {plan_id} ;'''.format(
+                ip_column_name=ip_column_name,
+                port_column_name=port_column_name,
+                table_name=table_name,
+                svr_port=svr_port,
+                svr_ip=svr_ip,
+                tenant_id=tenant_id,
+                plan_id=plan_id,
+            )
             result = self.db_conn.func_select_storedb(check_sql)
             if result:
                 detail_list = list(result)
@@ -146,13 +156,13 @@ class DealUserInfoOceanbase():
     def disconn_storedb(self):
         try:
             self.db_conn.disconn_storedb()
-        except Exception as e:
+        except Exception:
             pass
 
 
 def schedule_plan_ob(db_conf, queue_info, schedule_type):
     """
-        get sql plan from oceanbase
+    get sql plan from oceanbase
     """
     db_id = db_conf['db_id']
     # connect user oceanbase and metadb
@@ -176,19 +186,36 @@ def schedule_plan_ob(db_conf, queue_info, schedule_type):
             'db_id': db_conf['db_id'],
             'db_name': db_conf['app_dbname'],
             'cluster_name': db_conf['cluster_name'],
-            'tenant_name': db_conf['tenant_name']
+            'tenant_name': db_conf['tenant_name'],
         }
 
-        queue_key = '{0}:{1}:{2}'.format(db_id, unit_info['svr_ip'], unit_info['svr_port'])
+        queue_key = '{0}:{1}:{2}'.format(
+            db_id, unit_info['svr_ip'], unit_info['svr_port']
+        )
 
         check_point = queue_info.get('check_point', '')
 
-        plan_list = user_conn.get_plan_list(per_unit['SVR_IP'], per_unit['SVR_PORT'], check_point)
+        plan_list = user_conn.get_plan_list(
+            per_unit['SVR_IP'], per_unit['SVR_PORT'], check_point
+        )
 
         if plan_list:
-            data_list = sorted(plan_list, key=lambda item: (item['tenant_id'], item['tenant_name'], item['sql_id']))
-            for (tenant_id, tenant_name, sql_id), group_data in itertools.groupby(data_list, key=lambda item: (
-                    item['tenant_id'], item['tenant_name'], item['sql_id'])):
+            data_list = sorted(
+                plan_list,
+                key=lambda item: (
+                    item['tenant_id'],
+                    item['tenant_name'],
+                    item['sql_id'],
+                ),
+            )
+            for (tenant_id, tenant_name, sql_id), group_data in itertools.groupby(
+                data_list,
+                key=lambda item: (
+                    item['tenant_id'],
+                    item['tenant_name'],
+                    item['sql_id'],
+                ),
+            ):
                 # get sql plan baseline
                 exist_list = meta_conn.get_exist_plans(db_id, sql_id)
                 exist_dict = tenant_plan_groupby(exist_list)
@@ -217,39 +244,76 @@ def schedule_plan_ob(db_conf, queue_info, schedule_type):
                         is_need_insert = True
 
                         # determine whether the online sql plan is already in the baseline
-                        if exist_dict and sql_id in exist_dict and plan_hash in exist_dict[sql_id]:
+                        if (
+                            exist_dict
+                            and sql_id in exist_dict
+                            and plan_hash in exist_dict[sql_id]
+                        ):
                             # if it is already in the baseline,
                             # determine whether it is the same plan as the latest baseline
                             is_need_insert = False
                             _exist_plan_list = list(exist_dict[sql_id].values())
-                            _exist_plan_list = sorted(_exist_plan_list, reverse=True,
-                                                      key=lambda item: (item['first_load_time']))
+                            _exist_plan_list = sorted(
+                                _exist_plan_list,
+                                reverse=True,
+                                key=lambda item: (item['first_load_time']),
+                            )
 
-                            if len(_exist_plan_list) > 1 and _exist_plan_list[0]['plan_hash'] != plan_hash:
+                            if (
+                                len(_exist_plan_list) > 1
+                                and _exist_plan_list[0]['plan_hash'] != plan_hash
+                            ):
                                 last_plan_hash = _exist_plan_list[0]['plan_hash']
-                                per_param = (outline_data, sql_text, db_id, sql_id, last_plan_hash)
+                                per_param = (
+                                    outline_data,
+                                    sql_text,
+                                    db_id,
+                                    sql_id,
+                                    last_plan_hash,
+                                )
                                 update_plan_sql_param_list.append(per_param)
 
                             # If the comparison between the plan and the baseline is consistent,
                             # but the generation time of the version and plan has advanced,
                             # update the existing baseline data
-                            if exist_dict[sql_id][plan_hash]['first_load_time'][:-3] != first_load_time[:-3]:
+                            if (
+                                exist_dict[sql_id][plan_hash]['first_load_time'][:-3]
+                                != first_load_time[:-3]
+                            ):
                                 store_sql = ''' 
                                 UPDATE monitor_sql_plan_oceanbase 
                                 SET 
                                 svr_ip=\'%s\', first_load_time=\'%s\', last_active_time=\'%s\', 
                                 avg_exe_usec=%d, hit_count=%d, gmt_modify=now()
                                 WHERE db_id=\'%s\' AND sql_id=\'%s\' AND plan_hash=%d;
-                                ''' % (svr_ip, first_load_time, last_active_time,
-                                       avg_exe_usec, hit_count, db_id, sql_id, plan_hash)
+                                ''' % (
+                                    svr_ip,
+                                    first_load_time,
+                                    last_active_time,
+                                    avg_exe_usec,
+                                    hit_count,
+                                    db_id,
+                                    sql_id,
+                                    plan_hash,
+                                )
                                 directly_run_sql_list.append(store_sql)
                             # If the plan is generated after binding, update the binding id
-                            if exist_dict[sql_id][plan_hash]['outline_id'] != outline_id:
+                            if (
+                                exist_dict[sql_id][plan_hash]['outline_id']
+                                != outline_id
+                            ):
                                 store_sql = '''
                                 UPDATE monitor_sql_plan_oceanbase 
                                 SET outline_id=%d, outline_time=now(), gmt_modify=now(), outline_data=%s, query_sql=%s
                                 WHERE db_id=\'%s\' AND sql_id=\'%s\' AND plan_hash=%d;
-                                ''' % (outline_id, outline_data, sql_text, db_id, sql_id, plan_hash)
+                                ''' % (
+                                    outline_id,
+                                    outline_data,
+                                    sql_text,
+                                    db_id,
+                                    sql_id,
+                                    plan_hash,
+                                )
                                 directly_run_sql_list.append(store_sql)
                             # -1 means abnormal;
                             # 0 means there is no data and needs to be inserted;
@@ -258,13 +322,11 @@ def schedule_plan_ob(db_conf, queue_info, schedule_type):
                             exist_code = meta_conn.get_exist_text(db_id, sql_id)
                             if exist_code == 1 and sql_id not in done_list:
                                 done_list.append(sql_id)
-                                text_sql_param_list.append((
-                                    statement,
-                                    db_id,
-                                    sql_id
-                                ))
+                                text_sql_param_list.append((statement, db_id, sql_id))
                         # 获取执行计划详情
-                        plan_detail = user_conn.get_plan_detail(svr_ip, svr_port, tenant_id, plan_id)
+                        plan_detail = user_conn.get_plan_detail(
+                            svr_ip, svr_port, tenant_id, plan_id
+                        )
                         if not plan_detail:
                             continue
                         plan_info = ''
@@ -278,33 +340,66 @@ def schedule_plan_ob(db_conf, queue_info, schedule_type):
                             # deal operator type 2
                             if operator and plan_type == 2:
                                 if 'PHY_ROOT_TRANSMIT' not in operator and (
-                                        '_TRANSMIT' in operator or '_RECEIVE' in operator):
+                                    '_TRANSMIT' in operator or '_RECEIVE' in operator
+                                ):
                                     offset_cnt = offset_cnt + 1
                                     continue
                             # deal operator type 3
                             if operator and plan_type == 3:
                                 if 'PHY_ROOT_TRANSMIT' not in operator and (
-                                        '_TRANSMIT' in operator or 'DIRECT_RECEIVE' in operator or 'FIFO_RECEIVE' in operator or 'ROOT_RECEIVE' in operator or 'DISTRIBUTED_RECEIVE' in operator):
+                                    '_TRANSMIT' in operator
+                                    or 'DIRECT_RECEIVE' in operator
+                                    or 'FIFO_RECEIVE' in operator
+                                    or 'ROOT_RECEIVE' in operator
+                                    or 'DISTRIBUTED_RECEIVE' in operator
+                                ):
                                     offset_cnt = offset_cnt + 1
                                     continue
                             if operator and offset_cnt > 0:
                                 operator = operator[offset_cnt:]
                             if operator:
                                 if opt_name:
-                                    plan_info = plan_info + operator + ' , ' + opt_name.lower() + '|\n'
-                                    plan_full = plan_full + operator + ' | ' + opt_name.lower() + ' | ' + str(
-                                        opt_cost) + ' | ' + str(opt_prop) + '\n'
+                                    plan_info = (
+                                        plan_info
+                                        + operator
+                                        + ' , '
+                                        + opt_name.lower()
+                                        + '|\n'
+                                    )
+                                    plan_full = (
+                                        plan_full
+                                        + operator
+                                        + ' | '
+                                        + opt_name.lower()
+                                        + ' | '
+                                        + str(opt_cost)
+                                        + ' | '
+                                        + str(opt_prop)
+                                        + '\n'
+                                    )
                                 else:
-                                    plan_info = plan_info + operator + ' , ' + 'null' + '|\n'
-                                    plan_full = plan_full + operator + ' | ' + 'null' + ' | ' + str(
-                                        opt_cost) + ' | ' + str(
-                                        opt_prop) + '\n'
+                                    plan_info = (
+                                        plan_info + operator + ' , ' + 'null' + '|\n'
+                                    )
+                                    plan_full = (
+                                        plan_full
+                                        + operator
+                                        + ' | '
+                                        + 'null'
+                                        + ' | '
+                                        + str(opt_cost)
+                                        + ' | '
+                                        + str(opt_prop)
+                                        + '\n'
+                                    )
                         # end loop of plan_detail
                         # store_info
                         if plan_info and is_need_insert:
                             plan_info = plan_info[:-2].replace('\'', '')
                             plan_full = plan_full.replace('\'', '')[:60000]
-                            outline_hash = hashlib.md5(outline_data.encode("utf8")).hexdigest()
+                            outline_hash = hashlib.md5(
+                                outline_data.encode("utf8")
+                            ).hexdigest()
                             # result_sql
                             store_sql = '''
                             INSERT IGNORE INTO monitor_sql_plan_oceanbase 
@@ -319,24 +414,37 @@ def schedule_plan_ob(db_conf, queue_info, schedule_type):
                                 '{first_load_time}', '{last_active_time}',{avg_exe_usec},{hit_count},
                                 {table_scan},'{plan_info}','{plan_detail}','{outline_hash}','{outline_id}','{outline_data}',
                                 now()
-                            );'''.format(svr_ip=svr_ip, db_id=db_id, sql_id=sql_id, tenant_name=tenant_name,
-                                         plan_hash=plan_hash, plan_type=plan_type,
-                                         first_load_time=first_load_time,
-                                         last_active_time=last_active_time, avg_exe_usec=avg_exe_usec,
-                                         hit_count=hit_count, table_scan=table_scan, plan_info=escape_string(plan_info),
-                                         plan_detail=escape_string(plan_full), outline_hash=outline_hash,
-                                         outline_id=outline_id, outline_data=escape_string(outline_data))
+                            );'''.format(
+                                svr_ip=svr_ip,
+                                db_id=db_id,
+                                sql_id=sql_id,
+                                tenant_name=tenant_name,
+                                plan_hash=plan_hash,
+                                plan_type=plan_type,
+                                first_load_time=first_load_time,
+                                last_active_time=last_active_time,
+                                avg_exe_usec=avg_exe_usec,
+                                hit_count=hit_count,
+                                table_scan=table_scan,
+                                plan_info=escape_string(plan_info),
+                                plan_detail=escape_string(plan_full),
+                                outline_hash=outline_hash,
+                                outline_id=outline_id,
+                                outline_data=escape_string(outline_data),
+                            )
                             directly_run_sql_list.append(store_sql)
                             if len(sql_text) <= 40000:
-                                per_param = (outline_data, sql_text, db_id, sql_id, plan_hash)
+                                per_param = (
+                                    outline_data,
+                                    sql_text,
+                                    db_id,
+                                    sql_id,
+                                    plan_hash,
+                                )
                                 update_plan_sql_param_list.append(per_param)
                             if sql_id not in done_list:
                                 done_list.append(sql_id)
-                                text_sql_param_list.append((
-                                    statement,
-                                    db_id,
-                                    sql_id
-                                ))
+                                text_sql_param_list.append((statement, db_id, sql_id))
                     except Exception as e:
                         log.exception(e)
 
@@ -369,10 +477,12 @@ def schedule_plan_ob(db_conf, queue_info, schedule_type):
 
 
 def tenant_plan_groupby(list_dict):
-    """ 按租户进行分组计算 """
+    """按租户进行分组计算"""
     rt_dict = {}
     data_list = sorted(list_dict, key=lambda item: (item['sql_id']))
-    for sql_id, group_data in itertools.groupby(data_list, key=lambda item: (item['sql_id'])):
+    for sql_id, group_data in itertools.groupby(
+        data_list, key=lambda item: (item['sql_id'])
+    ):
         rt_dict[sql_id] = {}
         for per_plan in group_data:
             plan_hash = int(per_plan['plan_hash'])

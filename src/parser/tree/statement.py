@@ -22,7 +22,16 @@ class Statement(Node):
 
 
 class Delete(Statement):
-    def __init__(self, line=None, pos=None, table=None, where=None, order_by=None, limit=None, offset=None):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        table=None,
+        where=None,
+        order_by=None,
+        limit=None,
+        offset=None,
+    ):
         super(Delete, self).__init__(line, pos)
         self.table = table
         self.where = where
@@ -35,8 +44,17 @@ class Delete(Statement):
 
 
 class Update(Statement):
-    def __init__(self, line=None, pos=None, table=None, where=None, set_list=None, order_by=None, limit=None,
-                 offset=None):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        table=None,
+        where=None,
+        set_list=None,
+        order_by=None,
+        limit=None,
+        offset=None,
+    ):
         super(Update, self).__init__(line, pos)
         self.table = table
         self.where = where
@@ -50,7 +68,16 @@ class Update(Statement):
 
 
 class Query(Statement):
-    def __init__(self, line=None, pos=None, with_=None, query_body=None, order_by=None, limit=None, offset=None):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        with_=None,
+        query_body=None,
+        order_by=None,
+        limit=None,
+        offset=None,
+    ):
         super(Query, self).__init__(line, pos)
         self.with_ = with_
         self.query_body = query_body
@@ -93,8 +120,15 @@ class RenameTable(Statement):
 
 
 class CreateTable(Statement):
-    def __init__(self, line=None, pos=None,
-                 name=None, elements=None, not_exists=None, properties=None):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        name=None,
+        elements=None,
+        not_exists=None,
+        properties=None,
+    ):
         super(CreateTable, self).__init__(line, pos)
         self.name = name
         self.elements = elements
@@ -189,7 +223,9 @@ class Use(Statement):
 
 
 class ShowPartitions(Statement):
-    def __init__(self, line=None, pos=None, table=None, where=None, order_by=None, limit=None):
+    def __init__(
+        self, line=None, pos=None, table=None, where=None, order_by=None, limit=None
+    ):
         super(ShowPartitions, self).__init__(line, pos)
         self.table = table
         self.where = where
@@ -269,7 +305,15 @@ class SetSession(Statement):
 
 
 class CreateTableAsSelect(Statement):
-    def __init__(self, line=None, pos=None, name=None, query=None, properties=None, with_data=None):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        name=None,
+        query=None,
+        properties=None,
+        with_data=None,
+    ):
         super(CreateTableAsSelect, self).__init__(line, pos)
         self.name = name
         self.query = query

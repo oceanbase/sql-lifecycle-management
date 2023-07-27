@@ -22,9 +22,8 @@ from src.common.utils import Utils
 
 
 class MyTestCase(unittest.TestCase):
-
     def test_simple_sql(self):
-        """ Batch run case file to test sql parse """
+        """Batch run case file to test sql parse"""
         f_path = os.getcwd()
         file_name = f_path + '/test/parser/mysql_testcase/sql_test_case_1.txt'
         read_encoding = get_encoding(file_name)
@@ -46,8 +45,8 @@ class MyTestCase(unittest.TestCase):
                         # test parse
                         result = parser.parse(sql_text)
                         # test format
-                        visitor = ParserUtils.format_statement(result)
-                    except Exception as e:
+                        ParserUtils.format_statement(result)
+                    except Exception:
                         if line.strip():
                             print(line)
         except UnicodeDecodeError:

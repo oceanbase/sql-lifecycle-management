@@ -15,12 +15,11 @@
 import unittest
 
 from src.common.utils import Utils
-from src.parser.mysql_parser import parser as mysql_parser
-from src.parser.mysql_parser import lexer as mysql_lexer
-from src.parser.oceanbase_parser import lexer as oceanbase_lexer
-from src.parser.oceanbase_parser import parser as oceanbase_parser
-from src.parser.tree.expression import *
-from src.parser.tree.statement import *
+from src.parser.mysql_parser.parser import parser as mysql_parser
+from src.parser.mysql_parser.lexer import lexer as mysql_lexer
+from src.parser.oceanbase_parser.parser import parser as oceanbase_parser
+from src.parser.tree.expression import ComparisonExpression
+from src.parser.tree.statement import Statement
 
 
 class MyTestCase(unittest.TestCase):
@@ -33,7 +32,8 @@ class MyTestCase(unittest.TestCase):
         assert isinstance(result, Statement)
 
     def test_update_1(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         update jss_alarm_def     
         set                
         scope_id = 5,         
@@ -42,13 +42,16 @@ class MyTestCase(unittest.TestCase):
         is_delete = 0,
         gmt_modify = '2019-08-13 17:11:56.979'
         where alarm_id = 2000003
-        """)
+        """
+        )
         assert isinstance(result, Statement)
 
     def test_update_set(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         update t set a = 1, b = 2 where c = 3
-        """)
+        """
+        )
         assert isinstance(result.set_list, list)
         assert isinstance(result.table, list)
         assert isinstance(result.where, ComparisonExpression)
@@ -92,11 +95,13 @@ INSERT IGNORE INTO bumonitor_risk_process_context (gmt_create, gmt_modified, row
         assert isinstance(result, Statement)
 
     def test_delete_1(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
 delete from execution_log          where                (                             record_id = 2000006         and           sub_job_id = -3                                             )
-        """)
+        """
+        )
         assert isinstance(result, Statement)
-        
+
     def test_mysql_logical_opt(self):
         test_sqls = [
             """SELECT engine FROM move_title WHERE a XOR '29'""",
@@ -111,9 +116,9 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
             assert isinstance(result, Statement)
-            
+
     def test_mysql_regexp_opt(self):
         test_sqls = [
             """SELECT * FROM t WHERE a RLIKE 'hello|world'""",
@@ -121,7 +126,7 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
             assert isinstance(result, Statement)
 
     def test_mysql_resvered_word_can_used_as_token(self):
@@ -145,11 +150,11 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
             assert isinstance(result, Statement)
-        
+
     def test_mysql_vector_expression(self):
-        test_sqls= [
+        test_sqls = [
             "select * from t where a in ('1','2','3')",
             "select (1,2) > (2,3)",
             "select * from t where ((a) > ('29'))",
@@ -158,7 +163,7 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer.lexer,debug=True)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
             assert isinstance(result, Statement)
 
 

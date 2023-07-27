@@ -15,27 +15,32 @@
 import unittest
 
 from src.common.utils import Utils
-from src.parser.mysql_parser import parser as mysql_parser
-from src.parser.oceanbase_parser import parser as oceanbase_parser
-from src.parser.tree.expression import *
-from src.parser.tree.relation import *
-from src.parser.tree.set_operation import *
-from src.parser.tree.statement import *
+from src.parser.mysql_parser.parser import parser as mysql_parser
+from src.parser.oceanbase_parser.parser import parser as oceanbase_parser
+from src.parser.tree.expression import LikePredicate, ExistsPredicate
+from src.parser.tree.relation import Join
+from src.parser.tree.set_operation import Union
+from src.parser.tree.statement import Statement
 
 
 class MyTestCase(unittest.TestCase):
-
     def test_simple_sql(self):
-        result = oceanbase_parser.parse("select name,age,count(*),avg(age) from blog join a on a.id = blog.id "
-                                        "where a.b = 1 and blog.c = 2 group by name,age "
-                                        "having count(*)>2 and avg(age)<20 order by a asc,b desc limit 1 OFFSET 3")
+        result = oceanbase_parser.parse(
+            "select name,age,count(*),avg(age) from blog join a on a.id = blog.id "
+            "where a.b = 1 and blog.c = 2 group by name,age "
+            "having count(*)>2 and avg(age)<20 order by a asc,b desc limit 1 OFFSET 3"
+        )
         assert isinstance(result, Statement)
         assert isinstance(result.query_body.from_, Join)
 
     def test_no_filter(self):
         result = oceanbase_parser.parse("select distinct name from a.blog")
         query_body = result.query_body
-        assert query_body is not None and query_body.limit == 0 and query_body.where is None
+        assert (
+            query_body is not None
+            and query_body.limit == 0
+            and query_body.where is None
+        )
 
     def test_question_mark(self):
         result = oceanbase_parser.parse("select n from b where a = ?")
@@ -47,7 +52,8 @@ class MyTestCase(unittest.TestCase):
         assert isinstance(query_body.where, LikePredicate)
 
     def test_exists(self):
-        result = oceanbase_parser.parse("""select name from blog where EXISTS (
+        result = oceanbase_parser.parse(
+            """select name from blog where EXISTS (
                                     SELECT
                                         1 
                                     FROM
@@ -55,12 +61,14 @@ class MyTestCase(unittest.TestCase):
                                     WHERE
                                         d = ?
                                     )
-                                        """)
+                                        """
+        )
         query_body = result.query_body
         assert isinstance(query_body.where, ExistsPredicate)
 
     def test_simple_sql2(self):
-        result = oceanbase_parser.parse("""SELECT
+        result = oceanbase_parser.parse(
+            """SELECT
                                     tars_sqldiag_all.cluster,
                                     tars_sqldiag_all.tenant_name,
                                     tars_sqldiag_all.sql_id,
@@ -117,7 +125,8 @@ class MyTestCase(unittest.TestCase):
                                 tars_sqldiag_all.cluster,
                                 tars_sqldiag_all.tenant_name,
                                 tars_sqldiag_all.sql_id,
-                                tars_sqldiag_all.diag_type """)
+                                tars_sqldiag_all.diag_type """
+        )
         assert isinstance(result, Statement)
 
     def test_inner_join(self):
@@ -142,46 +151,59 @@ select max(id)  as id
         assert isinstance(result, Statement)
 
     def test_subquery(self):
-        result = oceanbase_parser.parse("""SELECT * 
+        result = oceanbase_parser.parse(
+            """SELECT * 
      FROM CUSTOMERS 
      WHERE ID IN (SELECT ID 
                   FROM CUSTOMERS
-                  WHERE SALARY > 4500)""")
+                  WHERE SALARY > 4500)"""
+        )
         assert isinstance(result, Statement)
 
     def test_distinct(self):
-        result = oceanbase_parser.parse("""select max(id)  as id, COUNT(distinct uuid) as cnt
-  from obevent""")
+        result = oceanbase_parser.parse(
+            """select max(id)  as id, COUNT(distinct uuid) as cnt
+  from obevent"""
+        )
         assert isinstance(result, Statement)
 
     def test_union(self):
-        result = oceanbase_parser.parse("""SELECT country FROM Websites
+        result = oceanbase_parser.parse(
+            """SELECT country FROM Websites
 UNION
 SELECT country FROM apps
-ORDER BY country""")
+ORDER BY country"""
+        )
         assert isinstance(result.query_body, Union)
 
     def test_union_all(self):
-        result = oceanbase_parser.parse("""SELECT country FROM Websites
+        result = oceanbase_parser.parse(
+            """SELECT country FROM Websites
 UNION ALL
 SELECT country FROM apps
-ORDER BY country""")
+ORDER BY country"""
+        )
         assert isinstance(result.query_body, Union)
 
     def test_sql_1(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         SELECT  role.ID, role.NM,         role.CODE,role.ORG_ID,role.domain_id,role.ADMINS,role.SCD_ADMINS,role.PRN_ID,role.PATH,role.TYPE_CODE,         role.DSC,role.ST,role.EXPR_TM,role.CRT_ID,role.CRT_NM,role.property,         role.MOD_ID, role.MOD_NM,role.GMT_CREATE,role.GMT_MODIFIED,role.TNT_INST_ID,role.MNG_MODE,role.APPLY_MODE, role.risk_memo         FROM OS_ROLE role         WHERE         role.TNT_INST_ID='ALIPW3CN'         AND     (role.TYPE_CODE = 'ROLE' or role.TYPE_CODE is null )             AND    role.st !='DELETE'      AND    (role.apply_mode in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    or (role.type_code = 'ROLE' AND 'PUBLIC' in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    AND role.apply_mode IS NULL))                         and                 role.isolation_key = 'TENANT_ALIPW3CN'                         order by role.id desc limit 0, 10
-        """)
+        """
+        )
         assert isinstance(result, Statement)
 
     def test_sql_2(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         SELECT      count(DISTINCT ID) as total   FROM OS_ROLE WHERE TNT_INST_ID = 'ALIPW3CN'   AND    (NM like CONCAT('%', 'CMR-LEADS', '%') or CODE like CONCAT('%','CMR-LEADS','%'))                AND    (TYPE_CODE = 'ROLE' or TYPE_CODE is null )             AND    st !='DELETE'      AND    (apply_mode in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    or (type_code = 'ROLE' AND 'PUBLIC' in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    AND apply_mode IS NULL))                         and                 isolation_key = 'TENANT_ALIPW3CN'
-        """)
+        """
+        )
         assert isinstance(result, Statement)
 
     def test_sql_3(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
                          SELECT
   p.id,
   count(DISTINCT c.id)
@@ -198,23 +220,29 @@ ORDER BY
   p.CreationDate
 LIMIT
   100
-                        """)
+                        """
+        )
         assert isinstance(result, Statement)
 
     def test_sql_4(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
                   SELECT oprn.* , b   FROM OS_OPRN oprn    WHERE oprn.TNT_INST_ID = 'ALIPW3CN'                   AND      oprn.OPT_CODE like CONCAT('%', 'GT_MESSAGE_RECORD_QUERY', '%')                                                                and                     oprn.isolation_key = 'TENANT_ALIPW3CN'                     order by oprn.id desc    limit 0, 5      
-                """)
+                """
+        )
         assert isinstance(result, Statement)
 
     def test_sql_5(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
                          select * from sqless_base where a = 'sqless_1' or b = 'sqless_2'     
-                        """)
+                        """
+        )
         assert isinstance(result, Statement)
 
     def test_sql_6(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         SELECT           
          *     
          FROM `client_package`            
@@ -225,61 +253,80 @@ LIMIT
          and           client_package.state = 'success'                                                                                                                             
          order by client_package.id desc
          limit 0,10     
-                        """)
+                        """
+        )
         assert isinstance(result, Statement)
 
     def test_sql_7(self):
-        result = oceanbase_parser.parse("""
-SELECT          server_release_repo.server_release_repo_id,    server_release_repo.instance_id,    server_release_repo.repos_name,    server_release_repo.branch_url,    server_release_repo.revision_enter,    server_release_repo.deleted,    server_release_repo.weight,    server_release_repo.integrate,    server_release_repo.create_tag_flag,    server_release_repo.merge_record_id,    case server_release_repo.merge_record_id       when 0 then 0       when -1 then 1       when -2 then 15       else merge_record.merge_result       END as merge_result,   server_release_repo.completed,    server_release_repo.create_time,    server_release_repo.update_time      FROM server_release_repo left join merge_record on server_release_repo.merge_record_id = merge_record.id     WHERE      1 = 1                and            integrate = 0              and            completed = 1             and            deleted = 0          and       merge_record_id != -1                        """)
+        result = oceanbase_parser.parse(
+            """
+SELECT          server_release_repo.server_release_repo_id,    server_release_repo.instance_id,    server_release_repo.repos_name,    server_release_repo.branch_url,    server_release_repo.revision_enter,    server_release_repo.deleted,    server_release_repo.weight,    server_release_repo.integrate,    server_release_repo.create_tag_flag,    server_release_repo.merge_record_id,    case server_release_repo.merge_record_id       when 0 then 0       when -1 then 1       when -2 then 15       else merge_record.merge_result       END as merge_result,   server_release_repo.completed,    server_release_repo.create_time,    server_release_repo.update_time      FROM server_release_repo left join merge_record on server_release_repo.merge_record_id = merge_record.id     WHERE      1 = 1                and            integrate = 0              and            completed = 1             and            deleted = 0          and       merge_record_id != -1                        """
+        )
         assert isinstance(result, Statement)
 
     def test_union_and_union_all(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         select a from b union select a from b
-        """)
+        """
+        )
         assert isinstance(result.query_body, Union)
         assert not result.query_body.all
 
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
                 select a from b union all select a from b
-                """)
+                """
+        )
         assert isinstance(result.query_body, Union)
         assert result.query_body.all
 
     def test_limit_question_mark(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         SELECT * FROM `antinvoice93`.einv_base_info WHERE einv_source = ? ORDER BY gmt_create DESC LIMIT ?
-        """)
+        """
+        )
         assert result.query_body.limit == '?'
 
     def test_subquery_limit(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         SELECT COUNT(*) FROM ( SELECT * FROM customs_script_match_history LIMIT ? ) a
-        """)
+        """
+        )
         assert isinstance(result, Statement)
 
     def test_current_timestamp(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
 SELECT device_id, msg_id, short_msg_key, third_msg_id, mission_id , mission_coe, app_id, payload, template_code, business , ruleset_id, strategy, principal_id, tag, priority , expire_time, gmt_create, status, uriextinfo, sub_templates , immediate_product_version, biz_id, immediate_language_type FROM pushcore_msg WHERE device_id = ? AND principal_id = ? AND status = ? AND expire_time > current_timestamp()
-        """)
+        """
+        )
         assert isinstance(result, Statement)
 
     def test_select_for_update(self):
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
 SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, complete_status, notice_push_status, result_push_status, reward_status , join_cost, reward, odps_reward, step_number, gmt_complete , gmt_send_reward, match_type, join_stat_bill_id, complete_stat_bill_id, ext_info FROM sports_user_match_record WHERE match_record_id IN (?) FOR UPDATE
-        """)
+        """
+        )
         assert isinstance(result, Statement)
         assert result.query_body.for_update is True
         assert result.query_body.nowait_or_wait is False
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
         SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, complete_status, notice_push_status, result_push_status, reward_status , join_cost, reward, odps_reward, step_number, gmt_complete , gmt_send_reward, match_type, join_stat_bill_id, complete_stat_bill_id, ext_info FROM sports_user_match_record WHERE match_record_id IN (?) FOR UPDATE NOWAIT
-                """)
+                """
+        )
         assert isinstance(result, Statement)
         assert result.query_body.for_update is True
         assert result.query_body.nowait_or_wait is True
-        result = oceanbase_parser.parse("""
+        result = oceanbase_parser.parse(
+            """
                 SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, complete_status, notice_push_status, result_push_status, reward_status , join_cost, reward, odps_reward, step_number, gmt_complete , gmt_send_reward, match_type, join_stat_bill_id, complete_stat_bill_id, ext_info FROM sports_user_match_record WHERE match_record_id IN (?) FOR UPDATE WAIT 6
-                        """)
+                        """
+        )
         assert isinstance(result, Statement)
         assert result.query_body.for_update is True
         assert result.query_body.nowait_or_wait is True

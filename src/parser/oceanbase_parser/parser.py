@@ -13,34 +13,77 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from __future__ import print_function
 
 import types
+from src.parser.tree.expression import (
+    ArithmeticBinaryExpression,
+    ArithmeticUnaryExpression,
+    BetweenPredicate,
+    Cast,
+    ComparisonExpression,
+    CurrentTime,
+    ExistsPredicate,
+    FunctionCall,
+    InListExpression,
+    InPredicate,
+    IsNotNullPredicate,
+    IsNullPredicate,
+    LikePredicate,
+    LogicalBinaryExpression,
+    NotExpression,
+    QualifiedNameReference,
+    RegexpPredicate,
+    SearchedCaseExpression,
+    SimpleCaseExpression,
+    SubqueryExpression,
+    WhenClause,
+)
+from src.parser.tree.grouping import SimpleGroupBy
+from src.parser.tree.join_criteria import JoinOn, JoinUsing, NaturalJoin
+from src.parser.tree.literal import (
+    BooleanLiteral,
+    DoubleLiteral,
+    LongLiteral,
+    NullLiteral,
+    StringLiteral,
+)
+from src.parser.tree.node import Node
+from src.parser.tree.qualified_name import QualifiedName
+from src.parser.tree.query_specification import QuerySpecification
+from src.parser.tree.relation import AliasedRelation, Join
+from src.parser.tree.select import Select
+from src.parser.tree.select_item import SingleColumn
+from src.parser.tree.set_operation import Except, Intersect, Union
+from src.parser.tree.sort_item import SortItem
+from src.parser.tree.statement import Delete, Insert, Query, Update
+from src.parser.tree.table import Table, TableSubquery
+from src.parser.tree.values import Values
 
 from ply import yacc
 from src.optimizer.optimizer_enum import IndexType
 from src.parser.oceanbase_parser.lexer import tokens
-from src.parser.tree import *
 
 tokens = tokens
 
 
 def p_command(p):
-    r""" command : ddl
-                | dml """
+    r"""command : ddl
+    | dml"""
     p[0] = p[1]
 
 
 def p_ddl(p):
-    r""" ddl : create_table """
+    r"""ddl : create_table"""
     p[0] = p[1]
 
 
 def p_dml(p):
-    r""" dml : statement """
+    r"""dml : statement"""
     p[0] = p[1]
 
 
 def p_create_table(p):
-    r""" create_table : CREATE TABLE identifier LPAREN column_list RPAREN create_table_end
-                      | CREATE TABLE identifier LPAREN column_list COMMA primary_clause RPAREN create_table_end """
+    r"""create_table : CREATE TABLE identifier LPAREN column_list RPAREN create_table_end
+    | CREATE TABLE identifier LPAREN column_list COMMA primary_clause RPAREN create_table_end
+    """
     dict = {}
     dict['type'] = 'create_table'
     dict['table_name'] = p[3]
@@ -51,26 +94,26 @@ def p_create_table(p):
 
 
 def p_create_table_end(p):
-    r""" create_table_end : ENGINE EQ identifier create_table_end
-                          | DEFAULT CHARSET EQ identifier create_table_end
-                          | COLLATE EQ identifier create_table_end
-                          | AUTO_INCREMENT EQ integer create_table_end
-                          | COMMENT EQ SCONST create_table_end
-                          | COMPRESSION EQ SCONST create_table_end
-                          | REPLICA_NUM EQ integer create_table_end
-                          | BLOCK_SIZE EQ integer create_table_end
-                          | USE_BLOOM_FILTER EQ FALSE create_table_end
-                          | TABLET_SIZE EQ integer create_table_end
-                          | PCTFREE EQ integer create_table_end
-                          | empty
+    r"""create_table_end : ENGINE EQ identifier create_table_end
+    | DEFAULT CHARSET EQ identifier create_table_end
+    | COLLATE EQ identifier create_table_end
+    | AUTO_INCREMENT EQ integer create_table_end
+    | COMMENT EQ SCONST create_table_end
+    | COMPRESSION EQ SCONST create_table_end
+    | REPLICA_NUM EQ integer create_table_end
+    | BLOCK_SIZE EQ integer create_table_end
+    | USE_BLOOM_FILTER EQ FALSE create_table_end
+    | TABLET_SIZE EQ integer create_table_end
+    | PCTFREE EQ integer create_table_end
+    | empty
     """
     pass
 
 
 def p_column_list(p):
     r"""
-        column_list : column
-                    | column_list COMMA column
+    column_list : column
+                | column_list COMMA column
     """
     p[0] = []
     if len(p) == 2:
@@ -82,8 +125,8 @@ def p_column_list(p):
 
 def p_column(p):
     r"""
-        column :  identifier column_type
-                | identifier column_type UNIQUE
+    column :  identifier column_type
+            | identifier column_type UNIQUE
     """
     if len(p) == 4:
         p[0] = (p[1], p[2], True)
@@ -93,55 +136,55 @@ def p_column(p):
 
 def p_column_type(p):
     r"""
-        column_type : INT column_end
-                    | INT LPAREN integer RPAREN column_end
-                    | FLOAT column_end
-                    | BIGINT column_end
-                    | BIGINT LPAREN integer RPAREN column_end
-                    | TINYINT LPAREN integer RPAREN column_end
-                    | DATETIME column_end
-                    | DATETIME LPAREN integer RPAREN column_end
-                    | VARCHAR LPAREN integer RPAREN column_end
-                    | CHAR LPAREN integer RPAREN column_end
-                    | TIMESTAMP column_end
-                    | DECIMAL LPAREN integer COMMA integer RPAREN column_end
+    column_type : INT column_end
+                | INT LPAREN integer RPAREN column_end
+                | FLOAT column_end
+                | BIGINT column_end
+                | BIGINT LPAREN integer RPAREN column_end
+                | TINYINT LPAREN integer RPAREN column_end
+                | DATETIME column_end
+                | DATETIME LPAREN integer RPAREN column_end
+                | VARCHAR LPAREN integer RPAREN column_end
+                | CHAR LPAREN integer RPAREN column_end
+                | TIMESTAMP column_end
+                | DECIMAL LPAREN integer COMMA integer RPAREN column_end
     """
     p[0] = p[1].lower()
 
 
 def p_column_end(p):
     r"""
-        column_end : collate NOT NULL comment_end
-                 | collate NOT NULL DEFAULT SCONST comment_end
-                 | collate DEFAULT NULL comment_end
-                 | collate NULL DEFAULT NULL comment_end
-                 | collate UNSIGNED AUTO_INCREMENT comment_end
-                 | collate NOT NULL AUTO_INCREMENT comment_end
-                 | collate NOT NULL DEFAULT CURRENT_TIMESTAMP comment_end
-                 | collate NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment_end
-                 | CHARACTER SET IDENTIFIER column_end
-                 | empty
+    column_end : collate NOT NULL comment_end
+             | collate NOT NULL DEFAULT SCONST comment_end
+             | collate DEFAULT NULL comment_end
+             | collate NULL DEFAULT NULL comment_end
+             | collate UNSIGNED AUTO_INCREMENT comment_end
+             | collate NOT NULL AUTO_INCREMENT comment_end
+             | collate NOT NULL DEFAULT CURRENT_TIMESTAMP comment_end
+             | collate NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment_end
+             | CHARACTER SET IDENTIFIER column_end
+             | empty
     """
 
 
 def p_collate(p):
     r"""
-        collate : COLLATE identifier
-                 | empty
+    collate : COLLATE identifier
+             | empty
     """
 
 
 def p_comment_end(p):
     r"""
-            comment_end : COMMENT SCONST
-                     | empty
-        """
+    comment_end : COMMENT SCONST
+             | empty
+    """
 
 
 def p_primary_clause(p):
     r"""
-        primary_clause : PRIMARY KEY LPAREN index_column_list RPAREN
-                       | PRIMARY KEY LPAREN index_column_list RPAREN COMMA index_list
+    primary_clause : PRIMARY KEY LPAREN index_column_list RPAREN
+                   | PRIMARY KEY LPAREN index_column_list RPAREN COMMA index_list
     """
     p[0] = []
     p[0].append((IndexType.PRIMARY, 'PRIMARY', p[4]))
@@ -152,8 +195,8 @@ def p_primary_clause(p):
 
 def p_index_list(p):
     r"""
-        index_list : index_key identifier LPAREN index_column_list RPAREN index_end
-                   | index_list COMMA index_key identifier LPAREN index_column_list RPAREN index_end
+    index_list : index_key identifier LPAREN index_column_list RPAREN index_end
+               | index_list COMMA index_key identifier LPAREN index_column_list RPAREN index_end
     """
     p[0] = []
     if len(p) == 7:
@@ -165,8 +208,8 @@ def p_index_list(p):
 
 def p_index_key(p):
     r"""
-            index_key : KEY
-                      | UNIQUE KEY
+    index_key : KEY
+              | UNIQUE KEY
     """
     if len(p) == 2:
         p[0] = IndexType.NORMAL
@@ -176,8 +219,8 @@ def p_index_key(p):
 
 def p_index_column_list(p):
     r"""
-        index_column_list : identifier
-                          | index_column_list COMMA identifier
+    index_column_list : identifier
+                      | index_column_list COMMA identifier
     """
     p[0] = []
     if len(p) == 2:
@@ -189,42 +232,42 @@ def p_index_column_list(p):
 
 def p_index_end(p):
     r"""
-        index_end : BLOCK_SIZE integer
-                  | empty
+    index_end : BLOCK_SIZE integer
+              | empty
     """
 
 
 def p_statement(p):
     r"""statement : cursor_specification
-                  | delete
-                  | update
-                  | insert """
+    | delete
+    | update
+    | insert"""
     p[0] = p[1]
 
 
 def p_insert(p):
     r"""insert : INSERT ignore INTO table_reference VALUES LPAREN insert_value RPAREN
-               | INSERT ignore INTO table_reference LPAREN index_column_list RPAREN VALUES LPAREN insert_value RPAREN
-               | INSERT ignore INTO table_reference LPAREN index_column_list RPAREN query_spec
-               | INSERT ignore INTO table_reference query_spec"""
+    | INSERT ignore INTO table_reference LPAREN index_column_list RPAREN VALUES LPAREN insert_value RPAREN
+    | INSERT ignore INTO table_reference LPAREN index_column_list RPAREN query_spec
+    | INSERT ignore INTO table_reference query_spec"""
     p[0] = Insert(target=p[4])
 
 
 def p_insert_value(p):
     r"""insert_value : value
-                    | insert_value COMMA value"""
+    | insert_value COMMA value"""
     pass
 
 
 def p_ignore(p):
     r"""
-            ignore : IGNORE
-                   | empty
+    ignore : IGNORE
+           | empty
     """
 
 
 def p_delete(p):
-    r"""delete : DELETE FROM relations where_opt order_by_opt limit_opt """
+    r"""delete : DELETE FROM relations where_opt order_by_opt limit_opt"""
     p_limit = p[6]
     offset = 0
     limit = 0
@@ -235,20 +278,22 @@ def p_delete(p):
 
 
 def p_update(p):
-    r"""update : UPDATE relations SET update_set_list where_opt order_by_opt limit_opt """
+    r"""update : UPDATE relations SET update_set_list where_opt order_by_opt limit_opt"""
     p_limit = p[7]
     offset = 0
     limit = 0
     if p_limit:
         offset = int(p_limit[0])
         limit = int(p_limit[1])
-    p[0] = Update(table=p[2], set_list=p[4], where=p[5], order_by=p[6], limit=limit, offset=offset)
+    p[0] = Update(
+        table=p[2], set_list=p[4], where=p[5], order_by=p[6], limit=limit, offset=offset
+    )
 
 
 def p_update_set_list(p):
     r"""update_set_list : update_set
-                        | update_set_list COMMA update_set
-                        | update_set_list AND update_set"""
+    | update_set_list COMMA update_set
+    | update_set_list AND update_set"""
     _item_list(p)
 
 
@@ -279,27 +324,39 @@ def p_cursor_specification(p):
         # expects this structure to resolve references with respect
         # to columns defined in the query specification)
         query = p[1]
-        p[0] = Query(p.lineno(1), p.lexpos(1), with_=None,
-                     query_body=QuerySpecification(
-                         query.line,
-                         query.pos,
-                         query.select,
-                         query.from_,
-                         query.where,
-                         query.group_by,
-                         query.having,
-                         order_by=query.order_by if query.order_by else p[2],
-                         limit=query.limit if query.limit else limit,
-                         offset=query.offset if query.offset else offset,
-                         for_update=query.for_update if query.for_update else for_update,
-                         nowait_or_wait=query.nowait_or_wait if query.nowait_or_wait else nowait_or_wait
-                     ),
-                     limit=query.limit if query.limit else limit,
-                     offset=query.offset if query.offset else offset
-                     )
+        p[0] = Query(
+            p.lineno(1),
+            p.lexpos(1),
+            with_=None,
+            query_body=QuerySpecification(
+                query.line,
+                query.pos,
+                query.select,
+                query.from_,
+                query.where,
+                query.group_by,
+                query.having,
+                order_by=query.order_by if query.order_by else p[2],
+                limit=query.limit if query.limit else limit,
+                offset=query.offset if query.offset else offset,
+                for_update=query.for_update if query.for_update else for_update,
+                nowait_or_wait=query.nowait_or_wait
+                if query.nowait_or_wait
+                else nowait_or_wait,
+            ),
+            limit=query.limit if query.limit else limit,
+            offset=query.offset if query.offset else offset,
+        )
     else:
-        p[0] = Query(p.lineno(1), p.lexpos(1),
-                     with_=None, query_body=p[1], order_by=p[2], limit=limit, offset=offset)
+        p[0] = Query(
+            p.lineno(1),
+            p.lexpos(1),
+            with_=None,
+            query_body=p[1],
+            order_by=p[2],
+            limit=limit,
+            offset=offset,
+        )
 
 
 def p_subquery(p):
@@ -320,9 +377,9 @@ def p_subquery(p):
 
 def p_for_update_opt(p):
     r"""for_update_opt : FOR UPDATE
-                       | FOR UPDATE NOWAIT
-                       | FOR UPDATE WAIT integer
-                       | empty"""
+    | FOR UPDATE NOWAIT
+    | FOR UPDATE WAIT integer
+    | empty"""
     if len(p) == 3:
         p[0] = (True, False)
     elif len(p) < 3:
@@ -338,57 +395,67 @@ def p_query_expression(p):
 
 def p_query_expression_body(p):
     r"""query_expression_body : nonjoin_query_expression
-                              | joined_table"""
+    | joined_table"""
     p[0] = p[1]
 
 
 # ORDER BY
 def p_order_by_opt(p):
     r"""order_by_opt : ORDER BY sort_items
-                     | empty"""
+    | empty"""
     p[0] = p[3] if p[1] else None
 
 
 def p_sort_items(p):
     r"""sort_items : sort_item
-                   | sort_items COMMA sort_item"""
+    | sort_items COMMA sort_item"""
     _item_list(p)
 
 
 def p_sort_item(p):
     r"""sort_item : value_expression order_opt null_ordering_opt
-                  | LPAREN value_expression RPAREN order_opt null_ordering_opt"""
+    | LPAREN value_expression RPAREN order_opt null_ordering_opt"""
     if len(p) == 4:
-        p[0] = SortItem(p.lineno(1), p.lexpos(1),
-                        sort_key=p[1], ordering=p[2] or 'asc', null_ordering=p[3])
+        p[0] = SortItem(
+            p.lineno(1),
+            p.lexpos(1),
+            sort_key=p[1],
+            ordering=p[2] or 'asc',
+            null_ordering=p[3],
+        )
     else:
-        p[0] = SortItem(p.lineno(1), p.lexpos(1),
-                        sort_key=p[2], ordering=p[4] or 'asc', null_ordering=p[5])
+        p[0] = SortItem(
+            p.lineno(1),
+            p.lexpos(1),
+            sort_key=p[2],
+            ordering=p[4] or 'asc',
+            null_ordering=p[5],
+        )
 
 
 def p_order_opt(p):
     r"""order_opt : ASC
-                  | DESC
-                  | empty"""
+    | DESC
+    | empty"""
     p[0] = p[1]
 
 
 def p_null_ordering_opt(p):
     r"""null_ordering_opt : NULLS FIRST
-                          | NULLS LAST
-                          | empty"""
+    | NULLS LAST
+    | empty"""
     p[0] = p[2] if p[1] else None
 
 
 # LIMIT
 def p_limit_opt(p):
     r"""limit_opt : LIMIT integer
-                  | LIMIT integer COMMA integer
-                  | LIMIT QM
-                  | LIMIT QM COMMA QM
-                  | LIMIT ALL
-                  | LIMIT integer OFFSET integer
-                  | empty"""
+    | LIMIT integer COMMA integer
+    | LIMIT QM
+    | LIMIT QM COMMA QM
+    | LIMIT ALL
+    | LIMIT integer OFFSET integer
+    | empty"""
     if len(p) < 5:
         p[0] = (0, p[2]) if p[1] else None
     else:
@@ -399,8 +466,7 @@ def p_limit_opt(p):
 
 
 def p_integer(p):
-    r"""integer : INTEGER
-    """
+    r"""integer : INTEGER"""
     p[0] = p[1]
 
 
@@ -408,8 +474,8 @@ def p_integer(p):
 # QUERY TERM
 def p_nonjoin_query_expression(p):
     r"""nonjoin_query_expression : nonjoin_query_term
-                        | nonjoin_query_expression UNION set_quantifier_opt nonjoin_query_term
-                        | nonjoin_query_expression EXCEPT set_quantifier_opt  nonjoin_query_term"""
+    | nonjoin_query_expression UNION set_quantifier_opt nonjoin_query_term
+    | nonjoin_query_expression EXCEPT set_quantifier_opt  nonjoin_query_term"""
     if len(p) == 2:
         p[0] = p[1]
     else:
@@ -418,26 +484,41 @@ def p_nonjoin_query_expression(p):
         all = p[3] is not None and p[3].upper() == "ALL"
         right = p[4]
         if p.slice[2].type == "UNION":
-            p[0] = Union(p.lineno(1), p.lexpos(1), relations=[left, right], distinct=distinct, all=all)
+            p[0] = Union(
+                p.lineno(1),
+                p.lexpos(1),
+                relations=[left, right],
+                distinct=distinct,
+                all=all,
+            )
         else:
-            p[0] = Except(p.lineno(1), p.lexpos(1), left=p[1], right=p[4], distinct=distinct, all=all)
+            p[0] = Except(
+                p.lineno(1),
+                p.lexpos(1),
+                left=p[1],
+                right=p[4],
+                distinct=distinct,
+                all=all,
+            )
 
 
 # non-join query term
 def p_nonjoin_query_term(p):
     r"""nonjoin_query_term : nonjoin_query_primary
-                         | nonjoin_query_term INTERSECT set_quantifier_opt nonjoin_query_primary"""
+    | nonjoin_query_term INTERSECT set_quantifier_opt nonjoin_query_primary"""
     if len(p) == 2:
         p[0] = p[1]
     else:
         distinct = p[3] is not None and p[3].upper() == "DISTINCT"
-        p[0] = Intersect(p.lineno(1), p.lexpos(1), relations=[p[1], p[4]], distinct=distinct)
+        p[0] = Intersect(
+            p.lineno(1), p.lexpos(1), relations=[p[1], p[4]], distinct=distinct
+        )
 
 
 # non-join query primary
 def p_nonjoin_query_primary(p):
     r"""nonjoin_query_primary : simple_table
-                              | LPAREN nonjoin_query_expression RPAREN"""
+    | LPAREN nonjoin_query_expression RPAREN"""
     if len(p) == 2:
         p[0] = p[1]
     else:
@@ -446,8 +527,8 @@ def p_nonjoin_query_primary(p):
 
 def p_simple_table(p):
     r"""simple_table : query_spec
-                     | explicit_table
-                     | table_value_constructor"""
+    | explicit_table
+    | table_value_constructor"""
     p[0] = p[1]
 
 
@@ -463,7 +544,7 @@ def p_table_value_constructor(p):
 
 def p_values_list(p):
     r"""values_list : values_list COMMA expression
-                    | expression"""
+    | expression"""
     _item_list(p)
 
 
@@ -505,25 +586,30 @@ def p_query_spec(p):
     if from_relations:
         from_ = from_relations[0]
         for rel in from_relations[1:]:  # Skip first one
-            from_ = Join(p.lineno(3), p.lexpos(3), join_type="IMPLICIT", left=from_, right=rel)
+            from_ = Join(
+                p.lineno(3), p.lexpos(3), join_type="IMPLICIT", left=from_, right=rel
+            )
 
-    p[0] = QuerySpecification(p.lineno(1), p.lexpos(1),
-                              select=Select(p.lineno(1), p.lexpos(1), select_items=select_items),
-                              from_=from_,
-                              where=where,
-                              group_by=group_by,
-                              having=having,
-                              for_update=for_update,
-                              nowait_or_wait=nowait_or_wait,
-                              order_by=p[4],
-                              limit=limit,
-                              offset=offset)
+    p[0] = QuerySpecification(
+        p.lineno(1),
+        p.lexpos(1),
+        select=Select(p.lineno(1), p.lexpos(1), select_items=select_items),
+        from_=from_,
+        where=where,
+        group_by=group_by,
+        having=having,
+        for_update=for_update,
+        nowait_or_wait=nowait_or_wait,
+        order_by=p[4],
+        limit=limit,
+        offset=offset,
+    )
 
 
 def p_where_opt(p):
     r"""where_opt : WHERE search_condition
-                  | WHERE LPAREN search_condition RPAREN
-                  | empty"""
+    | WHERE LPAREN search_condition RPAREN
+    | empty"""
     if p.slice[1].type == "WHERE":
         p[0] = p[2] if len(p) == 3 else p[3]
     else:
@@ -532,39 +618,39 @@ def p_where_opt(p):
 
 def p_group_by_opt(p):
     r"""group_by_opt : GROUP BY grouping_expressions
-                     | empty"""
+    | empty"""
     p[0] = SimpleGroupBy(p.lineno(1), p.lexpos(1), columns=p[3]) if p[1] else None
 
 
 def p_grouping_expressions(p):
     r"""grouping_expressions : value_expression
-                             | grouping_expressions COMMA value_expression"""
+    | grouping_expressions COMMA value_expression"""
     _item_list(p)
 
 
 def p_having_opt(p):
     r"""having_opt : HAVING search_condition
-                   | empty"""
+    | empty"""
     p[0] = p[2] if p[1] else None
 
 
 def p_set_quantifier_opt(p):
     r"""set_quantifier_opt : ALL
-                           | empty"""
+    | empty"""
     p[0] = p[1]
 
 
 def p_select_items(p):
     r"""select_items : select_item
-                     | select_items COMMA select_item"""
+    | select_items COMMA select_item"""
     _item_list(p)
 
 
 def p_select_item(p):
     r"""select_item : derived_column
-                    | DISTINCT LPAREN derived_column RPAREN
-                    | DISTINCT derived_column
-                    | predicate"""
+    | DISTINCT LPAREN derived_column RPAREN
+    | DISTINCT derived_column
+    | predicate"""
     if len(p) == 2:
         p[0] = p[1]
     elif len(p) == 3:
@@ -580,45 +666,59 @@ def p_derived_column(p):
 
 def p_table_expression_opt(p):
     r"""table_expression_opt : FROM relations where_opt group_by_opt having_opt for_update_opt
-                             | empty"""
+    | empty"""
     if p[1]:
-        p[0] = Node(p.lineno(1), p.lexpos(1), from_=p[2], where=p[3], group_by=p[4], having=p[5], for_update=p[6])
+        p[0] = Node(
+            p.lineno(1),
+            p.lexpos(1),
+            from_=p[2],
+            where=p[3],
+            group_by=p[4],
+            having=p[5],
+            for_update=p[6],
+        )
     else:
         p[0] = p[1]
 
 
 def p_relations(p):
     r"""relations : relations COMMA table_reference
-                  | table_reference"""
+    | table_reference"""
     _item_list(p)
 
 
 # query expression
 def p_table_reference(p):
     r"""table_reference : table_primary
-                        | joined_table"""
+    | joined_table"""
     p[0] = p[1]
 
 
 # table reference
 def p_table_primary(p):
     r"""table_primary : aliased_relation
-                      | derived_table"""
+    | derived_table"""
     p[0] = p[1]
 
 
 # joined table
 def p_joined_table(p):
     r"""joined_table : cross_join
-                     | qualified_join
-                     | natural_join"""
+    | qualified_join
+    | natural_join"""
     p[0] = p[1]
 
 
 def p_cross_join(p):
     r"""cross_join : table_reference CROSS JOIN table_primary"""
-    p[0] = Join(p.lineno(1), p.lexpos(1), join_type="CROSS",
-                left=p[1], right=p[4], criteria=None)
+    p[0] = Join(
+        p.lineno(1),
+        p.lexpos(1),
+        join_type="CROSS",
+        left=p[1],
+        right=p[4],
+        criteria=None,
+    )
 
 
 def p_qualified_join(p):
@@ -626,8 +726,14 @@ def p_qualified_join(p):
     right = p[4]
     criteria = p[5]
     join_type = p[2] if p[2] in ("LEFT", "RIGHT", "FULL") else "INNER"
-    p[0] = Join(p.lineno(1), p.lexpos(1), join_type=join_type,
-                left=p[1], right=right, criteria=criteria)
+    p[0] = Join(
+        p.lineno(1),
+        p.lexpos(1),
+        join_type=join_type,
+        left=p[1],
+        right=right,
+        criteria=criteria,
+    )
 
 
 def p_natural_join(p):
@@ -635,29 +741,35 @@ def p_natural_join(p):
     right = p[5]
     criteria = NaturalJoin()
     join_type = "INNER"
-    p[0] = Join(p.lineno(1), p.lexpos(1), join_type=join_type,
-                left=p[1], right=right, criteria=criteria)
+    p[0] = Join(
+        p.lineno(1),
+        p.lexpos(1),
+        join_type=join_type,
+        left=p[1],
+        right=right,
+        criteria=criteria,
+    )
 
 
 def p_join_type(p):
     r"""join_type : INNER
-                  | LEFT outer_opt
-                  | RIGHT outer_opt
-                  | FULL outer_opt
-                  | empty"""
+    | LEFT outer_opt
+    | RIGHT outer_opt
+    | FULL outer_opt
+    | empty"""
     p[0] = p[1]
 
 
 def p_outer_opt(p):
     r"""outer_opt : OUTER
-                  | empty"""
+    | empty"""
     # Ignore
 
 
 def p_join_criteria(p):
     r"""join_criteria : ON search_condition
-                      | USING LPAREN join_columns RPAREN
-                      | empty"""
+    | USING LPAREN join_columns RPAREN
+    | empty"""
     if p.slice[1].type == "ON":
         p[0] = JoinOn(expression=p[2])
     elif p.slice[1].type == "USING":
@@ -668,7 +780,7 @@ def p_join_criteria(p):
 
 def p_identifiers(p):
     r"""join_columns : identifier
-                     | join_columns COMMA identifier"""
+    | join_columns COMMA identifier"""
     _item_list(p)
 
 
@@ -677,8 +789,7 @@ def p_aliased_relation(p):
     r"""aliased_relation : qualified_name alias_opt"""
     rel = Table(p.lineno(1), p.lexpos(1), name=p[1])
     if p[2]:
-        p[0] = AliasedRelation(p.lineno(1), p.lexpos(1),
-                               relation=rel, alias=p[2])
+        p[0] = AliasedRelation(p.lineno(1), p.lexpos(1), relation=rel, alias=p[2])
     else:
         p[0] = rel
 
@@ -693,7 +804,7 @@ def p_derived_table(p):
 
 def p_alias_opt(p):
     r"""alias_opt : alias
-                  | empty"""
+    | empty"""
     p[0] = p[1]
 
 
@@ -709,35 +820,41 @@ def p_expression(p):
 
 def p_search_condition(p):
     r"""search_condition : boolean_term
-                         | LPAREN search_condition RPAREN
-                         | search_condition OR search_condition
-                         | search_condition AND search_condition
-                         | search_condition bit_operation search_condition
-                         | BIT_OPPOSITE search_condition"""
+    | LPAREN search_condition RPAREN
+    | search_condition OR search_condition
+    | search_condition AND search_condition
+    | search_condition bit_operation search_condition
+    | BIT_OPPOSITE search_condition"""
     if len(p) == 2:
         p[0] = p[1]
     elif p.slice[1].type == "LPAREN":
         p[0] = p[2]
     elif p.slice[2].type == "OR":
-        p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="OR", left=p[1], right=p[3])
+        p[0] = LogicalBinaryExpression(
+            p.lineno(1), p.lexpos(1), type="OR", left=p[1], right=p[3]
+        )
     elif p.slice[2].type == "AND":
-        p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="AND", left=p[1], right=p[3])
+        p[0] = LogicalBinaryExpression(
+            p.lineno(1), p.lexpos(1), type="AND", left=p[1], right=p[3]
+        )
     elif p.slice[2].type == 'bit_operation':
-        p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
+        p[0] = LogicalBinaryExpression(
+            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+        )
 
 
 def p_bit_operation(p):
     r"""bit_operation : BIT_AND
-                      | BIT_OR
-                      | BIT_XOR
-                      | BIT_MOVE_LEFT
-                      | BIT_MOVE_RIGHT"""
+    | BIT_OR
+    | BIT_XOR
+    | BIT_MOVE_LEFT
+    | BIT_MOVE_RIGHT"""
     p[0] = p[1]
 
 
 def p_boolean_term(p):
     r"""boolean_term : boolean_factor
-                     | LPAREN boolean_term RPAREN """
+    | LPAREN boolean_term RPAREN"""
     if len(p) == 2:
         p[0] = p[1]
     elif len(p) == 4 and p.slice[1].type == "LPAREN":
@@ -760,24 +877,26 @@ def p_boolean_test(p):
 
 def p_boolean_primary(p):
     r"""boolean_primary : predicate
-                        | value_expression"""
+    | value_expression"""
     p[0] = p[1]
 
 
 def p_predicate(p):
     r"""predicate : comparison_predicate
-                  | between_predicate
-                  | in_predicate
-                  | like_predicate
-                  | regexp_predicate
-                  | null_predicate
-                  | exists_predicate"""
+    | between_predicate
+    | in_predicate
+    | like_predicate
+    | regexp_predicate
+    | null_predicate
+    | exists_predicate"""
     p[0] = p[1]
 
 
 def p_comparison_predicate(p):
     r"""comparison_predicate : value_expression comparison_operator value_expression"""
-    p[0] = ComparisonExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
+    p[0] = ComparisonExpression(
+        p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+    )
 
 
 def p_between_predicate(p):
@@ -794,7 +913,7 @@ def p_in_predicate(p):
 
 def p_in_value(p):
     r"""in_value : LPAREN in_expressions RPAREN
-                 | subquery"""
+    | subquery"""
     if p.slice[1].type == "subquery":
         p[0] = p[1]
     else:
@@ -803,7 +922,7 @@ def p_in_value(p):
 
 def p_in_expressions(p):
     r"""in_expressions : value_expression
-                       | in_expressions COMMA value_expression"""
+    | in_expressions COMMA value_expression"""
     _item_list(p)
 
 
@@ -843,56 +962,60 @@ def p_value_expression(p):
 
 def p_numeric_value_expression(p):
     r"""numeric_value_expression : numeric_value_expression PLUS term
-                                 | numeric_value_expression MINUS term
-                                 | term"""
+    | numeric_value_expression MINUS term
+    | term"""
     if p.slice[1].type == "numeric_value_expression":
-        p[0] = ArithmeticBinaryExpression(p.lineno(1), p.lexpos(1),
-                                          type=p[2], left=p[1], right=p[3])
+        p[0] = ArithmeticBinaryExpression(
+            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+        )
     else:
         p[0] = p[1]
 
 
 def p_term(p):
     r"""term : term ASTERISK factor
-             | term SLASH factor
-             | term PERCENT factor
-             | term CONCAT factor
-             | factor"""
+    | term SLASH factor
+    | term PERCENT factor
+    | term CONCAT factor
+    | factor"""
     if p.slice[1].type == "factor":
         p[0] = p[1]
     else:
-        p[0] = ArithmeticBinaryExpression(p.lineno(1), p.lexpos(1),
-                                          type=p[2], left=p[1], right=p[3])
+        p[0] = ArithmeticBinaryExpression(
+            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+        )
 
 
 def p_factor(p):
     r"""factor : sign_opt primary_expression"""
     if p[1]:
-        p[0] = ArithmeticUnaryExpression(p.lineno(1), p.lexpos(1), value=p[2], sign=p[1])
+        p[0] = ArithmeticUnaryExpression(
+            p.lineno(1), p.lexpos(1), value=p[2], sign=p[1]
+        )
     else:
         p[0] = p[2]
 
 
 def p_primary_expression(p):
     r"""primary_expression : parenthetic_primary_expression
-                           | base_primary_expression"""
+    | base_primary_expression"""
     p[0] = p[1]
 
 
 def p_parenthetic_primary_expression(p):
     r"""parenthetic_primary_expression : LPAREN value_expression RPAREN
-                                       | LPAREN parenthetic_primary_expression RPAREN"""
+    | LPAREN parenthetic_primary_expression RPAREN"""
     p[0] = p[2]
 
 
 def p_base_primary_expression(p):
     r"""base_primary_expression : value
-                                | qualified_name
-                                | subquery
-                                | function_call
-                                | date_time
-                                | case_specification
-                                | cast_specification"""
+    | qualified_name
+    | subquery
+    | function_call
+    | date_time
+    | case_specification
+    | cast_specification"""
     if p.slice[1].type == "qualified_name":
         p[0] = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
     else:
@@ -901,11 +1024,11 @@ def p_base_primary_expression(p):
 
 def p_value(p):
     r"""value : NULL
-              | SCONST
-              | number
-              | boolean_value
-              | QUOTED_IDENTIFIER
-              | QM """
+    | SCONST
+    | number
+    | boolean_value
+    | QUOTED_IDENTIFIER
+    | QM"""
     if p.slice[1].type == "NULL":
         p[0] = NullLiteral(p.lineno(1), p.lexpos(1))
     elif p.slice[1].type == "SCONST" or p.slice[1].type == "QUOTED_IDENTIFIER":
@@ -916,44 +1039,55 @@ def p_value(p):
 
 def p_function_call(p):
     r"""function_call : qualified_name LPAREN call_args RPAREN
-                      | qualified_name LPAREN DISTINCT call_args RPAREN
-                      | CURRENT_DATE LPAREN RPAREN"""
+    | qualified_name LPAREN DISTINCT call_args RPAREN
+    | CURRENT_DATE LPAREN RPAREN"""
     if len(p) == 5:
-        distinct = p[3] is None or (isinstance(p[3], str) and p[3].upper() == "DISTINCT")
-        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], distinct=distinct, arguments=p[3])
+        distinct = p[3] is None or (
+            isinstance(p[3], str) and p[3].upper() == "DISTINCT"
+        )
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], distinct=distinct, arguments=p[3]
+        )
     elif len(p) == 4:
-        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[])
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[]
+        )
     else:
-        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], distinct=True, arguments=p[4])
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], distinct=True, arguments=p[4]
+        )
 
 
 def p_call_args(p):
     r"""call_args : call_list
-                  | empty_call_args"""
+    | empty_call_args"""
     p[0] = p[1]
 
 
 def p_empty_call_args(p):
     r"""empty_call_args : ASTERISK
-                        | empty"""
+    | empty"""
     p[0] = []
 
 
 def p_case_specification(p):
     r"""case_specification : simple_case
-                           | searched_case"""
+    | searched_case"""
     p[0] = p[1]
 
 
 def p_simple_case(p):
     r"""simple_case : CASE value_expression when_clauses else_opt END"""
-    p[0] = SimpleCaseExpression(p.lineno(1), p.lexpos(1),
-                                operand=p[2], when_clauses=p[3], default_value=p[4])
+    p[0] = SimpleCaseExpression(
+        p.lineno(1), p.lexpos(1), operand=p[2], when_clauses=p[3], default_value=p[4]
+    )
 
 
 def p_searched_case(p):
     r"""searched_case : CASE when_clauses else_opt END"""
-    p[0] = SearchedCaseExpression(p.lineno(1), p.lexpos(1), when_clauses=p[2], default_value=p[3])
+    p[0] = SearchedCaseExpression(
+        p.lineno(1), p.lexpos(1), when_clauses=p[2], default_value=p[3]
+    )
 
 
 def p_cast_specification(p):
@@ -963,7 +1097,7 @@ def p_cast_specification(p):
 
 def p_when_clauses(p):
     r"""when_clauses : when_clauses when_clause
-                     | when_clause"""
+    | when_clause"""
     if len(p) == 2:
         p[0] = [p[1]]
     elif isinstance(p[1], list):
@@ -980,13 +1114,13 @@ def p_when_clause(p):
 
 def p_else_clause(p):
     r"""else_opt : ELSE value_expression
-                 | empty"""
+    | empty"""
     p[0] = p[2] if p[1] else None
 
 
 def p_call_list(p):
     r"""call_list : call_list COMMA expression
-                  | expression"""
+    | expression"""
     _item_list(p)
 
 
@@ -1002,19 +1136,19 @@ def p_data_type(p):
 
 def p_type_param_list_opt(p):
     r"""type_param_list_opt : LPAREN type_param_list RPAREN
-                            | empty"""
+    | empty"""
     p[0] = p[2] if p[1] else p[1]
 
 
 def p_type_param_list(p):
     r"""type_param_list : type_param_list COMMA type_parameter
-                        | type_parameter"""
+    | type_parameter"""
     _item_list(p)
 
 
 def p_type_parameter(p):
     r"""type_parameter : integer
-                       | base_data_type"""
+    | base_data_type"""
     p[0] = p[1]
 
 
@@ -1025,79 +1159,79 @@ def p_base_data_type(p):
 
 def p_date_time(p):
     r"""date_time : CURRENT_DATE
-                  | CURRENT_TIME      integer_param_opt
-                  | CURRENT_TIMESTAMP integer_param_opt
-                  | LOCALTIME         integer_param_opt
-                  | LOCALTIMESTAMP    integer_param_opt"""
+    | CURRENT_TIME      integer_param_opt
+    | CURRENT_TIMESTAMP integer_param_opt
+    | LOCALTIME         integer_param_opt
+    | LOCALTIMESTAMP    integer_param_opt"""
     precision = p[2] if len(p) == 3 else None
     p[0] = CurrentTime(p.lineno(1), p.lexpos(1), type=p[1], precision=precision)
 
 
 def p_comparison_operator(p):
     r"""comparison_operator : EQ
-                            | NE
-                            | LT
-                            | LE
-                            | GT
-                            | GE"""
+    | NE
+    | LT
+    | LE
+    | GT
+    | GE"""
     p[0] = p[1]
 
 
 def p_as_opt(p):
     r"""as_opt : AS
-               | empty"""
+    | empty"""
     p[0] = p[1]
 
 
 def p_not_opt(p):
     r"""not_opt : NOT
-                | empty"""
+    | empty"""
     p[0] = p[1]
 
 
 def p_boolean_value(p):
     r"""boolean_value : TRUE
-                      | FALSE"""
+    | FALSE"""
     p[0] = BooleanLiteral(p.lineno(1), p.lexpos(1), value=p[1])
 
 
 def p_sign_opt(p):
     r"""sign_opt : sign
-                 | empty"""
+    | empty"""
     p[0] = p[1]
 
 
 def p_sign(p):
     r"""sign : PLUS
-             | MINUS"""
+    | MINUS"""
     p[0] = p[1]
 
 
 def p_integer_param_opt(p):
     """integer_param_opt : LPAREN integer RPAREN
-                         | LPAREN RPAREN
-                         | empty"""
+    | LPAREN RPAREN
+    | empty"""
     p[0] = int(p[2]) if len(p) == 4 else None
 
 
 def p_qualified_name(p):
     r"""qualified_name : qualified_name PERIOD qualified_name
-                       | identifier"""
+    | identifier"""
     parts = [p[1]] if len(p) == 2 else p[1].parts + p[3].parts
     p[0] = QualifiedName(parts=parts)
 
 
 def p_identifier(p):
     r"""identifier : IDENTIFIER
-                   | quoted_identifier
-                   | non_reserved
-                   | DIGIT_IDENTIFIER
-                   | ASTERISK"""
+    | quoted_identifier
+    | non_reserved
+    | DIGIT_IDENTIFIER
+    | ASTERISK"""
     p[0] = p[1]
 
 
 def p_non_reserved(p):
-    r"""non_reserved : NON_RESERVED """
+    r"""non_reserved : NON_RESERVED"""
     p[0] = p[1]
 
 
@@ -1108,7 +1242,7 @@ def p_quoted_identifier(p):
 
 def p_number(p):
     r"""number : DOUBLE
-               | integer"""
+    | integer"""
     if p.slice[1].type == "DOUBLE":
         p[0] = DoubleLiteral(p.lineno(1), p.lexpos(1), p[1])
     else:
@@ -1124,10 +1258,11 @@ def p_error(p):
     if p:
         stack_state_str = ' '.join([symbol.type for symbol in parser.symstack][1:])
 
-        print('Syntax error in input! Parser State:{} {} . {}'
-              .format(parser.state,
-                      stack_state_str,
-                      p))
+        print(
+            'Syntax error in input! Parser State:{} {} . {}'.format(
+                parser.state, stack_state_str, p
+            )
+        )
 
         err = SyntaxError()
         err.lineno = p.lineno
@@ -1137,7 +1272,7 @@ def p_error(p):
         try:
             text_lines = err.text.split("\n")
             line_lengths = [len(line) + 1 for line in text_lines]
-            err_line_offset = sum(line_lengths[:err.lineno - 1])
+            err_line_offset = sum(line_lengths[: err.lineno - 1])
 
             if err.lineno - 1 < len(text_lines):
                 err.line = text_lines[err.lineno - 1]
@@ -1147,11 +1282,14 @@ def p_error(p):
                 error_line = err.line + "\n" + pointer
             else:
                 error_line = ''
-        except Exception as e:
+        except Exception:
             raise SyntaxError("The current version does not support this SQL")
         if err.offset:
-            err.msg = ("The current version does not support this SQL %d (%s) \n %s"
-                       % (err.offset, str(err.token_value), error_line))
+            err.msg = "The current version does not support this SQL %d (%s) \n %s" % (
+                err.offset,
+                str(err.token_value),
+                error_line,
+            )
         else:
             err.msg = "The current version does not support this SQL"
 
@@ -1168,6 +1306,8 @@ def p_error(p):
 
 
 parser = yacc.yacc(tabmodule="parser_table", debugfile="parser.out")
-expression_parser = yacc.yacc(tabmodule="expression_parser_table",
-                              start="command",
-                              debugfile="expression_parser.out")
+expression_parser = yacc.yacc(
+    tabmodule="expression_parser_table",
+    start="command",
+    debugfile="expression_parser.out",
+)

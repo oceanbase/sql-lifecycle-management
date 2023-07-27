@@ -14,7 +14,9 @@ from .node import Node
 
 
 class SortItem(Node):
-    def __init__(self, line=None, pos=None, sort_key=None, ordering=None, null_ordering=None):
+    def __init__(
+        self, line=None, pos=None, sort_key=None, ordering=None, null_ordering=None
+    ):
         super(SortItem, self).__init__(line, pos)
         self.sort_key = sort_key
         self.ordering = ordering

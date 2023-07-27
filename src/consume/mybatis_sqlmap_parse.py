@@ -19,11 +19,11 @@ from src.consume.mybatis_xmlparse_base import MybatisXmlFile
 
 
 class MybatisXmlParser(object):
-    """ parse mybatis xml sqlmap file to a sql list
-        :param
-            file_name: mybatis sqlmap xml file name
-        :return
-            sql_list: sql list, {"line":'', "sql_id":"", "xml":"", "sql_text":"", "error_msg":""}
+    """parse mybatis xml sqlmap file to a sql list
+    :param
+        file_name: mybatis sqlmap xml file name
+    :return
+        sql_list: sql list, {"line":'', "sql_id":"", "xml":"", "sql_text":"", "error_msg":""}
     """
 
     def __init__(self):
@@ -39,7 +39,9 @@ class MybatisXmlParser(object):
         if not is_valid:
             raise ValueError(f"skip invalid mybatis xml file: {file_name}")
         elif not tree:
-            raise ValueError(f"load xml file content failed: {file_name} error: {error_msg}")
+            raise ValueError(
+                f"load xml file content failed: {file_name} error: {error_msg}"
+            )
         # parse xml
         sql_list = xml_parse.parse_xml_content(tree)
         return sql_list

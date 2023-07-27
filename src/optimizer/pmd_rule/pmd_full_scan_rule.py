@@ -10,7 +10,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-from src.parser.tree import *
+from src.parser.tree.literal import StringLiteral
+from src.parser.tree.statement import Statement
 from src.parser.tree.visitor import DefaultTraversalVisitor
 from .pmd_enum import PMDLevel
 from .pmd_result import PMDResultRule
@@ -57,15 +58,14 @@ class PMDFullScanRule(AbstractRewriteRule):
                     self.process(node.right, context)
                 return None
 
-            def visis_in_predicate(self,node,context):
+            def visis_in_predicate(self, node, context):
                 if node.is_not:
-                    node.is_not=None
-                    node.value=None
-                    node.value_list=None
+                    node.is_not = None
+                    node.value = None
+                    node.value_list = None
                 return None
 
             def visit_like_predicate(self, node, context):
-
                 process_flag = True
 
                 pattern = node.pattern
@@ -101,7 +101,6 @@ class PMDFullScanRule(AbstractRewriteRule):
                 return None
 
             def visit_like_predicate(self, node, context):
-
                 if node.pattern and node.value:
                     pattern = node.pattern
                     if isinstance(pattern, StringLiteral):
@@ -123,9 +122,9 @@ class PMDFullScanRule(AbstractRewriteRule):
                     node.subquery = None
 
             def visit_between_predicate(self, node, context):
-                if not node.is_not :
+                if not node.is_not:
                     self.match = False
-                
+
                 self.process(node.value, context)
                 self.process(node.min, context)
                 self.process(node.max, context)

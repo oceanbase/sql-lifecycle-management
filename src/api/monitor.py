@@ -9,163 +9,228 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
+from common.db_query import (
+    MonitorDBInfo,
+    check_monitor_database,
+    insert_monitor_database,
+)
 from flask_restful import reqparse
 
 from src.api.base_api import APIArgument, BaseAPI
-from src.common.db_query import *
 
 
 class TopSQL(BaseAPI):
-
     def __init__(self, *args, **kwargs):
         super(TopSQL, self).__init__(*args, **kwargs)
 
     def get(self):
         """
-            get top sql
-            ---
-            tags:
-              - Monitor
-            parameters:
-                - in: query
-                  name: databaseAlias
-                  type: string
-                  description: 数据库别名
-                  required: true
-                - in: query
-                  name: startTimeTs
-                  type: timestamp
-                  description: 开始时间
-                  required: true
-                - in: query
-                  name: endTimeTs
-                  type: timestamp
-                  description: 结束时间
-                  required: true
-                - in: query
-                  name: searchSQLText
-                  type: string
-                  description: SQL Text查询的内容
-                  required: false
-                - in: query
-                  name: searchName
-                  type: string
-                  description: 高级搜索的指标名
-                  required: false
-                - in: query
-                  name: searchSymbol
-                  type: string
-                  description: 高级搜索的符号
-                  required: false
-                - in: query
-                  name: searchContext
-                  type: string
-                  description: 高级搜索的内容
-                  required: false
-            responses:
-                200:
-                   description: get top sql result
+        get top sql
+        ---
+        tags:
+          - Monitor
+        parameters:
+            - in: query
+              name: databaseAlias
+              type: string
+              description: 数据库别名
+              required: true
+            - in: query
+              name: startTimeTs
+              type: timestamp
+              description: 开始时间
+              required: true
+            - in: query
+              name: endTimeTs
+              type: timestamp
+              description: 结束时间
+              required: true
+            - in: query
+              name: searchSQLText
+              type: string
+              description: SQL Text查询的内容
+              required: false
+            - in: query
+              name: searchName
+              type: string
+              description: 高级搜索的指标名
+              required: false
+            - in: query
+              name: searchSymbol
+              type: string
+              description: 高级搜索的符号
+              required: false
+            - in: query
+              name: searchContext
+              type: string
+              description: 高级搜索的内容
+              required: false
+        responses:
+            200:
+               description: get top sql result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
-        parser.add_argument('startTimeTs', required=True, help="startTimeTs cannot be blank!", type=int,
-                            location='args')
-        parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int, location='args')
+        parser.add_argument(
+            'databaseAlias',
+            required=True,
+            help="databaseAlias cannot be blank!",
+            location='args',
+        )
+        parser.add_argument(
+            'startTimeTs',
+            required=True,
+            help="startTimeTs cannot be blank!",
+            type=int,
+            location='args',
+        )
+        parser.add_argument(
+            'endTimeTs',
+            required=True,
+            help="endTimeTs cannot be blank!",
+            type=int,
+            location='args',
+        )
         parser.add_argument('searchSQLText', location='args')
-        parser.add_argument('searchName', choices=["sqlId", "userName", "clientIp", "executions", "elapsedTime",
-                                                   "cpuTime", "queueTime", "getplanTime", "totalWaitTime",
-                                                   "netwaitTime", "iowaitTime", "returnRows", "affectedRows",
-                                                   "logicalReads", "retryCnt", "failTimes", "rpcCount",
-                                                   "remotePlans", "missPlans"],
-                            help='''The searchName only supports "sqlId", "userName", "clientIp", "executions",
+        parser.add_argument(
+            'searchName',
+            choices=[
+                "sqlId",
+                "userName",
+                "clientIp",
+                "executions",
+                "elapsedTime",
+                "cpuTime",
+                "queueTime",
+                "getplanTime",
+                "totalWaitTime",
+                "netwaitTime",
+                "iowaitTime",
+                "returnRows",
+                "affectedRows",
+                "logicalReads",
+                "retryCnt",
+                "failTimes",
+                "rpcCount",
+                "remotePlans",
+                "missPlans",
+            ],
+            help='''The searchName only supports "sqlId", "userName", "clientIp", "executions",
                             "elapsedTime", "cpuTime", "queueTime", "getplanTime", "totalWaitTime", "netwaitTime",
                             "iowaitTime", "returnRows", "affectedRows", "logicalReads", "retryCnt", "failTimes",
-                            "rpcCount", "remotePlans", "missPlans"''', location='args')
-        parser.add_argument('searchSymbol', choices=["=", ">", ">=", "<", "<=", "!=", " like ", " not like "],
-                            help='''The searchName only supports "=", ">", ">=", "<", "<=", "!=", " like ", " not like " ''',
-                            location='args')
+                            "rpcCount", "remotePlans", "missPlans"''',
+            location='args',
+        )
+        parser.add_argument(
+            'searchSymbol',
+            choices=["=", ">", ">=", "<", "<=", "!=", " like ", " not like "],
+            help='''The searchName only supports "=", ">", ">=", "<", "<=", "!=", " like ", " not like " ''',
+            location='args',
+        )
         parser.add_argument('searchContext', location='args')
         args = parser.parse_args()
 
-        data = MonitorDBInfo().get_top_sql(database_alias=args['databaseAlias'], user_id=self.user_id,
-                                           start_time=args['startTimeTs'], end_time=args['endTimeTs'],
-                                           search_sql_text=args['searchSQLText'],
-                                           search_context=args['searchContext'], search_name=args['searchName'],
-                                           search_symbol=args['searchSymbol'])
+        data = MonitorDBInfo().get_top_sql(
+            database_alias=args['databaseAlias'],
+            user_id=self.user_id,
+            start_time=args['startTimeTs'],
+            end_time=args['endTimeTs'],
+            search_sql_text=args['searchSQLText'],
+            search_context=args['searchContext'],
+            search_name=args['searchName'],
+            search_symbol=args['searchSymbol'],
+        )
 
         return self.construct_success_response_entity(data=data)
 
 
 class SQLPlan(BaseAPI):
-
     def __init__(self, *args, **kwargs):
         super(SQLPlan, self).__init__(*args, **kwargs)
 
     def get(self):
         """
-            get sql plan
-            ---
-            tags:
-              - Monitor
-            parameters:
-                - in: query
-                  name: databaseAlias
-                  type: string
-                  description: 数据库别名
-                  required: true
-                - in: query
-                  name: sqlId
-                  type: string
-                  description: SQL ID
-                  required: true
-            responses:
-                200:
-                   description: get sql plan result
+        get sql plan
+        ---
+        tags:
+          - Monitor
+        parameters:
+            - in: query
+              name: databaseAlias
+              type: string
+              description: 数据库别名
+              required: true
+            - in: query
+              name: sqlId
+              type: string
+              description: SQL ID
+              required: true
+        responses:
+            200:
+               description: get sql plan result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
-        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!", location='args')
+        parser.add_argument(
+            'databaseAlias',
+            required=True,
+            help="databaseAlias cannot be blank!",
+            location='args',
+        )
+        parser.add_argument(
+            'sqlId', required=True, help="sqlId cannot be blank!", location='args'
+        )
         args = parser.parse_args()
 
-        data = MonitorDBInfo().get_sql_plan(database_alias=args['databaseAlias'], user_id=self.user_id,
-                                            sql_id=args['sqlId'])
+        data = MonitorDBInfo().get_sql_plan(
+            database_alias=args['databaseAlias'],
+            user_id=self.user_id,
+            sql_id=args['sqlId'],
+        )
 
         return self.construct_success_response_entity(data=data)
 
 
 class SQLText(BaseAPI):
-
     def __init__(self, *args, **kwargs):
         super(SQLText, self).__init__(*args, **kwargs)
 
     def get(self):
         """
-            get sql text
-            ---
-            tags:
-              - Monitor
-            parameters:
-                - in: query
-                  name: databaseAlias
-                  type: string
-                  description: 数据库别名
-                  required: true
-                - in: query
-                  name: sqlId
-                  type: string
-                  description: SQL ID
-                  required: true
-            responses:
-                200:
-                   description: get sql text result
+        get sql text
+        ---
+        tags:
+          - Monitor
+        parameters:
+            - in: query
+              name: databaseAlias
+              type: string
+              description: 数据库别名
+              required: true
+            - in: query
+              name: sqlId
+              type: string
+              description: SQL ID
+              required: true
+        responses:
+            200:
+               description: get sql text result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
-        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!", location='args')
+        parser.add_argument(
+            'databaseAlias',
+            required=True,
+            help="databaseAlias cannot be blank!",
+            location='args',
+        )
+        parser.add_argument(
+            'sqlId', required=True, help="sqlId cannot be blank!", location='args'
+        )
         args = parser.parse_args()
 
-        data = MonitorDBInfo().get_sql_text(database_alias=args['databaseAlias'], user_id=self.user_id,
-                                            sql_id=args['sqlId'])
+        data = MonitorDBInfo().get_sql_text(
+            database_alias=args['databaseAlias'],
+            user_id=self.user_id,
+            sql_id=args['sqlId'],
+        )
 
         if data:
             data = data[0]
@@ -176,192 +241,243 @@ class SQLText(BaseAPI):
 
 
 class SQLDetail(BaseAPI):
-
     def __init__(self, *args, **kwargs):
         super(SQLDetail, self).__init__(*args, **kwargs)
 
     def get(self):
         """
-            get sql detail
-            ---
-            tags:
-              - Monitor
-            parameters:
-                - in: query
-                  name: databaseAlias
-                  type: string
-                  description: 数据库别名
-                  required: true
-                - in: query
-                  name: sqlId
-                  type: string
-                  description: SQL ID
-                  required: true
-                - in: query
-                  name: startTimeTs
-                  type: timestamp
-                  description: 开始时间
-                  required: true
-                - in: query
-                  name: endTimeTs
-                  type: timestamp
-                  description: 结束时间
-                  required: true
-            responses:
-                200:
-                   description: get sql detail result
+        get sql detail
+        ---
+        tags:
+          - Monitor
+        parameters:
+            - in: query
+              name: databaseAlias
+              type: string
+              description: 数据库别名
+              required: true
+            - in: query
+              name: sqlId
+              type: string
+              description: SQL ID
+              required: true
+            - in: query
+              name: startTimeTs
+              type: timestamp
+              description: 开始时间
+              required: true
+            - in: query
+              name: endTimeTs
+              type: timestamp
+              description: 结束时间
+              required: true
+        responses:
+            200:
+               description: get sql detail result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
-        parser.add_argument('sqlId', required=True, help="sqlId cannot be blank!", location='args')
-        parser.add_argument('startTimeTs', required=True, help="startTimeTs cannot be blank!", type=int,
-                            location='args')
-        parser.add_argument('endTimeTs', required=True, help="endTimeTs cannot be blank!", type=int, location='args')
+        parser.add_argument(
+            'databaseAlias',
+            required=True,
+            help="databaseAlias cannot be blank!",
+            location='args',
+        )
+        parser.add_argument(
+            'sqlId', required=True, help="sqlId cannot be blank!", location='args'
+        )
+        parser.add_argument(
+            'startTimeTs',
+            required=True,
+            help="startTimeTs cannot be blank!",
+            type=int,
+            location='args',
+        )
+        parser.add_argument(
+            'endTimeTs',
+            required=True,
+            help="endTimeTs cannot be blank!",
+            type=int,
+            location='args',
+        )
         args = parser.parse_args()
 
-        data = MonitorDBInfo().get_sql_detail(database_alias=args['databaseAlias'], user_id=self.user_id,
-                                              sql_id=args['sqlId'], start_time=args['startTimeTs'],
-                                              end_time=args['endTimeTs'])
+        data = MonitorDBInfo().get_sql_detail(
+            database_alias=args['databaseAlias'],
+            user_id=self.user_id,
+            sql_id=args['sqlId'],
+            start_time=args['startTimeTs'],
+            end_time=args['endTimeTs'],
+        )
         return self.construct_success_response_entity(data=data)
 
 
 class TableIndex(BaseAPI):
-
     def __init__(self, *args, **kwargs):
         super(TableIndex, self).__init__(*args, **kwargs)
 
     def get(self):
         """
-            get table index
-            ---
-            tags:
-              - Monitor
-            parameters:
-                - in: query
-                  name: databaseAlias
-                  type: string
-                  description: 数据库别名
-                  required: true
-                - in: query
-                  name: tableName
-                  type: string
-                  description: 表名
-                  required: true
-            responses:
-                200:
-                   description: get table index result
+        get table index
+        ---
+        tags:
+          - Monitor
+        parameters:
+            - in: query
+              name: databaseAlias
+              type: string
+              description: 数据库别名
+              required: true
+            - in: query
+              name: tableName
+              type: string
+              description: 表名
+              required: true
+        responses:
+            200:
+               description: get table index result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
-        parser.add_argument('tableName', required=True, help="tableName cannot be blank!", location='args')
+        parser.add_argument(
+            'databaseAlias',
+            required=True,
+            help="databaseAlias cannot be blank!",
+            location='args',
+        )
+        parser.add_argument(
+            'tableName',
+            required=True,
+            help="tableName cannot be blank!",
+            location='args',
+        )
         args = parser.parse_args()
 
-        data = MonitorDBInfo().get_table_index(database_alias=args['databaseAlias'], user_id=self.user_id,
-                                               table_name=args['tableName'])
+        data = MonitorDBInfo().get_table_index(
+            database_alias=args['databaseAlias'],
+            user_id=self.user_id,
+            table_name=args['tableName'],
+        )
 
         return self.construct_success_response_entity(data=data)
 
 
 class TableStatistics(BaseAPI):
-
     def __init__(self, *args, **kwargs):
         super(TableStatistics, self).__init__(*args, **kwargs)
 
     def get(self):
         """
-            get table statistics
-            ---
-            tags:
-              - Monitor
-            parameters:
-                - in: query
-                  name: databaseAlias
-                  type: string
-                  description: 数据库别名
-                  required: true
-                - in: query
-                  name: tableName
-                  type: string
-                  description: 表名
-                  required: true
-            responses:
-                200:
-                   description: get table statistics result
+        get table statistics
+        ---
+        tags:
+          - Monitor
+        parameters:
+            - in: query
+              name: databaseAlias
+              type: string
+              description: 数据库别名
+              required: true
+            - in: query
+              name: tableName
+              type: string
+              description: 表名
+              required: true
+        responses:
+            200:
+               description: get table statistics result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!", location='args')
-        parser.add_argument('tableName', required=True, help="tableName cannot be blank!", location='args')
+        parser.add_argument(
+            'databaseAlias',
+            required=True,
+            help="databaseAlias cannot be blank!",
+            location='args',
+        )
+        parser.add_argument(
+            'tableName',
+            required=True,
+            help="tableName cannot be blank!",
+            location='args',
+        )
         args = parser.parse_args()
 
-        data = MonitorDBInfo().get_table_statistics(database_alias=args['databaseAlias'], user_id=self.user_id,
-                                                    table_name=args['tableName'])
+        data = MonitorDBInfo().get_table_statistics(
+            database_alias=args['databaseAlias'],
+            user_id=self.user_id,
+            table_name=args['tableName'],
+        )
 
         return self.construct_success_response_entity(data=data)
 
 
 class DatabaseConnectionCheck(BaseAPI):
-
     def __init__(self, *args, **kwargs):
         super(DatabaseConnectionCheck, self).__init__(*args, **kwargs)
 
     def post(self):
         """
-            database connection check
-            ---
-            tags:
-              - Monitor
-            parameters:
-                - in: body
-                  name: databaseAlias
-                  type: string
-                  description: 数据库别名
-                  required: true
-                - in: body
-                  name: databaseName
-                  type: string
-                  description: 数据库名称
-                  required: true
-                - in: body
-                  name: approveType
-                  type: string
-                  enum: ['pull', 'push', 'manual']
-                  description: 数据采集的授权方式
-                  required: true
-                - in: body
-                  name: approveScope
-                  type: string
-                  description: 数据采集的授权范围
-                  required: false
-                - in: body
-                  name: hostIp
-                  type: string
-                  description: DB服务器地址
-                  required: false
-                - in: body
-                  name: hostPort
-                  type: string
-                  description: DB服务器端口
-                  required: false
-                - in: body
-                  name: userName
-                  type: string
-                  description: DB连接用户名
-                  required: false
-                - in: body
-                  name: password
-                  type: string
-                  description: DB连接密码
-                  required: false
-            responses:
-                200:
-                   description: database connection check result
+        database connection check
+        ---
+        tags:
+          - Monitor
+        parameters:
+            - in: body
+              name: databaseAlias
+              type: string
+              description: 数据库别名
+              required: true
+            - in: body
+              name: databaseName
+              type: string
+              description: 数据库名称
+              required: true
+            - in: body
+              name: approveType
+              type: string
+              enum: ['pull', 'push', 'manual']
+              description: 数据采集的授权方式
+              required: true
+            - in: body
+              name: approveScope
+              type: string
+              description: 数据采集的授权范围
+              required: false
+            - in: body
+              name: hostIp
+              type: string
+              description: DB服务器地址
+              required: false
+            - in: body
+              name: hostPort
+              type: string
+              description: DB服务器端口
+              required: false
+            - in: body
+              name: userName
+              type: string
+              description: DB连接用户名
+              required: false
+            - in: body
+              name: password
+              type: string
+              description: DB连接密码
+              required: false
+        responses:
+            200:
+               description: database connection check result
         """
         parser = reqparse.RequestParser(argument_class=APIArgument, bundle_errors=True)
-        parser.add_argument('databaseAlias', required=True, help="databaseAlias cannot be blank!")
-        parser.add_argument('databaseName', required=True, help="databaseName cannot be blank!")
-        parser.add_argument('approveType', required=True,
-                            choices=["pull", "push", "manual"],
-                            help="approveType only supports pull/push/manual!")
+        parser.add_argument(
+            'databaseAlias', required=True, help="databaseAlias cannot be blank!"
+        )
+        parser.add_argument(
+            'databaseName', required=True, help="databaseName cannot be blank!"
+        )
+        parser.add_argument(
+            'approveType',
+            required=True,
+            choices=["pull", "push", "manual"],
+            help="approveType only supports pull/push/manual!",
+        )
         parser.add_argument('approveScope')
         parser.add_argument('hostIp')
         parser.add_argument('hostPort', type=int)
@@ -371,8 +487,13 @@ class DatabaseConnectionCheck(BaseAPI):
 
         approve_type = args['approveType']
         if approve_type and approve_type == 'pull':
-            if not args['approveScope'] or not args['hostIp'] or not args['hostPort'] \
-                    or not args['userName'] or not args['password']:
+            if (
+                not args['approveScope']
+                or not args['hostIp']
+                or not args['hostPort']
+                or not args['userName']
+                or not args['password']
+            ):
                 message = "When approveType != null, approveScope/hostIp/hostPort/userName/password is required"
                 return self.construct_error_response_entity(code=400, message=message)
             else:
@@ -383,12 +504,20 @@ class DatabaseConnectionCheck(BaseAPI):
                     password=args['password'],
                     database_name=args['databaseName'],
                     database_alias=args['databaseAlias'],
-                    user_id = self.user_id
+                    user_id=self.user_id,
                 )
 
                 if success:
-                    insert_monitor_database(args['databaseAlias'], self.user_id, approve_type, args['approveScope'],
-                                            args['hostIp'], args['hostPort'], args['userName'], args['password'])
+                    insert_monitor_database(
+                        args['databaseAlias'],
+                        self.user_id,
+                        approve_type,
+                        args['approveScope'],
+                        args['hostIp'],
+                        args['hostPort'],
+                        args['userName'],
+                        args['password'],
+                    )
 
                 data = {
                     "monitorUserCheckMessage": message,

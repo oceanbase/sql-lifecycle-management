@@ -28,46 +28,97 @@ log = Logger(logfile)
 
 # Mybatis
 MYBATIS_SINGLE_VALUE_CONDITION = (
-    "isEqual", "isNotEqual", "isEqualTo", "isGreaterThan", "isGreaterEqual", "isLessEqual", "isGreaterThanOrEqualTo",
-    "isLessThan", "isLessThanOrEqualTo", "isLike", "isLikeCaseInsensitive", "isNotEqualTo", "isNotLike",
-    "isNotLikeCaseInsensitive")
+    "isEqual",
+    "isNotEqual",
+    "isEqualTo",
+    "isGreaterThan",
+    "isGreaterEqual",
+    "isLessEqual",
+    "isGreaterThanOrEqualTo",
+    "isLessThan",
+    "isLessThanOrEqualTo",
+    "isLike",
+    "isLikeCaseInsensitive",
+    "isNotEqualTo",
+    "isNotLike",
+    "isNotLikeCaseInsensitive",
+)
 MYBATIS_UNARY_CONDITIONAL = (
-    "isPropertyAvailable", "isNotPropertyAvailable", "isNull", "isNotNull", "isEmpty", "isNotEmpty")
+    "isPropertyAvailable",
+    "isNotPropertyAvailable",
+    "isNull",
+    "isNotNull",
+    "isEmpty",
+    "isNotEmpty",
+)
 QUERY_TYPE = ("select", "update", "insert", "delete")
 BLACKLIST_KEYWORD = (
-    "wherecase", "groupbycase", "criteria", "criterion", "__cdt__", "if(", "$tableSuffix$", "${dynamicSelect}",
-    "over(partition", "onduplicatekeyupdate")
+    "wherecase",
+    "groupbycase",
+    "criteria",
+    "criterion",
+    "__cdt__",
+    "if(",
+    "$tableSuffix$",
+    "${dynamicSelect}",
+    "over(partition",
+    "onduplicatekeyupdate",
+)
 GENERATED_KEYWORD = ("@mbg", "generated", "auto-generation")
 
 # Mybatis regex
-MYBATIS3_VAR_DYNAMIC_RE0 = re.compile(r"\$\{([\w\.\,=\s:\(\)]+?)\}\[\]([.\w]+)?", flags=re.IGNORECASE)  # ${}[].xx
-MYBATIS3_VAR_DYNAMIC_RE01 = re.compile(r"\$\{([\w\.\,=\s:\(\)]+?)\}", flags=re.IGNORECASE)  # ${}
-MYBATIS3_VAR_DYNAMIC_RE02 = re.compile(r"\$([\w\.\,=\s:\(\)]+?)\$", flags=re.IGNORECASE)  # $xx$
-MYBATIS3_VAR_DYNAMIC_RE1 = re.compile(r"\#([\w\.\,=\s:\(\)\"]+?)\[\]([.\w]+)?\#", flags=re.IGNORECASE)  # #xxx[].xx#
-MYBATIS3_VAR_DYNAMIC_RE2 = re.compile(r"\#([\w\.\,=\s:\(\)\"]+?)\#", flags=re.IGNORECASE)  # #xxx#
+MYBATIS3_VAR_DYNAMIC_RE0 = re.compile(
+    r"\$\{([\w\.\,=\s:\(\)]+?)\}\[\]([.\w]+)?", flags=re.IGNORECASE
+)  # ${}[].xx
+MYBATIS3_VAR_DYNAMIC_RE01 = re.compile(
+    r"\$\{([\w\.\,=\s:\(\)]+?)\}", flags=re.IGNORECASE
+)  # ${}
+MYBATIS3_VAR_DYNAMIC_RE02 = re.compile(
+    r"\$([\w\.\,=\s:\(\)]+?)\$", flags=re.IGNORECASE
+)  # $xx$
+MYBATIS3_VAR_DYNAMIC_RE1 = re.compile(
+    r"\#([\w\.\,=\s:\(\)\"]+?)\[\]([.\w]+)?\#", flags=re.IGNORECASE
+)  # #xxx[].xx#
+MYBATIS3_VAR_DYNAMIC_RE2 = re.compile(
+    r"\#([\w\.\,=\s:\(\)\"]+?)\#", flags=re.IGNORECASE
+)  # #xxx#
 MYBATIS_VAR_RE = re.compile(r"\#([\{\}\w\[\]\.\,=\s:\(\)\"]+?)\#", flags=re.IGNORECASE)
-MYBATIS3_VAR_RE = re.compile(r"\#\{([\{\}\w\[\]\.\,=\s:\(\)\"]+?)\}", flags=re.IGNORECASE)
+MYBATIS3_VAR_RE = re.compile(
+    r"\#\{([\{\}\w\[\]\.\,=\s:\(\)\"]+?)\}", flags=re.IGNORECASE
+)
 SORT_METADATA_RE = re.compile(r"\$(\S*):METADATA\$", flags=re.IGNORECASE)
 PAGEDIRECTION_SQLKEYWORD = re.compile(r"\$(\S*):SQLKEYWORD\$", flags=re.IGNORECASE)
 REVERT_COMMENT_RE = re.compile(r"(-- .*?;)", flags=re.IGNORECASE)
 REMOVE_COMMENT_RE = re.compile(r"(-- ?\S*)", flags=re.IGNORECASE)
 FIX_DYNAMIC_TABLENAME = re.compile(r"\s+from\s+\"(\S*)\"", flags=re.IGNORECASE)
-FIX_DYNAMIC_WHERE_RE = re.compile(r"\s+where\s+((and)|(or))", flags=re.IGNORECASE | re.MULTILINE)
+FIX_DYNAMIC_WHERE_RE = re.compile(
+    r"\s+where\s+((and)|(or))", flags=re.IGNORECASE | re.MULTILINE
+)
 FIX_DYNAMIC_AND_RE = re.compile(r"\(\s*and ", flags=re.IGNORECASE)
 FIX_DYNAMIC_OR_RE = re.compile(r"\(\s*or ", flags=re.IGNORECASE)
 FIX_DYNAMIC_ORDER_BY_RE = re.compile(r"order\s+by\s+(.*)", flags=re.IGNORECASE)
 FIX_NESTED_PREFIXOVERRIDE_RE = re.compile(r"\(\s*,", flags=re.IGNORECASE | re.MULTILINE)
-FIX_AND_AND_RE = re.compile(r"((and)|(,))\s+((and)|(,))", flags=re.IGNORECASE | re.MULTILINE)
+FIX_AND_AND_RE = re.compile(
+    r"((and)|(,))\s+((and)|(,))", flags=re.IGNORECASE | re.MULTILINE
+)
 LIMIT_RE = re.compile(r'\s+limit\s+(".*")', flags=re.IGNORECASE)
 OFFSET_RE = re.compile(r'\s+offset\s+(".*")', flags=re.IGNORECASE)
-LIMIT_OFFSET_RE = re.compile(r'\s+limit\s+(--.*;)?\s*(\".*?\")\s*,\s*(--.*;)?\W*(\".*?\")',
-                             flags=re.IGNORECASE | re.MULTILINE)
-LIMIT_OFFSET_RE2 = re.compile(r'\s+limit\s+(--.*;)?\s*(.*?)\s*,\s*(--.*;)?\W*(\".*?\")',
-                              flags=re.IGNORECASE | re.MULTILINE)
+LIMIT_OFFSET_RE = re.compile(
+    r'\s+limit\s+(--.*;)?\s*(\".*?\")\s*,\s*(--.*;)?\W*(\".*?\")',
+    flags=re.IGNORECASE | re.MULTILINE,
+)
+LIMIT_OFFSET_RE2 = re.compile(
+    r'\s+limit\s+(--.*;)?\s*(.*?)\s*,\s*(--.*;)?\W*(\".*?\")',
+    flags=re.IGNORECASE | re.MULTILINE,
+)
 GBK_FIX_RE = re.compile(r'\s+using\s+gbk', flags=re.IGNORECASE)
-ORACLE_FOR_UPDATE_NOWAIT_FIX_RE = re.compile(r'(for\s+update(\s+(no)?[_]?wait)?(\s+[\d.])?)', flags=re.IGNORECASE)
+ORACLE_FOR_UPDATE_NOWAIT_FIX_RE = re.compile(
+    r'(for\s+update(\s+(no)?[_]?wait)?(\s+[\d.])?)', flags=re.IGNORECASE
+)
 ORACLE_UPSERT_FIX_RE = re.compile(r'\s+upsert ', flags=re.IGNORECASE)
-ORACLE_DELETE_FROM_ORDER_BY_FIX_RE = re.compile(r'(ORDER BY.*)$', flags=re.IGNORECASE | re.MULTILINE)
+ORACLE_DELETE_FROM_ORDER_BY_FIX_RE = re.compile(
+    r'(ORDER BY.*)$', flags=re.IGNORECASE | re.MULTILINE
+)
 PREPEND_SET_FIX_RE = re.compile(r'\s+set\s+,', flags=re.IGNORECASE)
 HINT_EXT_RE = re.compile(r'(/\*\+ index.*?\*/)', flags=re.IGNORECASE)
 COUNT_DOT_FIX_RE = re.compile(r'(count\(\S+.\*\))', flags=re.IGNORECASE)
@@ -126,19 +177,25 @@ def replace_or_rm_el_from_tree(elem: ElementTree, replace_el: ElementTree = None
         parent.text = "" if not parent.text else parent.text
         parent.text += replace_el.text if replace_el is not None else ""
     else:
-        parent.getchildren()[el_index - 1].tail += replace_el.text if replace_el is not None else ""
+        parent.getchildren()[el_index - 1].tail += (
+            replace_el.text if replace_el is not None else ""
+        )
     if replace_el is not None:
         for child in reversed(replace_el.getchildren()):
             last_child = deepcopy(child)
             parent.insert(el_index, last_child)
             last_index_of_inserted_replace_el += 1
         if last_index_of_inserted_replace_el >= 1:
-            parent.getchildren()[last_index_of_inserted_replace_el - 1].tail += replace_el.tail or ""
+            parent.getchildren()[last_index_of_inserted_replace_el - 1].tail += (
+                replace_el.tail or ""
+            )
     if el_index == 0 and el_index == last_index_of_inserted_replace_el:
         parent.text += elem.tail or ""
     elif not elem_tail_inserted and last_index_of_inserted_replace_el >= 1:
         # append tail of include tag to last inserted el, because include tag usually do not have text, text is not added here
-        parent.getchildren()[last_index_of_inserted_replace_el - 1].tail += elem.tail or ""
+        parent.getchildren()[last_index_of_inserted_replace_el - 1].tail += (
+            elem.tail or ""
+        )
 
 
 def strip_parse_uid(sql: str):
@@ -228,12 +285,18 @@ def parse_eltree_to_text(tree: ElementTree, query_type):
 
         if elem.tag in ("where", "set"):
             if elem.tag == "set":
-                if elem.getchildren() and elem.getchildren()[-1].text.strip().endswith(",") and not elem.getchildren()[
-                    -1].tail.strip():
-                    elem.getchildren()[-1].text \
-                        = elem.getchildren()[-1].text.strip()[:-1] + "\n"  # remove last comma in dynamic sql
+                if (
+                    elem.getchildren()
+                    and elem.getchildren()[-1].text.strip().endswith(",")
+                    and not elem.getchildren()[-1].tail.strip()
+                ):
+                    elem.getchildren()[-1].text = (
+                        elem.getchildren()[-1].text.strip()[:-1] + "\n"
+                    )  # remove last comma in dynamic sql
                 if elem.text.strip().endswith(","):
-                    elem.text = elem.text.strip()[:-1] + "\n"  # remove last comma in dynamic sql
+                    elem.text = (
+                        elem.text.strip()[:-1] + "\n"
+                    )  # remove last comma in dynamic sql
                 if not elem.text.strip().endswith(",") and len(elem.getchildren()) > 0:
                     elem.text += ","
 
@@ -241,11 +304,26 @@ def parse_eltree_to_text(tree: ElementTree, query_type):
             res += elem.text or ""
         elif elem.tag == query_type:
             res += elem.text or ""
-        elif elem.tag in [*MYBATIS_UNARY_CONDITIONAL, *MYBATIS_SINGLE_VALUE_CONDITION, "if", "when", "dynamic"]:
-            res += (elem.get("prepend", "") + " " + elem.get("open", "") + " " + (elem.text or ""))
+        elif elem.tag in [
+            *MYBATIS_UNARY_CONDITIONAL,
+            *MYBATIS_SINGLE_VALUE_CONDITION,
+            "if",
+            "when",
+            "dynamic",
+        ]:
+            res += (
+                elem.get("prepend", "")
+                + " "
+                + elem.get("open", "")
+                + " "
+                + (elem.text or "")
+            )
 
             # handle multiple ele in elem, prepend need to be apply to each of them
-            if elem.get("prepend", "").strip().upper() in ["AND", "OR"] and len(elem.getchildren()) > 1:
+            if (
+                elem.get("prepend", "").strip().upper() in ["AND", "OR"]
+                and len(elem.getchildren()) > 1
+            ):
                 first_el_prefend = True
                 for el in elem.getchildren():
                     if not first_el_prefend:
@@ -267,7 +345,14 @@ def parse_eltree_to_text(tree: ElementTree, query_type):
                 else:
                     res += elem.get("close") + " "
         elif elem.tag in ("iterate", "foreach"):
-            res += (elem.get("prepend", "") + " " + elem.get("open", "") + " " + f"{elem.text or ''}" + " ")
+            res += (
+                elem.get("prepend", "")
+                + " "
+                + elem.get("open", "")
+                + " "
+                + f"{elem.text or ''}"
+                + " "
+            )
             if len(elem) > 0 and not first_ele_it_self and stack and stack[-1]:
                 tail_stack[-1] = elem.get("close", "") + tail_stack[-1]
             else:
@@ -275,10 +360,15 @@ def parse_eltree_to_text(tree: ElementTree, query_type):
         elif elem.tag in ("trim",):
             if elem.get("prefixOverrides"):
                 for fix in elem.get("prefixOverrides").split("|"):
-                    if elem.getchildren() and elem.getchildren()[0].text.strip().startswith(fix.strip()):
-                        elem.getchildren()[0].text = elem.getchildren()[0].text.strip() \
-                            .replace(fix, " ", 1)  # equals rreplace
-                    elif not elem.getchildren() and elem.text.strip().startswith(fix.strip()):
+                    if elem.getchildren() and elem.getchildren()[
+                        0
+                    ].text.strip().startswith(fix.strip()):
+                        elem.getchildren()[0].text = (
+                            elem.getchildren()[0].text.strip().replace(fix, " ", 1)
+                        )  # equals rreplace
+                    elif not elem.getchildren() and elem.text.strip().startswith(
+                        fix.strip()
+                    ):
                         elem.text = elem.text.strip().replace(fix, " ", 1)
             res += elem.get("prefix", "") + " "
             if elem.get("suffixOverrides"):
@@ -294,13 +384,13 @@ def parse_eltree_to_text(tree: ElementTree, query_type):
 
                     if tail and tail.strip().endswith(fix):
                         # trim last element tail
-                        tail = tail[:-len(fix)]
+                        tail = tail[: -len(fix)]
                     elif tail:
                         # has tail but not end with fix
                         pass
                     elif text and text.strip().endswith(fix):
                         # trim last element text
-                        text = text[:-len(fix)]
+                        text = text[: -len(fix)]
 
             res += (elem.text or "") + " "
             if elem.get("suffix"):
@@ -312,7 +402,7 @@ def parse_eltree_to_text(tree: ElementTree, query_type):
                 else:
                     res += elem.get("suffix", "") + " "
         elif elem.tag == "include":
-            res += (elem.get("refid"))
+            res += elem.get("refid")
         else:
             res += elem.text or ""
 
@@ -367,7 +457,9 @@ def match_include_reference(tree: ElementTree, namespace, include_sql_dict):
                 # because only the processing of a single xml file is currently supported,
                 # all sqlmaps will not be scanned,
                 # so the include references across namespaces cannot be processed
-                log.error(f"refid not found include tag, maybe reference to other namespace: {elem.attrib}")
+                log.error(
+                    f"refid not found include tag, maybe reference to other namespace: {elem.attrib}"
+                )
                 raise NotImplementedError("refid not found include tag")
         if elem.tag == "selectkey":
             replace_or_rm_el_from_tree(elem)
@@ -394,7 +486,7 @@ def convert_sqltext_mybatis_syntax(sql_str):
         GROUP BY cluster
     </select>
 
-	field value parameterization:
+        field value parameterization:
     <select id="selectColumns" resultType="entity.Column">
         SELECT COLUMN_NAME, DATA_TYPE
         FROM INFORMATION_SCHEMA.COLUMNS
@@ -418,17 +510,26 @@ def convert_sqltext_mybatis_syntax(sql_str):
             if len(parts) > 1:
                 group_1 = parts[0]
                 after_group_by += "".join(group_1[1:])
-        if ("$" in group_1
-            or "#" in group_1
-            or "{" in group_1) \
-                and not group_1.endswith(",") \
-                and not ("desc" in group_1 or "asc" in group_1):
-            sql_str = re.sub(FIX_DYNAMIC_ORDER_BY_RE,
-                             f" order by sort_column desc -- in xml it's not desc; {after_group_by}", sql_str)
+        if (
+            ("$" in group_1 or "#" in group_1 or "{" in group_1)
+            and not group_1.endswith(",")
+            and not ("desc" in group_1 or "asc" in group_1)
+        ):
+            sql_str = re.sub(
+                FIX_DYNAMIC_ORDER_BY_RE,
+                f" order by sort_column desc -- in xml it's not desc; {after_group_by}",
+                sql_str,
+            )
 
     # dynamic sql types that need to be skipped
-    skip_relist = [MYBATIS3_VAR_DYNAMIC_RE0, MYBATIS3_VAR_DYNAMIC_RE01, MYBATIS3_VAR_DYNAMIC_RE02,
-                   MYBATIS3_VAR_DYNAMIC_RE1, MYBATIS3_VAR_DYNAMIC_RE2, FIX_DYNAMIC_TABLENAME]
+    skip_relist = [
+        MYBATIS3_VAR_DYNAMIC_RE0,
+        MYBATIS3_VAR_DYNAMIC_RE01,
+        MYBATIS3_VAR_DYNAMIC_RE02,
+        MYBATIS3_VAR_DYNAMIC_RE1,
+        MYBATIS3_VAR_DYNAMIC_RE2,
+        FIX_DYNAMIC_TABLENAME,
+    ]
     for per_re in skip_relist:
         m = re.search(per_re, sql_str)
         if m:
@@ -484,20 +585,28 @@ def parse_mybatis_xml_tree(tree: ElementTree(), include_sql_dict):
     sql_list = []
     for query_type in QUERY_TYPE:
         for query in tree.findall(query_type):
-            query_info = {"query_info": {**dict(query.attrib), **{"query_type": str(query.tag)}}}
+            query_info = {
+                "query_info": {**dict(query.attrib), **{"query_type": str(query.tag)}}
+            }
             sql_id = query_info.get('query_info', {}).get('id', 'unknow')
             try:
-                sql_text, error_msg = single_query_parse(namespace, include_sql_dict, query, query_type)
-                formatted_xml = tostring(query, pretty_print=True, encoding="utf-8").decode()
+                sql_text, error_msg = single_query_parse(
+                    namespace, include_sql_dict, query, query_type
+                )
+                formatted_xml = tostring(
+                    query, pretty_print=True, encoding="utf-8"
+                ).decode()
                 res_json = {
                     "line": f"{query.sourceline}",  # orig
-                    "xml": str(formatted_xml),  # include (one layer), the formatted mapper xml
+                    "xml": str(
+                        formatted_xml
+                    ),  # include (one layer), the formatted mapper xml
                     "sql_id": sql_id,
                     "sql_text": sql_text,
-                    "error_msg": error_msg
+                    "error_msg": error_msg,
                 }
                 sql_list.append(res_json)
-            except (NotImplementedError, ValueError) as e:
+            except (NotImplementedError, ValueError):
                 pass
             except Exception as e:
                 log.exception(e)
@@ -523,10 +632,15 @@ class MybatisXmlFile(object):
         exclude unsupported xml formats
         :return: bool
         """
-        if "template" in self.file_name.lower() \
-                or "-INF" in self.file_name \
-                or "pom.xml" in self.file_name \
-                or (("da" not in self.file_name.lower()) and ("map" not in self.file_name.lower())):
+        if (
+            "template" in self.file_name.lower()
+            or "-INF" in self.file_name
+            or "pom.xml" in self.file_name
+            or (
+                ("da" not in self.file_name.lower())
+                and ("map" not in self.file_name.lower())
+            )
+        ):
             return False
         return True
 
@@ -551,7 +665,7 @@ class MybatisXmlFile(object):
                 try:
                     if read_encoding == 'gbk':
                         # prevent xxe
-                        parser = etree.XMLParser(resolve_entities=False,encoding='gbk')
+                        parser = etree.XMLParser(resolve_entities=False, encoding='gbk')
                         tree = etree.parse(f, parser=parser)
                     else:
                         # prevent xxe

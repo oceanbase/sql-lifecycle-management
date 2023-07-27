@@ -9,7 +9,11 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
-from src.parser.tree import *
+from src.parser.tree.expression import QualifiedNameReference
+from src.parser.tree.qualified_name import QualifiedName
+from src.parser.tree.select_item import SingleColumn
+from src.parser.tree.statement import Query, Statement
+from src.parser.tree.table import Table
 from src.parser.tree.visitor import DefaultTraversalVisitor
 from ..abstract_rule import AbstractRewriteRule
 
@@ -38,9 +42,11 @@ class RewriteSupplementColumnRule(AbstractRewriteRule):
 
             def visit_select(self, node, context):
                 for item in node.select_items:
-                    if isinstance(item, SingleColumn) \
-                            and isinstance(item.expression, QualifiedNameReference) \
-                            and isinstance(item.expression.name, QualifiedName):
+                    if (
+                        isinstance(item, SingleColumn)
+                        and isinstance(item.expression, QualifiedNameReference)
+                        and isinstance(item.expression.name, QualifiedName)
+                    ):
                         parts = item.expression.name.parts
                         for part in parts:
                             if part == '*':
@@ -61,7 +67,6 @@ class RewriteSupplementColumnRule(AbstractRewriteRule):
         return False
 
     def match_action(self, root: Query, catalog=None):
-
         class Visitor(DefaultTraversalVisitor):
             def __init__(self, catalog_table_list):
                 self.catalog_table_list = catalog_table_list
@@ -90,18 +95,19 @@ class RewriteSupplementColumnRule(AbstractRewriteRule):
                         table_name = parts[0]
                     else:
                         table_name = parts[1]
-                    self.alias_list.append({
-                        'alias': alias[1],
-                        'table_name': table_name
-                    })
+                    self.alias_list.append(
+                        {'alias': alias[1], 'table_name': table_name}
+                    )
                 return self.process(node.relation, context)
 
             def visit_select(self, node, context):
                 projection_column_list = []
                 for item in node.select_items:
-                    if isinstance(item, SingleColumn) \
-                            and isinstance(item.expression, QualifiedNameReference) \
-                            and isinstance(item.expression.name, QualifiedName):
+                    if (
+                        isinstance(item, SingleColumn)
+                        and isinstance(item.expression, QualifiedNameReference)
+                        and isinstance(item.expression.name, QualifiedName)
+                    ):
                         parts = item.expression.name.parts
                         if len(parts) == 1 and parts[0] == '*':
                             table_name = self.table_list[0]
@@ -110,8 +116,14 @@ class RewriteSupplementColumnRule(AbstractRewriteRule):
                                     column_list = catalog_table.column_list
                                     for column in column_list:
                                         projection_column_list.append(
-                                            SingleColumn(expression=QualifiedNameReference(
-                                                name=QualifiedName.of(column.column_name))))
+                                            SingleColumn(
+                                                expression=QualifiedNameReference(
+                                                    name=QualifiedName.of(
+                                                        column.column_name
+                                                    )
+                                                )
+                                            )
+                                        )
 
                         elif len(parts) == 2 and parts[1] == '*' and self.alias_list:
                             table_name = self.alias_list[0]['table_name']
@@ -121,8 +133,14 @@ class RewriteSupplementColumnRule(AbstractRewriteRule):
                                     column_list = catalog_table.column_list
                                     for column in column_list:
                                         projection_column_list.append(
-                                            SingleColumn(expression=QualifiedNameReference(
-                                                name=QualifiedName.of(alias + '.' + column.column_name))))
+                                            SingleColumn(
+                                                expression=QualifiedNameReference(
+                                                    name=QualifiedName.of(
+                                                        alias + '.' + column.column_name
+                                                    )
+                                                )
+                                            )
+                                        )
                         else:
                             projection_column_list.append(item)
                     else:

@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import os
 import sys
 
-from src.common.const import *
+from src.common.const import DB_CONNECT_RETRY
 from src.common.db_pool import ConnDBOperate
 from src.common.db_query import DealMetaDBInfo
 from src.common.logger import Logger
@@ -25,8 +25,8 @@ log = Logger(log_file)
 table_rows_limit = 100000
 
 
-class DealUserInfoOceanbase():
-    """ read approved data from user database-oceanbase """
+class DealUserInfoOceanbase:
+    """read approved data from user database-oceanbase"""
 
     def __init__(self, conn_info, get_retry):
         self.conn_info = conn_info
@@ -47,7 +47,9 @@ class DealUserInfoOceanbase():
             tenant_id,tenant_name 
             FROM {tenant_db} 
             WHERE tenant_id >= 1000
-            '''.format(tenant_db=tenant_db)
+            '''.format(
+                tenant_db=tenant_db
+            )
             result = self.db_conn.func_select_storedb(check_sql)
             if result:
                 for per_tnt in result:
@@ -84,7 +86,9 @@ class DealUserInfoOceanbase():
             GROUP BY a.tenant_id,a.database_id,a.table_id,a.table_name
             HAVING sum(b.row_cnt)>{table_rows_limit}
             ORDER BY a.tenant_id,a.database_id,a.table_id,a.table_name;
-            '''.format(table_stat=table_stat, table_rows_limit=table_rows_limit)
+            '''.format(
+                table_stat=table_stat, table_rows_limit=table_rows_limit
+            )
             result = self.db_conn.func_select_storedb(check_sql)
             if result:
                 rt_list = list(result)
@@ -127,8 +131,9 @@ class DealUserInfoOceanbase():
             and b.column_name not like '%__substr%'
              and a.table_id={table_id}
             GROUP BY b.column_name
-            ORDER BY b.column_name'''.format(column_statistic_table=column_statistic_table,
-                                             table_id=table_id)
+            ORDER BY b.column_name'''.format(
+                column_statistic_table=column_statistic_table, table_id=table_id
+            )
             result = self.db_conn.func_select_storedb(check_sql)
             if result:
                 rt_list = list(result)
@@ -139,13 +144,13 @@ class DealUserInfoOceanbase():
     def disconn_storedb(self):
         try:
             self.db_conn.disconn_storedb()
-        except Exception as e:
+        except Exception:
             pass
 
 
 def schedule_statistics_ob(db_conf):
     """
-        get sql plan from oceanbase
+    get sql plan from oceanbase
     """
     db_id = db_conf['db_id']
     # connect user oceanbase and metadb
@@ -167,11 +172,13 @@ def schedule_statistics_ob(db_conf):
             (
                 '{db_id}', '{table_name}', '{column_name}', '{ndv_count}', '{table_rows}', now()
             )
-            '''.format(db_id=db_id,
-                       table_name=table_name,
-                       column_name=column_name,
-                       ndv_count=baseline[table_name][column_name]['ndv_count'],
-                       table_rows=baseline[table_name][column_name]['table_rows'])
+            '''.format(
+                db_id=db_id,
+                table_name=table_name,
+                column_name=column_name,
+                ndv_count=baseline[table_name][column_name]['ndv_count'],
+                table_rows=baseline[table_name][column_name]['table_rows'],
+            )
             result_list.append(update_sql)
     if result_list:
         meta_conn.func_write_storedb(result_list)
@@ -196,7 +203,9 @@ def deal(user_conn, baseline):
             table_name = per_tab['table_name']
             table_rows = per_tab['table_rows']
             db_name = db_dict[database_id]
-            if db_name.lower().startswith('__recycle_') or db_name.lower().startswith('recycle_'):
+            if db_name.lower().startswith('__recycle_') or db_name.lower().startswith(
+                'recycle_'
+            ):
                 continue
             if table_name not in baseline:
                 baseline[table_name] = {}
@@ -210,8 +219,10 @@ def deal(user_conn, baseline):
                     # If the local baseline ndv is less than or equal to the current value,
                     # and the number of rows in the local baseline value table is less than the current value,
                     # it will be updated. The larger the cardinality of the table, the more representative it is
-                    if baseline[table_name][column_name]['ndv_count'] <= ndv_count \
-                            and baseline[table_name][column_name]['table_rows'] < table_rows:
+                    if (
+                        baseline[table_name][column_name]['ndv_count'] <= ndv_count
+                        and baseline[table_name][column_name]['table_rows'] < table_rows
+                    ):
                         update_mark = 1
                 else:
                     # If the local baseline does not have this value, update

@@ -1,0 +1,39 @@
+on: [push, pull_request]
+name: Python Linting
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install format and lint package
+        run: |
+          pip install --upgrade pip
+          pip install black ruff
+      - name: Run format check
+        run: |
+          formatted=0
+          {
+            python3.8 -m black --check --diff .
+            formatted="$?"
+          }||{
+            formatted=1
+          }
+          {
+            python3.8 -m ruff .
+          }||{
+            formatted=1
+          }
+          if [[ "${formatted}" -eq 1 ]]
+          then
+            echo "code format error, please run the following commands:"
+            echo " pip install black ruff "
+            echo " black . & ruff check --fix ."
+            echo "You can also install pre_commit, which checks whether your code meets the coding standards before committing it"  
+            exit 1
+          fi
+          

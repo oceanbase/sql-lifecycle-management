@@ -16,15 +16,15 @@ from src.optimizer.optimizer_enum import IndexType
 
 
 class Catalog(object):
-
     def __init__(self, table_list: List, statistics_list: List):
         self.table_list = table_list
         self.statistics_list = statistics_list
 
 
 class Table(object):
-
-    def __init__(self, database_name, table_name, column_list: List, index_list: List, table_rows):
+    def __init__(
+        self, database_name, table_name, column_list: List, index_list: List, table_rows
+    ):
         self.table_name = table_name
         self.database_name = database_name
         self.column_list = column_list
@@ -40,9 +40,16 @@ class Column(object):
 
 
 class Index(object):
-
-    def __init__(self, index_name, column_list: List, index_type: IndexType, index_all_match=None, index_back=None,
-                 extract_range=None, has_interesting_order=None):
+    def __init__(
+        self,
+        index_name,
+        column_list: List,
+        index_type: IndexType,
+        index_all_match=None,
+        index_back=None,
+        extract_range=None,
+        has_interesting_order=None,
+    ):
         self.index_name = index_name
         self.column_list = column_list
         self.column_count = len(column_list)
@@ -54,7 +61,6 @@ class Index(object):
 
 
 class Selectivity(object):
-
     def __init__(self, column_name, min_value, max_value, ndv=None):
         self.column_name = column_name
         self.min_value = min_value
@@ -63,7 +69,6 @@ class Selectivity(object):
 
 
 class Statistics(object):
-
     def __init__(self, database_name, table_name, selectivity_list: List):
         self.database_name = database_name
         self.table_name = table_name

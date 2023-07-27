@@ -10,7 +10,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-from src.parser.tree import *
+from src.parser.tree.expression import QualifiedNameReference
+from src.parser.tree.statement import Statement
 from src.parser.tree.visitor import DefaultTraversalVisitor
 from .pmd_enum import PMDLevel
 from .pmd_result import PMDResultRule
@@ -35,7 +36,9 @@ class PMDArithmeticRule(AbstractRewriteRule):
                 self.match = False
 
             def visit_arithmetic_binary(self, node, context):
-                if isinstance(node.left, QualifiedNameReference) or isinstance(node.right, QualifiedNameReference):
+                if isinstance(node.left, QualifiedNameReference) or isinstance(
+                    node.right, QualifiedNameReference
+                ):
                     self.match = True
 
         visitor = Visitor()

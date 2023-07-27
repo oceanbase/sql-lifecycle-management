@@ -10,7 +10,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-from src.parser.tree import *
+from src.parser.tree.expression import QualifiedNameReference
+from src.parser.tree.qualified_name import QualifiedName
+from src.parser.tree.select_item import SingleColumn
+from src.parser.tree.statement import Statement
 from src.parser.tree.visitor import DefaultTraversalVisitor
 from .pmd_enum import PMDLevel
 from .pmd_result import PMDResultRule
@@ -35,9 +38,11 @@ class PMDSelectAllRule(AbstractRewriteRule):
 
             def visit_select(self, node, context):
                 for item in node.select_items:
-                    if isinstance(item, SingleColumn) \
-                            and isinstance(item.expression, QualifiedNameReference) \
-                            and isinstance(item.expression.name, QualifiedName):
+                    if (
+                        isinstance(item, SingleColumn)
+                        and isinstance(item.expression, QualifiedNameReference)
+                        and isinstance(item.expression.name, QualifiedName)
+                    ):
                         parts = item.expression.name.parts
                         for part in parts:
                             if part == '*':

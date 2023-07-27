@@ -10,11 +10,20 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-from .tree import *
+from src.parser.tree.grouping import GroupingSets, SimpleGroupBy
+from src.parser.tree.literal import LongLiteral, StringLiteral
+from src.parser.tree.qualified_name import QualifiedName
+from src.parser.tree.select_item import SingleColumn
+from src.parser.tree.visitor import DefaultTraversalVisitor
+from src.parser.tree.expression import (
+    FunctionCall,
+    InListExpression,
+    QualifiedNameReference,
+    SubqueryExpression,
+)
 
 
 class ParserUtils(object):
-
     @staticmethod
     def format_statement(statement):
         class FormatVisitor(DefaultTraversalVisitor):
@@ -43,21 +52,26 @@ class ParserUtils(object):
                 self.recursion_count = 0
 
             def visit_table(self, node, context):
-                self.table_list.append({
-                    'table_name': node.name.parts[0] if len(node.name.parts) == 1 else node.name.parts[1],
-                    'alias': '',
-                    'filter_column_list': []
-                })
+                self.table_list.append(
+                    {
+                        'table_name': node.name.parts[0]
+                        if len(node.name.parts) == 1
+                        else node.name.parts[1],
+                        'alias': '',
+                        'filter_column_list': [],
+                    }
+                )
                 return self.visit_query_body(node, context)
 
             def visit_aliased_relation(self, node, context):
-
                 if not isinstance(node.relation, SubqueryExpression):
-                    self.table_list.append({
-                        'table_name': node.relation.name.parts[0],
-                        'alias': node.alias[1],
-                        'filter_column_list': []
-                    })
+                    self.table_list.append(
+                        {
+                            'table_name': node.relation.name.parts[0],
+                            'alias': node.alias[1],
+                            'filter_column_list': [],
+                        }
+                    )
                 else:
                     return self.process(node.relation, context)
 
@@ -86,18 +100,22 @@ class ParserUtils(object):
                     if len(qualified_name.parts) == 2:
                         table_or_alias_name = qualified_name.parts[0]
                         for _table in self.table_list:
-                            if _table['alias'] == table_or_alias_name or _table['table_name'] == table_or_alias_name:
+                            if (
+                                _table['alias'] == table_or_alias_name
+                                or _table['table_name'] == table_or_alias_name
+                            ):
                                 filter_column_list = _table['filter_column_list']
-                                filter_column_list.append({
-                                    'column_name': qualified_name.parts[1],
-                                    'opt': type
-                                })
+                                filter_column_list.append(
+                                    {
+                                        'column_name': qualified_name.parts[1],
+                                        'opt': type,
+                                    }
+                                )
                     else:
                         filter_column_list = self.table_list[-1]['filter_column_list']
-                        filter_column_list.append({
-                            'column_name': qualified_name.parts[0],
-                            'opt': type
-                        })
+                        filter_column_list.append(
+                            {'column_name': qualified_name.parts[0], 'opt': type}
+                        )
 
                 return self.visit_expression(node, context)
 
@@ -109,7 +127,9 @@ class ParserUtils(object):
                         if not pattern.value.startswith('%'):
                             can_query_range = True
                     if can_query_range:
-                        self.add_filter_column_with_qualified_name_reference(node.value, 'like')
+                        self.add_filter_column_with_qualified_name_reference(
+                            node.value, 'like'
+                        )
 
                 return self.visit_expression(node, context)
 
@@ -117,7 +137,6 @@ class ParserUtils(object):
                 return self.process(node.value, "not")
 
             def visit_in_predicate(self, node, context):
-
                 value = node.value
 
                 if not context:
@@ -125,7 +144,9 @@ class ParserUtils(object):
                         self.in_count_list.append(len(node.value_list.values))
 
                     if isinstance(value, QualifiedNameReference):
-                        self.add_filter_column_with_qualified_name_reference(value, 'in')
+                        self.add_filter_column_with_qualified_name_reference(
+                            value, 'in'
+                        )
 
                 self.process(node.value, None)
                 self.process(node.value_list, None)
@@ -161,13 +182,21 @@ class ParserUtils(object):
                                     if isinstance(argument, LongLiteral):
                                         name = expression.name
                                         if isinstance(name, QualifiedName):
-                                            if len(name.parts) == 1 and name.parts[0] == 'count':
-                                                self.projection_column_list.append('count(*)')
+                                            if (
+                                                len(name.parts) == 1
+                                                and name.parts[0] == 'count'
+                                            ):
+                                                self.projection_column_list.append(
+                                                    'count(*)'
+                                                )
 
                             else:
                                 name = expression.name
                                 if isinstance(name, QualifiedName):
-                                    if len(name.parts) == 1 and name.parts[0] == 'count':
+                                    if (
+                                        len(name.parts) == 1
+                                        and name.parts[0] == 'count'
+                                    ):
                                         self.projection_column_list.append('count(*)')
                     self.process(item, context)
 
@@ -177,15 +206,13 @@ class ParserUtils(object):
                 if isinstance(sort_key, QualifiedNameReference):
                     name = sort_key.name
                     if len(name.parts) == 2:
-                        self.order_list.append({
-                            'ordering': ordering,
-                            'column_name': name.parts[1]
-                        })
+                        self.order_list.append(
+                            {'ordering': ordering, 'column_name': name.parts[1]}
+                        )
                     else:
-                        self.order_list.append({
-                            'ordering': ordering,
-                            'column_name': name.parts[0]
-                        })
+                        self.order_list.append(
+                            {'ordering': ordering, 'column_name': name.parts[0]}
+                        )
                 return self.process(node.sort_key, context)
 
             def visit_query_specification(self, node, context):
@@ -229,27 +256,38 @@ class ParserUtils(object):
 
             def visit_between_predicate(self, node, context):
                 if isinstance(node.value, QualifiedNameReference):
-                    self.add_filter_column_with_qualified_name_reference(node.value, 'between')
+                    self.add_filter_column_with_qualified_name_reference(
+                        node.value, 'between'
+                    )
                 return None
 
-            def add_filter_column_with_qualified_name_reference(self, qualified_name_reference: QualifiedNameReference,
-                                                                opt):
+            def add_filter_column_with_qualified_name_reference(
+                self, qualified_name_reference: QualifiedNameReference, opt
+            ):
                 if len(qualified_name_reference.name.parts) == 2:
                     table_or_alias_name = qualified_name_reference.name.parts[0]
                     for _table in self.table_list:
-                        if _table['alias'] == table_or_alias_name or _table[
-                            'table_name'] == table_or_alias_name:
+                        if (
+                            _table['alias'] == table_or_alias_name
+                            or _table['table_name'] == table_or_alias_name
+                        ):
                             filter_column_list = _table['filter_column_list']
-                            filter_column_list.append({
-                                'column_name': qualified_name_reference.name.parts[1],
-                                'opt': opt
-                            })
+                            filter_column_list.append(
+                                {
+                                    'column_name': qualified_name_reference.name.parts[
+                                        1
+                                    ],
+                                    'opt': opt,
+                                }
+                            )
                 else:
                     filter_column_list = self.table_list[-1]['filter_column_list']
-                    filter_column_list.append({
-                        'column_name': qualified_name_reference.name.parts[0],
-                        'opt': opt
-                    })
+                    filter_column_list.append(
+                        {
+                            'column_name': qualified_name_reference.name.parts[0],
+                            'opt': opt,
+                        }
+                    )
 
         visitor = FormatVisitor()
         visitor.process(statement, None)
@@ -268,7 +306,6 @@ class ParserUtils(object):
         """
 
         class Visitor(DefaultTraversalVisitor):
-
             def visit_long_literal(self, node, context):
                 node.value = '?'
 
@@ -319,12 +356,14 @@ class ParserUtils(object):
 
 def node_str_omit_none(node, *args):
     fields = ", ".join([": ".join([a[0], str(a[1])]) for a in args if a[1]])
-    return "{clazz}({fields})".format(clazz=node.__class__.__name__, fields=fields)
+    return "{class_name}({fields})".format(
+        class_name=node.__class__.__name__, fields=fields
+    )
 
 
 def node_str(node, *args):
     fields = ", ".join([": ".join([a[0], a[1] or "None"]) for a in args])
-    return "{class}({fields})".format(clazz=node.__class__.__name__, fields=fields)
+    return "({fields})".format(fields=fields)
 
 
 FIELD_REFERENCE_PREFIX = "$field_reference$"
@@ -337,4 +376,4 @@ def mangle_field_reference(field_name):
 def unmangle_field_reference(mangled_name):
     if not mangled_name.startswith(FIELD_REFERENCE_PREFIX):
         raise ValueError("Invalid mangled name: %s" % mangled_name)
-    return mangled_name[len(FIELD_REFERENCE_PREFIX):]
+    return mangled_name[len(FIELD_REFERENCE_PREFIX) :]

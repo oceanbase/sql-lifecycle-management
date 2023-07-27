@@ -10,6 +10,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
+
 class ExpressionRewriter(object):
     def __init__(self, line=None, pos=None):
         self.line = line
@@ -121,6 +122,7 @@ class ExpressionTreeRewriter(object):
         self.pos = pos
         self.rewriter = rewriter
         self.visitor = visitor
+
 
 """
     _class Rewriting_visitor(AstVisitor):

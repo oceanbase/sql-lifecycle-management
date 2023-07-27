@@ -10,6 +10,16 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
+import sys
+from api.monitor import (
+    DatabaseConnectionCheck,
+    SQLDetail,
+    SQLPlan,
+    SQLText,
+    TableIndex,
+    TableStatistics,
+    TopSQL,
+)
 import urllib3
 from flasgger import Swagger
 from flask import Flask, render_template
@@ -18,22 +28,17 @@ from flask_restful import Api
 from werkzeug.exceptions import HTTPException
 
 from src.api.analyzer import Analyzer
-from src.api.monitor import *
+import os
 from src.api.optimizer import Optimizer, Parse
 from src.api.workbranch import Database, UserOptimization, ReadUserOptimization
 from src.common.complex_encoder import ComplexEncoder
-from src.common.db_query import *
 from src.common.logger import Logger
 
 logfile = os.path.basename(sys.argv[0]).split(".")[0] + '.log'
 log = Logger(logfile)
 
 app = Flask(__name__)
-app.config['SWAGGER'] = {
-    'title': 'SQLess',
-    'uiversion': 3,
-    'version': 1
-}
+app.config['SWAGGER'] = {'title': 'SQLess', 'uiversion': 3, 'version': 1}
 swagger = Swagger(app)
 api = Api(app)
 # Set the size limit of the requested content, which limits the size of the uploaded file
@@ -62,21 +67,9 @@ def index():
 def handle_exception(e):
     log.exception(e)
     if hasattr(e, 'code') and hasattr(e, 'description'):
-        return {
-            "data": {
-            },
-            "code": e.code,
-            "success": False,
-            "message": e.description
-        }
+        return {"data": {}, "code": e.code, "success": False, "message": e.description}
     else:
-        return {
-            "data": {
-            },
-            "code": 500,
-            "success": False,
-            "message": str(e)
-        }
+        return {"data": {}, "code": 500, "success": False, "message": str(e)}
 
 
 @app.errorhandler(HTTPException)
@@ -85,11 +78,7 @@ def handle_http_exception(e):
     if e.response:
         return e.response
     else:
-        return {
-            "code": 500,
-            "success": False,
-            "message": str(e)
-        }
+        return {"code": 500, "success": False, "message": str(e)}
 
 
 api.add_resource(Optimizer, '/api/v1/sql/optimize')

@@ -1,0 +1,8 @@
+[tool.ruff]
+    select = ["F"]
+    # Allow autofix for all enabled rules (when `--fix`) is provided.
+    fixable = ["ALL"]
+    line-length=120
+
+[tool.black]
+    skip-string-normalization = 1

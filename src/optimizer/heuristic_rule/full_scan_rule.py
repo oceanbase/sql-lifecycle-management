@@ -10,39 +10,55 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
+from src.parser.tree.expression import (
+    BetweenPredicate,
+    ComparisonExpression,
+    ExistsPredicate,
+    InPredicate,
+    LikePredicate,
+    LogicalBinaryExpression,
+)
 from src.parser.tree import Statement, Query
-from src.parser.tree.expression import *
 from .heuristic_rule_return_result import HeuristicRuleReturnResult
 from ..abstract_rule import AbstractRewriteRule
 
 
 class FullScanRule(AbstractRewriteRule):
     """
-        Full Scan
+    Full Scan
     """
 
     could_range_predicate = ['=', '<', '>', '<=', '>=']
 
     def match(self, root: Statement, candidate_index_list=None):
-
         if isinstance(root, Query):
             query_body = root.query_body
 
             # no conditions
-            if query_body is not None and query_body.limit is None and query_body.where is None:
+            if (
+                query_body is not None
+                and query_body.limit is None
+                and query_body.where is None
+            ):
                 return True
 
             # There are only query conditions that cannot extract range, such as != 、not in and other predicates
-            if query_body is not None and query_body.limit is None and query_body.where is not None:
+            if (
+                query_body is not None
+                and query_body.limit is None
+                and query_body.where is not None
+            ):
                 return not self.could_scan_range(query_body.where)
 
         return False
 
     def match_action(self, root: Statement, candidate_index_list=None):
-        return HeuristicRuleReturnResult(index_name=None,
-                                         index_column_list=None,
-                                         rule="FullScanRule",
-                                         message="Full table scan risk")
+        return HeuristicRuleReturnResult(
+            index_name=None,
+            index_column_list=None,
+            rule="FullScanRule",
+            message="Full table scan risk",
+        )
 
     def could_scan_range(self, where):
         """
@@ -51,7 +67,9 @@ class FullScanRule(AbstractRewriteRule):
         :return:
         """
         if isinstance(where, LogicalBinaryExpression):
-            return self.could_scan_range(where.left) or self.could_scan_range(where.right)
+            return self.could_scan_range(where.left) or self.could_scan_range(
+                where.right
+            )
 
         if isinstance(where, ComparisonExpression):
             type = where.type
@@ -64,7 +82,11 @@ class FullScanRule(AbstractRewriteRule):
                 return True
 
         # between exists in may be able to extract the range
-        if isinstance(where, BetweenPredicate) or isinstance(where, ExistsPredicate) or isinstance(where, InPredicate):
+        if (
+            isinstance(where, BetweenPredicate)
+            or isinstance(where, ExistsPredicate)
+            or isinstance(where, InPredicate)
+        ):
             return True
 
         return False

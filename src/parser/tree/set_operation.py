@@ -25,7 +25,9 @@ class SetOperation(QueryBody):
 
 
 class Except(SetOperation):
-    def __init__(self, line=None, pos=None, left=None, right=None, distinct=None, all=None):
+    def __init__(
+        self, line=None, pos=None, left=None, right=None, distinct=None, all=None
+    ):
         super(Except, self).__init__(line, pos)
         self.left = left
         self.right = right
@@ -38,7 +40,9 @@ class Except(SetOperation):
     def __str__(self):
         maybe_distinct = (" " + self.distinct) if self.distinct else ""
         maybe_all = (" " + self.all) if self.all else ""
-        return " EXCEPT{}{} ".format(maybe_distinct, maybe_all).join([str(self.left), str(self.right)])
+        return " EXCEPT{}{} ".format(maybe_distinct, maybe_all).join(
+            [str(self.left), str(self.right)]
+        )
 
 
 class Intersect(SetOperation):

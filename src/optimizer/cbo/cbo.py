@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 
 class CBO:
-    def __init__(self, candidate_index_list, table_list, order_list, limit_number, statistics):
+    def __init__(
+        self, candidate_index_list, table_list, order_list, limit_number, statistics
+    ):
         self.candidate_index_list = candidate_index_list
         self.table_list = table_list
         self.order_list = order_list

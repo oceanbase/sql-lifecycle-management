@@ -16,7 +16,6 @@ from .literal import StringLiteral
 
 
 class AstVisitor(object):
-
     def process(self, node, context=None):
         if isinstance(node, str):
             node = StringLiteral(value=node)
@@ -362,7 +361,6 @@ class AstVisitor(object):
 
 
 class DefaultTraversalVisitor(AstVisitor):
-
     def visit_exists_predicate(self, node, context):
         return self.process(node.subquery, context)
 

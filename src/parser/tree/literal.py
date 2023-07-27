@@ -21,7 +21,15 @@ class Literal(Node):
 
 
 class IntervalLiteral(Literal):
-    def __init__(self, line=None, pos=None, value=None, sign=None, start_field=None, end_field=None):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        value=None,
+        sign=None,
+        start_field=None,
+        end_field=None,
+    ):
         super(IntervalLiteral, self).__init__(line, pos)
         self.value = value
         self.sign = sign
