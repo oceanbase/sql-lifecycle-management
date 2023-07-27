@@ -224,7 +224,7 @@ presto_not_keyword_token=(
     "SUBDATE","SUBSTRING","SUM","STD","STDDEV","STDDEV_POP","STDDEV_SAMP",
     "IF",
     "VARIANCE","VAR_POP","VAR_SAMP",
-    "TIMESTAMPADD","TIMESTAMPDIFF","TOP","TRIM",
+    "TIMESTAMPADD","TIMESTAMPDIFF","TOP","TRIM"
 )
 
 presto_reserved = tuple([i for i in presto_tokens if i not in presto_nonreserved])

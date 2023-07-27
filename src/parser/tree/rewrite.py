@@ -66,6 +66,9 @@ class ExpressionRewriter(object):
     def rewrite_in_list_expression(self, node, context, tree_rewriter):
         return self.rewrite_expression(node, context, tree_rewriter)
 
+    def rewrite_list_expression(self, node, context, tree_rewriter):
+        return self.rewrite_expression(node, context, tree_rewriter)
+
     def rewrite_function_call(self, node, context, tree_rewriter):
         return self.rewrite_expression(node, context, tree_rewriter)
 

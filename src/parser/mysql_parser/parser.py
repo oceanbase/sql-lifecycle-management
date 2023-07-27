@@ -21,6 +21,26 @@ from src.parser.tree import *
 
 tokens = tokens
 
+precedence = (
+    ('right','ASSIGNMENTEQ'),
+    ('left', 'CONCAT','OR'),
+    ('left', 'XOR'),
+    ('left', 'AND','ANDAND'),
+    ('right','NOT'),
+    ('left','BETWEEN','CASE','WHEN','THEN','ELSE'),
+    ('left','EQ','NE','LT','LE','GT','GE','IS','LIKE','RLIKE','REGEXP','IN'),
+    ('left','BIT_OR'),
+    ('left','BIT_AND'),
+    ('left','BIT_MOVE_LEFT','BIT_MOVE_RIGHT'),
+    ('left','PLUS','MINUS'),
+    ('left','ASTERISK','SLASH','PERCENT','DIV','MOD'),
+    ('left','BIT_XOR'),
+    ('left','BIT_OPPOSITE'),
+    ('right','NEG'),
+    ('left','EXCLA_MARK'),
+    ('left','LPAREN'),
+    ('right','RPAREN')
+)
 
 def p_command(p):
     r""" command : ddl
@@ -235,7 +255,7 @@ def p_delete(p):
 
 
 def p_update(p):
-    r"""update : UPDATE relations SET update_set_list where_opt order_by_opt limit_opt """
+    r"""update : UPDATE relations SET assignment_list where_opt order_by_opt limit_opt """
     p_limit = p[7]
     offset = 0
     limit = 0
@@ -245,16 +265,25 @@ def p_update(p):
     p[0] = Update(table=p[2], set_list=p[4], where=p[5], order_by=p[6], limit=limit, offset=offset)
 
 
-def p_update_set_list(p):
-    r"""update_set_list : update_set
-                        | update_set_list COMMA update_set
-                        | update_set_list AND update_set"""
+def p_assignment_list(p):
+    r"""assignment_list : assignment
+                        | assignment_list COMMA assignment"""
     _item_list(p)
 
+def p_assignment(p):
+    r"""assignment : qualified_name eq_or_assignment_eq expr_or_default """
+    name = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
+    p[0]=AssignmentExpression(p.lineno(1), p.lexpos(1), p[2],name, p[3])
 
-def p_update_set(p):
-    r"""update_set : comparison_predicate"""
-    p[0] = p[1]
+def p_eq_or_assignment_eq(p):
+    r"""eq_or_assignment_eq : EQ
+                            | ASSIGNMENTEQ"""
+    p[0]=p[1]
+
+def p_expr_or_default(p):
+    r"""expr_or_default : expression
+                        | DEFAULT"""
+    p[0]=p[1]
 
 
 def p_cursor_specification(p):
@@ -564,8 +593,7 @@ def p_select_items(p):
 def p_select_item(p):
     r"""select_item : derived_column
                     | DISTINCT LPAREN derived_column RPAREN
-                    | DISTINCT derived_column
-                    | predicate"""
+                    | DISTINCT derived_column"""
     if len(p) == 2:
         p[0] = p[1]
     elif len(p) == 3:
@@ -575,7 +603,7 @@ def p_select_item(p):
 
 
 def p_derived_column(p):
-    r"""derived_column : value_expression alias_opt"""
+    r"""derived_column : boolean_factor alias_opt"""
     p[0] = SingleColumn(p.lineno(1), p.lexpos(1), alias=p[2], expression=p[1])
 
 
@@ -716,21 +744,20 @@ def p_expression(p):
 
 def p_search_condition(p):
     r"""search_condition : boolean_term
-                         | LPAREN search_condition RPAREN
                          | search_condition OR search_condition
                          | search_condition logical_and search_condition
                          | search_condition XOR search_condition
-                         | BIT_OPPOSITE search_condition"""
+                         | NOT search_condition"""
     if len(p) == 2:
         p[0] = p[1]
-    elif p.slice[1].type == "LPAREN":
-        p[0] = p[2]
     elif p.slice[2].type == "OR":
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="OR", left=p[1], right=p[3])
     elif p.slice[2].type == "logical_and":
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="AND", left=p[1], right=p[3])
     elif p.slice[2] == "XOR":
         p[0] = LogicalBinaryExpression(p.lineno(1), p.lexpos(1), type="XOR", left=p[1], right=p[3])
+    elif p.slice[1] == "NOT":
+        p[0] = NotExpression(p.lineno(1), p.lexpos(1), value=p[2])
 
 
 def p_logical_and(p):
@@ -739,110 +766,93 @@ def p_logical_and(p):
     p[0] = p[1]
 
 def p_boolean_term(p):
-    r"""boolean_term : boolean_factor
-                     | LPAREN boolean_term RPAREN """
-    if len(p) == 2:
-        p[0] = p[1]
-    elif len(p) == 4 and p.slice[1].type == "LPAREN":
-        p[0] = p[2]
-
+    r"""boolean_term : boolean_factor """
+    p[0] = p[1]
 
 def p_boolean_factor(p):
-    r"""boolean_factor : not_opt boolean_test"""
-    if p[1]:
-        p[0] = NotExpression(p.lineno(1), p.lexpos(1), value=p[2])
+    r"""boolean_factor : boolean_factor comparison_operator predicate
+                        | predicate"""
+    if len(p)==4:
+        p[0] = ComparisonExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
     else:
-        p[0] = p[2]
-
-
-def p_boolean_test(p):
-    r"""boolean_test : boolean_primary"""
-    # No IS NOT? (TRUE|FALSE)
-    p[0] = p[1]
-
-
-def p_boolean_primary(p):
-    r"""boolean_primary : predicate
-                        | value_expression"""
-    p[0] = p[1]
-
+        p[0] = p[1]
 
 def p_predicate(p):
-    r"""predicate : comparison_predicate
-                  | between_predicate
+    r"""predicate : between_predicate
                   | in_predicate
                   | like_predicate
                   | regexp_predicate
                   | null_predicate
-                  | exists_predicate"""
+                  | exists_predicate 
+                  | value_expression"""
     p[0] = p[1]
 
-
-def p_comparison_predicate(p):
-    r"""comparison_predicate : value_expression comparison_operator value_expression"""
-    p[0] = ComparisonExpression(p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3])
-
-
 def p_between_predicate(p):
-    r"between_predicate : value_expression not_opt BETWEEN value_expression AND value_expression"
-    p[0] = BetweenPredicate(p.lineno(1), p.lexpos(1), value=p[1], min=p[4], max=p[6])
-    _check_not(p)
-
+    r"between_predicate : value_expression between_opt predicate AND predicate"
+    p[0] = BetweenPredicate(p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], min=p[3], max=p[5])
 
 def p_in_predicate(p):
-    r"""in_predicate : value_expression not_opt IN in_value"""
-    p[0] = InPredicate(p.lineno(1), p.lexpos(1), value=p[1], value_list=p[4])
-    _check_not(p)
+    r"""in_predicate : value_expression in_opt in_value"""
+    p[0] = InPredicate(p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], value_list=p[3])
 
+def p_like_predicate(p):
+    r"""like_predicate : value_expression like_opt value_expression"""
+    p[0] = LikePredicate(p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], pattern=p[3])
+
+def p_regexp_predicate(p):
+    r"""regexp_predicate : value_expression reg_sym_opt value_expression"""
+    p[0] = RegexpPredicate(p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], pattern=p[3])
+
+def p_null_predicate(p):
+    r"""null_predicate : value_expression is_opt NULL"""
+    p[0] = IsNullPredicate(p.lineno(1), p.lexpos(1), is_not= p[2], value=p[1])
+
+def p_exists_predicate(p):
+    r"""exists_predicate : exists_opt subquery"""
+    p[0] = ExistsPredicate(p.lineno(1), p.lexpos(1), is_not=p[1], subquery=p[2])
+
+def p_between_opt(p):
+    r"""between_opt : NOT BETWEEN
+                    | BETWEEN """
+    p[0] = p.slice[1].type == "NOT"
+
+def p_in_opt(p):
+    r"""in_opt : NOT IN
+               | IN"""
+    p[0] = p.slice[1].type == "NOT"
 
 def p_in_value(p):
-    r"""in_value : LPAREN in_expressions RPAREN
+    r"""in_value : LPAREN call_list RPAREN
                  | subquery"""
     if p.slice[1].type == "subquery":
         p[0] = p[1]
     else:
         p[0] = InListExpression(p.lineno(1), p.lexpos(1), values=p[2])
 
+def p_like_opt(p):
+    r"""like_opt : NOT LIKE
+               | LIKE"""
+    p[0] = p.slice[1].type == "NOT"
 
-def p_in_expressions(p):
-    r"""in_expressions : value_expression
-                       | in_expressions COMMA value_expression"""
-    _item_list(p)
+def p_is_opt(p):
+    r"""is_opt : IS NOT
+               | IS"""
+    p[0] = len(p) == 3
 
-
-def p_like_predicate(p):
-    r"""like_predicate : value_expression not_opt LIKE value_expression"""
-    p[0] = LikePredicate(p.lineno(1), p.lexpos(1), value=p[1], pattern=p[4])
-    _check_not(p)
-
-
-def p_regexp_predicate(p):
-    r"""regexp_predicate : value_expression regexp_sym value_expression"""
-    p[0] = RegexpPredicate(p.lineno(1), p.lexpos(1), value=p[1], pattern=p[3])
-
+def p_reg_sym_opt(p):
+    r"""reg_sym_opt : NOT regexp_sym
+               | regexp_sym"""
+    p[0] = p.slice[1].type == "NOT"
 
 def p_regexp_sym(p):
     r"""regexp_sym : REGEXP
                     | RLIKE"""
     pass
 
-def _check_not(p):
-    if p[2] and p.slice[2].type == "not_opt":
-        p[0] = NotExpression(line=p[0].line, pos=p[0].pos, value=p[0])
-
-
-def p_null_predicate(p):
-    r"""null_predicate : value_expression IS not_opt NULL"""
-    if p[3]:  # Not null
-        p[0] = IsNotNullPredicate(p.lineno(1), p.lexpos(1), value=p[1])
-    else:
-        p[0] = IsNullPredicate(p.lineno(1), p.lexpos(1), value=p[1])
-
-
-def p_exists_predicate(p):
-    r"""exists_predicate : EXISTS subquery"""
-    p[0] = ExistsPredicate(p.lineno(1), p.lexpos(1), subquery=p[2])
-
+def p_exists_opt(p):
+    r"""exists_opt : NOT EXISTS
+                  | EXISTS"""
+    p[0] = p.slice[1].type == "NOT"
 
 def p_value_expression(p):
     r"""value_expression : numeric_value_expression"""
@@ -883,26 +893,17 @@ def p_bit_opt(p):
                       | BIT_MOVE_RIGHT"""
     p[0] = p[1]
 
-
+# TODO ADD OPPOSITE or 
 def p_factor(p):
-    r"""factor : sign_opt primary_expression"""
-    if p[1]:
+    r"""factor : BIT_OPPOSITE factor
+                | MINUS factor %prec NEG
+                | PLUS factor %prec NEG
+                | EXCLA_MARK factor
+                | base_primary_expression"""
+    if len(p)==3:
         p[0] = ArithmeticUnaryExpression(p.lineno(1), p.lexpos(1), value=p[2], sign=p[1])
     else:
-        p[0] = p[2]
-
-
-def p_primary_expression(p):
-    r"""primary_expression : parenthetic_primary_expression
-                           | base_primary_expression"""
-    p[0] = p[1]
-
-
-def p_parenthetic_primary_expression(p):
-    r"""parenthetic_primary_expression : LPAREN value_expression RPAREN
-                                       | LPAREN parenthetic_primary_expression RPAREN"""
-    p[0] = p[2]
-
+        p[0] = p[1]
 
 def p_base_primary_expression(p):
     r"""base_primary_expression : value
@@ -910,10 +911,13 @@ def p_base_primary_expression(p):
                                 | subquery
                                 | function_call
                                 | date_time
+                                | LPAREN call_list RPAREN
                                 | case_specification
                                 | cast_specification"""
     if p.slice[1].type == "qualified_name":
         p[0] = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
+    elif len(p) == 4:
+        p[0] = ListExpression(p.lineno(1), p.lexpos(1), values=p[2])
     else:
         p[0] = p[1]
 
@@ -1079,19 +1083,6 @@ def p_boolean_value(p):
                       | FALSE"""
     p[0] = BooleanLiteral(p.lineno(1), p.lexpos(1), value=p[1])
 
-
-def p_sign_opt(p):
-    r"""sign_opt : sign
-                 | empty"""
-    p[0] = p[1]
-
-
-def p_sign(p):
-    r"""sign : PLUS
-             | MINUS"""
-    p[0] = p[1]
-
-
 def p_integer_param_opt(p):
     """integer_param_opt : LPAREN integer RPAREN
                          | LPAREN RPAREN
@@ -1100,9 +1091,15 @@ def p_integer_param_opt(p):
 
 
 def p_qualified_name(p):
-    r"""qualified_name : qualified_name PERIOD qualified_name
-                       | identifier"""
-    parts = [p[1]] if len(p) == 2 else p[1].parts + p[3].parts
+    r"""qualified_name : identifier
+                       | identifier PERIOD identifier 
+                       | identifier PERIOD identifier PERIOD identifier"""
+    parts=[p[1]]
+    if len(p)==4:
+        parts.append(p[3])
+    if len(p)==6:
+        parts.append(p[3])
+        parts.append(p[5])
     p[0] = QualifiedName(parts=parts)
 
 

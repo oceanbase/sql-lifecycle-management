@@ -49,6 +49,9 @@ class AstVisitor(object):
     def visit_comparison_expression(self, node, context):
         return self.visit_expression(node, context)
 
+    def visit_assignment_expression(self, node, context):
+        return self.visit_expression(node, context)
+
     def visit_literal(self, node, context):
         return self.visit_expression(node, context)
 
@@ -163,7 +166,7 @@ class AstVisitor(object):
     def visit_boolean_literal(self, node, context):
         return self.visit_literal(node, context)
 
-    def visit_in_list_expression(self, node, context):
+    def visit_list_expression(self, node, context):
         return self.visit_expression(node, context)
 
     def visit_qualified_name_reference(self, node, context):
@@ -405,6 +408,11 @@ class DefaultTraversalVisitor(AstVisitor):
         self.process(node.right, context)
         return None
 
+    def visit_assignment_expression(self, node, context):
+        self.process(node.left, context)
+        self.process(node.right, context)
+        return None
+
     def visit_query(self, node, context):
         self.process(node.query_body, context)
         for sort_item in node.order_by:
@@ -458,6 +466,11 @@ class DefaultTraversalVisitor(AstVisitor):
         return None
 
     def visit_in_list_expression(self, node, context):
+        for value in node.values:
+            self.process(value, context)
+        return None
+
+    def visit_list_expression(self, node, context):
         for value in node.values:
             self.process(value, context)
         return None

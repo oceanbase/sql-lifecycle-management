@@ -57,8 +57,12 @@ class PMDFullScanRule(AbstractRewriteRule):
                     self.process(node.right, context)
                 return None
 
-            def visit_not_expression(self, node, context):
-                node.value = None
+            def visis_in_predicate(self,node,context):
+                if node.is_not:
+                    node.is_not=None
+                    node.value=None
+                    node.value_list=None
+                return None
 
             def visit_like_predicate(self, node, context):
 
@@ -68,7 +72,7 @@ class PMDFullScanRule(AbstractRewriteRule):
 
                 if isinstance(pattern, StringLiteral):
                     value = pattern.value
-                    if value.startswith('%'):
+                    if value.startswith('%') or node.is_not:
                         process_flag = False
                         node.pattern = None
                         node.value = None
@@ -113,16 +117,19 @@ class PMDFullScanRule(AbstractRewriteRule):
                     self.process(node.escape, context)
                 return None
 
-            def visit_not_expression(self, node, context):
-                pass
+            def visit_exists_predicate(self, node, context):
+                if not node.is_not:
+                    self.match = False
+                    node.subquery = None
 
             def visit_between_predicate(self, node, context):
-
-                self.match = False
-
+                if not node.is_not :
+                    self.match = False
+                
                 self.process(node.value, context)
                 self.process(node.min, context)
                 self.process(node.max, context)
+
                 return None
 
         remove_visitor = Remove_Visitor()

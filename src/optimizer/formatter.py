@@ -70,7 +70,8 @@ class Formatter(AstVisitor):
         return "(" + format_sql(node.query, unmangle_names) + ")"
 
     def visit_exists(self, node, unmangle_names):
-        return "EXISTS (" + format_sql(node.subquery, unmangle_names) + ")"
+        predicate_name = "EXISTS" if not node.is_not else "NOT EXISTS"
+        return predicate_name+" (" + format_sql(node.subquery, unmangle_names) + ")"
 
     def visit_qualified_name_reference(self, node, unmangle_names):
         return _format_qualified_name(node.name)
@@ -106,11 +107,16 @@ class Formatter(AstVisitor):
     def visit_comparison_expression(self, node, unmangle_names):
         return self._format_binary_expression(node.type, node.left, node.right, unmangle_names)
 
-    def visit_is_null_predicate(self, node, unmangle_names):
-        return "(" + self.process(node.value, unmangle_names) + " IS NULL)"
+    def visit_assignment_expression(self, node, unmangle_names):
+        return self._format_binary_expression(node.type, node.left, node.right, unmangle_names)
 
-    def visit_is_not_null_predicate(self, node, unmangle_names):
-        return "(" + self.process(node.value, unmangle_names) + " IS NOT NULL)"
+    def visit_regexp_predicate(self, node, unmangle_names):
+        predicate_name = "REGEXP" if not node.is_not else "NOT REGEXP"
+        return " ".join([self.process(node.value,unmangle_names),predicate_name,self.process(node.pattern,unmangle_names)])
+
+    def visit_is_null_predicate(self, node, unmangle_names):
+        predicate_name = "IS NULL" if not node.is_not else "IS NOT NULL"
+        return "(" + self.process(node.value, unmangle_names) + " "+predicate_name+")"
 
     def visit_none_if_expression(self, node, unmangle_names):
         return "NULLIF(%s, %s)" % (self.process(node.first, unmangle_names),
@@ -145,8 +151,12 @@ class Formatter(AstVisitor):
     def visit_like_predicate(self, node, unmangle_names):
         ret = ""
 
+        not_opt=""
+        if node.is_not:
+            not_opt=" NOT"
+
         ret += self.process(node.value, unmangle_names) + \
-               " LIKE " + self.process(node.pattern, unmangle_names)
+               not_opt+" LIKE " + self.process(node.pattern, unmangle_names)
 
         if node.escape is not None:
             ret += " ESCAPE " + self.process(node.escape, unmangle_names)
@@ -194,16 +204,26 @@ class Formatter(AstVisitor):
                                     self.process(node.result, unmangle_names))
 
     def visit_between_predicate(self, node, unmangle_names):
-        return "(%s BETWEEN %s AND %s)" % (self.process(node.value, unmangle_names),
-                                           self.process(node.min, unmangle_names),
-                                           self.process(node.max, unmangle_names))
+        predicate_name = "BETWEEN" if not node.is_not else "NOT BETWEEN"
+        return "(%s %s %s AND %s)" % (self.process(node.value, unmangle_names),
+                                      predicate_name,
+                                      self.process(node.min, unmangle_names),
+                                      self.process(node.max, unmangle_names))
 
     def visit_in_predicate(self, node, unmangle_names):
-        return "%s IN %s" % (self.process(node.value, unmangle_names),
+        predicate_name = "IN" if not node.is_not else "NOT IN"
+        return "%s %s %s" % (self.process(node.value, unmangle_names),
+                             predicate_name,
                              self.process(node.value_list, unmangle_names))
 
     def visit_in_list_expression(self, node, unmangle_names):
         return "(%s)" % self._join_expressions(node.values, unmangle_names)
+    
+    def visit_list_expression(self, node, unmangle_names):
+        if len(node.values) == 1:
+            return "%s" % self._join_expressions(node.values,unmangle_names)
+        else:
+            return "(%s)" % self._join_expressions(node.values, unmangle_names)
 
     def visit_window(self, node, unmangle_names):
         parts = []
