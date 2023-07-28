@@ -1236,6 +1236,7 @@ presto_not_keyword_token = (
     "BRIEF",
     "CAST",
     "COPY",
+    "CONCAT",
     "CURTIME",
     "CURDATE",
     "DATE_ADD",

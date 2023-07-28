@@ -163,7 +163,18 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            assert isinstance(result, Statement)
+
+    def test_mysql_contact_function(self):
+        test_sqls = [
+            "SELECT CONCAT('a','-','b')",
+            "SELECT * FROM t WHERE a=CONCAT('a','-','b')",
+            "SELECT * FROM t WHERE a=CONCAT('a',CONCAT('b','-','c'))",
+        ]
+        for sql in test_sqls:
+            sql = Utils.remove_sql_text_affects_parser(sql)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
             assert isinstance(result, Statement)
 
 

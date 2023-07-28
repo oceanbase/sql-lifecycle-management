@@ -66,7 +66,7 @@ tokens = tokens
 
 precedence = (
     ('right', 'ASSIGNMENTEQ'),
-    ('left', 'CONCAT', 'OR'),
+    ('left', 'PIPES', 'OR'),
     ('left', 'XOR'),
     ('left', 'AND', 'ANDAND'),
     ('right', 'NOT'),
@@ -1035,7 +1035,7 @@ def p_arithmetic_opt(p):
     | DIV
     | MOD
     | PERCENT
-    | CONCAT"""
+    | PIPES"""
     p[0] = p[1]
 
 
@@ -1237,12 +1237,6 @@ def p_comparison_operator(p):
 
 def p_as_opt(p):
     r"""as_opt : AS
-    | empty"""
-    p[0] = p[1]
-
-
-def p_not_opt(p):
-    r"""not_opt : NOT
     | empty"""
     p[0] = p[1]
 
@@ -1570,6 +1564,7 @@ def p_not_keyword(p):
     | BRIEF
     | CAST
     | COPY
+    | CONCAT
     | CURTIME
     | CURDATE
     | DATE_ADD
