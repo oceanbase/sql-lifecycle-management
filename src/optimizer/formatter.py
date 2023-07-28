@@ -62,6 +62,9 @@ class Formatter(AstVisitor):
     def visit_double_literal(self, node, unmangle_names):
         return str(node.value)
 
+    def visit_field_type(self, node, unmangle_names):
+        return str(node)
+
     def visit_time_literal(self, node, unmangle_names):
         return "TIME '%s'" % node.value
 
