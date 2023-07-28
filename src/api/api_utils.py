@@ -17,16 +17,17 @@ from src.common.utils import Utils
 
 
 class ApiUtils(object):
-
     @staticmethod
     def get_xml_log_details(sql_text, catalog_object):
-
         optimizer = Optimizer()
 
         sql_text = Utils.remove_sql_text_affects_parser(sql_text)
 
-        index_optimization_recommendation_list, development_specification_recommendation_list, after_sql_rewrite = \
-            optimizer.optimize(sql_text, catalog_object)
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite,
+        ) = optimizer.optimize(sql_text, catalog_object)
 
         visitor = ParserUtils.format_statement(parser.parse(sql_text))
         table_list = []
@@ -55,7 +56,7 @@ class ApiUtils(object):
                 "developmentSpecificationRecommendations": development_specification_recommendation_list,
                 "sqlRewriteRecommendations": {
                     "sqlAfterRewrite": after_sql_rewrite.sql,
-                    "ruleExplanationList": after_sql_rewrite.rule_explanation_list
-                }
-            }
+                    "ruleExplanationList": after_sql_rewrite.rule_explanation_list,
+                },
+            },
         }

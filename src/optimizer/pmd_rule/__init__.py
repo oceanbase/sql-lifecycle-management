@@ -28,5 +28,5 @@ common_pmd_list = [
     PMDNowaitWaitRule(),
     PMDMultiTableRule(),
     # This is a damaging rule and must be placed last
-    PMDFullScanRule()
+    PMDFullScanRule(),
 ]

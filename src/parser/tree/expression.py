@@ -55,7 +55,7 @@ class SubscriptExpression(Expression):
 class IsNullPredicate(Expression):
     def __init__(self, line=None, pos=None, is_not=False, value=None):
         super(IsNullPredicate, self).__init__(line, pos)
-        self.is_not=is_not
+        self.is_not = is_not
         self.value = value
 
     def accept(self, visitor, context):
@@ -63,7 +63,9 @@ class IsNullPredicate(Expression):
 
 
 class IfExpression(Expression):
-    def __init__(self, line=None, pos=None, condition=None, true_value=None, false_value=None):
+    def __init__(
+        self, line=None, pos=None, condition=None, true_value=None, false_value=None
+    ):
         super(IfExpression, self).__init__(line, pos)
         self.condition = condition
         self.true_value = true_value
@@ -74,9 +76,11 @@ class IfExpression(Expression):
 
 
 class BetweenPredicate(Expression):
-    def __init__(self, line=None, pos=None, is_not=False, value=None, min=None, max=None):
+    def __init__(
+        self, line=None, pos=None, is_not=False, value=None, min=None, max=None
+    ):
         super(BetweenPredicate, self).__init__(line, pos)
-        self.is_not=is_not
+        self.is_not = is_not
         self.value = value
         self.min = min
         self.max = max
@@ -88,7 +92,7 @@ class BetweenPredicate(Expression):
 class InPredicate(Expression):
     def __init__(self, line=None, pos=None, is_not=False, value=None, value_list=None):
         super(InPredicate, self).__init__(line, pos)
-        self.is_not=is_not
+        self.is_not = is_not
         self.value = value
         self.value_list = value_list
 
@@ -97,7 +101,9 @@ class InPredicate(Expression):
 
 
 class SimpleCaseExpression(Expression):
-    def __init__(self, line=None, pos=None, operand=None, when_clauses=None, default_value=None):
+    def __init__(
+        self, line=None, pos=None, operand=None, when_clauses=None, default_value=None
+    ):
         super(SimpleCaseExpression, self).__init__(line, pos)
         self.operand = operand
         self.when_clauses = when_clauses
@@ -117,6 +123,7 @@ class ComparisonExpression(Expression):
     def accept(self, visitor, context):
         return visitor.visit_comparison_expression(self, context)
 
+
 class AssignmentExpression(Expression):
     def __init__(self, line=None, pos=None, type=None, left=None, right=None):
         super(AssignmentExpression, self).__init__(line, pos)
@@ -126,6 +133,7 @@ class AssignmentExpression(Expression):
 
     def accept(self, visitor, context):
         return visitor.visit_assignment_expression(self, context)
+
 
 class SearchedCaseExpression(Expression):
     def __init__(self, line=None, pos=None, when_clauses=None, default_value=None):
@@ -168,7 +176,9 @@ class QualifiedNameReference(Expression):
 
 
 class FunctionCall(Expression):
-    def __init__(self, line=None, pos=None, name=None, window=None, distinct=None, arguments=None):
+    def __init__(
+        self, line=None, pos=None, name=None, window=None, distinct=None, arguments=None
+    ):
         super(FunctionCall, self).__init__(line, pos)
         self.name = name
         self.window = window
@@ -246,9 +256,11 @@ class InputReference(Expression):
 
 
 class LikePredicate(Expression):
-    def __init__(self, line=None, pos=None, is_not=False, value=None, pattern=None, escape=None):
+    def __init__(
+        self, line=None, pos=None, is_not=False, value=None, pattern=None, escape=None
+    ):
         super(LikePredicate, self).__init__(line, pos)
-        self.is_not=is_not
+        self.is_not = is_not
         self.value = value
         self.pattern = pattern
         self.escape = escape
@@ -258,7 +270,7 @@ class LikePredicate(Expression):
 
 
 class RegexpPredicate(Expression):
-    def __init__(self, line=None, pos=None,is_not = False, value=None, pattern=None):
+    def __init__(self, line=None, pos=None, is_not=False, value=None, pattern=None):
         super(RegexpPredicate, self).__init__(line, pos)
         self.is_not = is_not
         self.value = value
@@ -269,7 +281,7 @@ class RegexpPredicate(Expression):
 
 
 class ExistsPredicate(Expression):
-    def __init__(self, line=None, pos=None, is_not = False, subquery=None):
+    def __init__(self, line=None, pos=None, is_not=False, subquery=None):
         super(ExistsPredicate, self).__init__(line, pos)
         self.is_not = is_not
         self.subquery = subquery
@@ -295,6 +307,7 @@ class InListExpression(Expression):
     def accept(self, visitor, context):
         return visitor.visit_in_list_expression(self, context)
 
+
 class ListExpression(Expression):
     def __init__(self, line=None, pos=None, values=None):
         super(ListExpression, self).__init__(line, pos)
@@ -302,6 +315,7 @@ class ListExpression(Expression):
 
     def accept(self, visitor, context):
         return visitor.visit_list_expression(self, context)
+
 
 class Row(Expression):
     def __init__(self, line=None, pos=None, items=None):

@@ -19,18 +19,15 @@ import time
 clevel_default = logging.ERROR
 flevel_default = logging.INFO
 
-standard_format = '[%(asctime)s %(levelname)s %(process)d] - [%(filename)s:%(lineno)d] ' \
-                  + '%(module)s.%(funcName)s.%(lineno)d: %(message)s'
+standard_format = (
+    '[%(asctime)s %(levelname)s %(process)d] - [%(filename)s:%(lineno)d] '
+    + '%(module)s.%(funcName)s.%(lineno)d: %(message)s'
+)
 simple_format = '[%(asctime)s %(levelname)s] %(message)s'
 
 
 class Logger(object):
-
-    def __init__(
-            self,
-            logfile='',
-            clevel=clevel_default,
-            flevel=flevel_default):
+    def __init__(self, logfile='', clevel=clevel_default, flevel=flevel_default):
         # init file name
         self.log_path = os.getcwd() + '/logs/'
         if not logfile:
@@ -50,7 +47,7 @@ class Logger(object):
                 'console': {
                     'level': clevel,
                     'class': 'logging.StreamHandler',
-                    'formatter': 'simple'
+                    'formatter': 'simple',
                 },
                 'default': {
                     'level': flevel,
@@ -60,7 +57,7 @@ class Logger(object):
                     'when': 'D',
                     'interval': 1,
                     'backupCount': 3,
-                    'encoding': 'utf-8'
+                    'encoding': 'utf-8',
                 },
             },
             'loggers': {

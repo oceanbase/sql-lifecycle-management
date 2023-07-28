@@ -16,7 +16,6 @@ from .rewrite_rule import mysql_rules, common_rules
 
 
 class MySQLEngine(Engine):
-
     def __new__(cls):
         singleton = cls.__dict__.get('__singleton__')
         if singleton is not None:
@@ -35,5 +34,7 @@ class MySQLEngine(Engine):
         if common_rules:
             for rewrite_rule in common_rules:
                 if rewrite_rule.match(statement, catalog):
-                    rule_explanation_list.append(rewrite_rule.match_action(statement, catalog))
+                    rule_explanation_list.append(
+                        rewrite_rule.match_action(statement, catalog)
+                    )
         return statement, rule_explanation_list

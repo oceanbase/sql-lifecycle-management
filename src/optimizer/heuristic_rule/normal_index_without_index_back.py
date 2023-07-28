@@ -36,11 +36,15 @@ class NormalIndexWithoutIndexBackRule(AbstractRewriteRule):
                     _candidate_index_list.append(_index)
 
         if _candidate_index_list:
-            result_index_name, result_index_column = self.get_min_column_count_index(_candidate_index_list)
-            return HeuristicRuleReturnResult(index_name=result_index_name,
-                                             index_column_list=result_index_column,
-                                             rule="NormalIndexWithoutIndexBackRule",
-                                             message="")
+            result_index_name, result_index_column = self.get_min_column_count_index(
+                _candidate_index_list
+            )
+            return HeuristicRuleReturnResult(
+                index_name=result_index_name,
+                index_column_list=result_index_column,
+                rule="NormalIndexWithoutIndexBackRule",
+                message="",
+            )
 
         return None
 

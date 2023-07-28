@@ -37,16 +37,48 @@ SKIP_RANGE = 100000
 BATCH_RANGE = 10000
 
 GROUP_KEY_LIST = ['tenant_name', 'svr_ip', 'sql_id', 'db_name', 'get_minute']
-SUM_KEY_LIST = ['executions', 'fail_times', 'rpc_count', 'remote_plans', 'miss_plans', 'retry_cnt']
-AVG_KEY_LIST = ['elapsed_time', 'cpu_time', 'queue_time', 'netwait_time', 'iowait_time', 'getplan_time',
-                'return_rows', 'affected_rows', 'logical_reads', 'total_wait_time']
+SUM_KEY_LIST = [
+    'executions',
+    'fail_times',
+    'rpc_count',
+    'remote_plans',
+    'miss_plans',
+    'retry_cnt',
+]
+AVG_KEY_LIST = [
+    'elapsed_time',
+    'cpu_time',
+    'queue_time',
+    'netwait_time',
+    'iowait_time',
+    'getplan_time',
+    'return_rows',
+    'affected_rows',
+    'logical_reads',
+    'total_wait_time',
+]
 MAX_INT_LIST = ['table_scan', 'sql_type']
 MAX_CHAR_LIST = ['request_time']
 MIN_CHAR_LIST = []
 LAST_KEY_LIST = ['query_sql', 'user_name', 'db_name', 'client_ip', 'plan_hash']
-TOP_LIST = ['executions', 'fail_times', 'rpc_count', 'remote_plans', 'miss_plans', 'retry_cnt',
-            'elapsed_time', 'cpu_time', 'queue_time', 'netwait_time', 'iowait_time', 'getplan_time',
-            'return_rows', 'affected_rows', 'logical_reads', 'total_wait_time']
+TOP_LIST = [
+    'executions',
+    'fail_times',
+    'rpc_count',
+    'remote_plans',
+    'miss_plans',
+    'retry_cnt',
+    'elapsed_time',
+    'cpu_time',
+    'queue_time',
+    'netwait_time',
+    'iowait_time',
+    'getplan_time',
+    'return_rows',
+    'affected_rows',
+    'logical_reads',
+    'total_wait_time',
+]
 
 QUEUE_TABLE = 'schedule_queue'
 TEXT_TABLE = 'monitor_sql_text'
@@ -75,19 +107,19 @@ config_dict = {
     'getplan_time_floor': 400,
     'return_rows_floor': 10,
     'affected_rows_floor': 10,
-    'logical_reads_floor': 20
+    'logical_reads_floor': 20,
 }
 
 
-class DealUserInfoOceanbase():
-    """ read approved data from user database-oceanbase """
+class DealUserInfoOceanbase:
+    """read approved data from user database-oceanbase"""
 
     def __init__(self, conn_info, get_retry):
         self.conn_info = conn_info
         self.db_conn = ConnDBOperate(self.conn_info, get_retry=get_retry)
 
     def get_unit_list(self):
-        """ get schedule_task task to run """
+        """get schedule_task task to run"""
         result = []
         try:
             sql = """
@@ -102,7 +134,7 @@ class DealUserInfoOceanbase():
         return result
 
     def get_current_maxid(self, unit_info):
-        """ get max request_id of database """
+        """get max request_id of database"""
         max_id = 0
         max_time = 0
         try:
@@ -115,18 +147,24 @@ class DealUserInfoOceanbase():
                 AND tenant_id = %s
                 AND db_name = %s
                 """
-            param = (unit_info['svr_ip'], unit_info['svr_port'],
-                     unit_info['tenant_id'], unit_info['db_name'])
+            param = (
+                unit_info['svr_ip'],
+                unit_info['svr_port'],
+                unit_info['tenant_id'],
+                unit_info['db_name'],
+            )
             result = self.db_conn.func_select_storedb(sql, param)
             if result and 'request_id' in result[0] and result[0]['request_id']:
                 max_id = int(result[0]['request_id'])
-                max_time = int(time.mktime(datetime.datetime.now().timetuple())) * 1000000
+                max_time = (
+                    int(time.mktime(datetime.datetime.now().timetuple())) * 1000000
+                )
         except Exception as e:
             log.exception(e)
         return max_id, max_time
 
     def func_get_sqlaudit(self, unit_info, min_id, next_id):
-        """ get sql audit """
+        """get sql audit"""
         rt_list = []
         if self.conn_info['version'] >= '4':
             sql_audit_table = "GV$OB_SQL_AUDIT"
@@ -195,16 +233,22 @@ class DealUserInfoOceanbase():
         OR affected_rows >= %s
         OR logical_reads >= %s
         ORDER BY tenant_name,get_minute,sql_id,request_time;
-        '''.format(audit_table=sql_audit_table,
-                   logical_reads_equation=logical_reads_equation)
-        param = (unit_info['svr_ip'], unit_info['svr_port'],
-                 unit_info['tenant_id'], unit_info['db_name'],
-                 min_id, next_id,
-                 str(config_dict.get("elapsed_time_limit", 300)),
-                 str(config_dict.get("getplan_time_limit", 300)),
-                 str(config_dict.get("return_rows_limit", 30)),
-                 str(config_dict.get("affected_rows_limit", 20)),
-                 str(config_dict.get("logical_reads_limit", 30)))
+        '''.format(
+            audit_table=sql_audit_table, logical_reads_equation=logical_reads_equation
+        )
+        param = (
+            unit_info['svr_ip'],
+            unit_info['svr_port'],
+            unit_info['tenant_id'],
+            unit_info['db_name'],
+            min_id,
+            next_id,
+            str(config_dict.get("elapsed_time_limit", 300)),
+            str(config_dict.get("getplan_time_limit", 300)),
+            str(config_dict.get("return_rows_limit", 30)),
+            str(config_dict.get("affected_rows_limit", 20)),
+            str(config_dict.get("logical_reads_limit", 30)),
+        )
         try:
             result = self.db_conn.func_select_storedb(sql, param)
             if result:
@@ -216,17 +260,19 @@ class DealUserInfoOceanbase():
     def disconn_storedb(self):
         try:
             self.db_conn.disconn_storedb()
-        except Exception as e:
+        except Exception:
             pass
 
 
 def deal_queue_checkpoint(min_id, min_time, max_id, max_time):
-    """ deal start and end request_id """
+    """deal start and end request_id"""
     rt_dict = {'min_id': 0, 'max_id': 0, 'min_time': 0, 'max_time': 0}
     # If the queue point is empty, set start_id = current_id - SKIP_RANGE
     if not min_id and max_id:
         min_id = max_id - SKIP_RANGE
-        min_time = (int(time.mktime(datetime.datetime.now().timetuple())) - 600) * 1000000
+        min_time = (
+            int(time.mktime(datetime.datetime.now().timetuple())) - 600
+        ) * 1000000
     # judge the id gap and time gap
     if min_time and max_time and max_id and min_id:
         min_time_dt = datetime.datetime.fromtimestamp(int(min_time / 1000000))
@@ -250,16 +296,18 @@ def deal_queue_checkpoint(min_id, min_time, max_id, max_time):
 
 
 def func_group_by_key(data_list):
-    """ aggregate sql_list by observer/tenant_name/db_name/get_minute/sql_id, to make a downsampling """
+    """aggregate sql_list by observer/tenant_name/db_name/get_minute/sql_id, to make a downsampling"""
     rt_list = []
     if data_list:
         # order by groupkey and divide into groups
-        data_list = sorted(data_list, key=lambda item: (item['db_name'], item['get_minute'], item['sql_id']))
-        for (db_name, get_minute, sql_id), group_data in itertools.groupby(data_list,
-                                                                           key=lambda item: (
-                                                                                   item['db_name'],
-                                                                                   item['get_minute'],
-                                                                                   item['sql_id'])):
+        data_list = sorted(
+            data_list,
+            key=lambda item: (item['db_name'], item['get_minute'], item['sql_id']),
+        )
+        for (db_name, get_minute, sql_id), group_data in itertools.groupby(
+            data_list,
+            key=lambda item: (item['db_name'], item['get_minute'], item['sql_id']),
+        ):
             try:
                 # invalid sql check
                 if not sql_id.isalnum():
@@ -285,7 +333,9 @@ def func_group_by_key(data_list):
                     for sum_key in SUM_KEY_LIST:
                         locals()['sum_' + str(sum_key)] += int(per_key[sum_key])
                     for avg_key in AVG_KEY_LIST:
-                        locals()['sum_' + str(avg_key)] += int(per_key[avg_key]) * int(per_key['executions'])
+                        locals()['sum_' + str(avg_key)] += int(per_key[avg_key]) * int(
+                            per_key['executions']
+                        )
                     for max_int in MAX_INT_LIST:
                         if per_key[max_int] > locals()['max_' + str(max_int)]:
                             locals()['max_' + str(max_int)] = per_key[max_int]
@@ -305,7 +355,10 @@ def func_group_by_key(data_list):
                 for sum_key in SUM_KEY_LIST:
                     per_dict[sum_key] = locals()['sum_' + str(sum_key)]
                 for avg_key in AVG_KEY_LIST:
-                    per_dict[avg_key] = round(locals()['sum_' + str(avg_key)] / locals()['sum_' + str('executions')])
+                    per_dict[avg_key] = round(
+                        locals()['sum_' + str(avg_key)]
+                        / locals()['sum_' + str('executions')]
+                    )
                 for max_int in MAX_INT_LIST:
                     per_dict[max_int] = locals()['max_' + str(max_int)]
                 for max_char in MAX_CHAR_LIST:
@@ -314,17 +367,21 @@ def func_group_by_key(data_list):
                     per_dict[min_char] = locals()['min_' + str(min_char)]
                 rt_list.append(per_dict)
             except Exception as e:
-                log.error('func_group_by_key error: {err1}, {err2}'.format(err1=type(e), err2=str(e)))
+                log.error(
+                    'func_group_by_key error: {err1}, {err2}'.format(
+                        err1=type(e), err2=str(e)
+                    )
+                )
                 traceback.print_exc()
                 continue
     return rt_list
 
 
 def get_sqlaudit_rst(user_conn, unit_info, min_id, max_id):
-    """ batch get SQL audit """
+    """batch get SQL audit"""
     audit_list = []
     batch_cnt = 0
-    while (min_id < max_id):
+    while min_id < max_id:
         if min_id + BATCH_RANGE < max_id:
             next_id = min_id + BATCH_RANGE
         else:
@@ -344,7 +401,7 @@ def get_sqlaudit_rst(user_conn, unit_info, min_id, max_id):
 
 
 def func_get_topn(input_list):
-    """ get top-n sqls for every key dimensionality """
+    """get top-n sqls for every key dimensionality"""
     rt_id_list = []
     rt_dt_list = []
     # if total amount less than top-n*5，then return list directly
@@ -366,20 +423,27 @@ def func_get_topn(input_list):
                 sql_id = str(st_list[rank]['sql_id'])
                 top_value = int(st_list[rank][top_key])
                 # If item value is too small, sql can be ignored
-                if str(top_key) + '_floor' in config_dict and top_value < config_dict[str(top_key) + '_floor']:
+                if (
+                    str(top_key) + '_floor' in config_dict
+                    and top_value < config_dict[str(top_key) + '_floor']
+                ):
                     break
                 # pop by sql_id to prevent the repeat
                 if sql_id not in rt_id_list:
                     rt_id_list.append(sql_id)
                     rt_dt_list.append(st_list[rank])
         except Exception as e:
-            log.error('func_get_topn error: {top_key} {err}'.format(top_key=top_key, err=str(e)))
+            log.error(
+                'func_get_topn error: {top_key} {err}'.format(
+                    top_key=top_key, err=str(e)
+                )
+            )
             continue
     return rt_dt_list
 
 
 def get_topn_rst(meta_conn, unit_info, audit_list):
-    """ get top-n sqls sorted by all kinds of performance item, aggregate result and compare SQL Text """
+    """get top-n sqls sorted by all kinds of performance item, aggregate result and compare SQL Text"""
     rt_list = []
     txt_list = []
     value_list = []
@@ -389,15 +453,16 @@ def get_topn_rst(meta_conn, unit_info, audit_list):
                 elapsed_time,cpu_time,queue_time,getplan_time,netwait_time,iowait_time,total_wait_time,
                 logical_reads,return_rows,affected_rows,fail_times,retry_cnt,rpc_count,remote_plans,miss_plans,
                 cluster,tenant_name,svr_ip,client_ip,user_name,plan_hash,table_scan,gmt_create)
-                VALUES '''.format(audit_table=AUDIT_TABLE)
+                VALUES '''.format(
+        audit_table=AUDIT_TABLE
+    )
     if not audit_list:
         return rt_list, txt_list
     # group by database name and minute time zone, get top-n list for every item
     st_list = sorted(audit_list, key=lambda item: (item['db_name'], item['get_minute']))
-    for (db_name, get_minute), group_data in itertools.groupby(st_list,
-                                                               key=lambda item: (
-                                                                       item['db_name'],
-                                                                       item['get_minute'])):
+    for (db_name, get_minute), group_data in itertools.groupby(
+        st_list, key=lambda item: (item['db_name'], item['get_minute'])
+    ):
         try:
             # get top-n by key
             group_list = list(group_data)
@@ -406,14 +471,33 @@ def get_topn_rst(meta_conn, unit_info, audit_list):
             for per_dt in dt_list:
                 detail_value = '''(\'%s\',\'%s\',\'%s\',%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,
                 \'%s\',\'%s\',\'%s\',\'%s\',\'%s\',%d,%d,now())''' % (
-                    unit_info['db_id'], per_dt['sql_id'], per_dt['request_time'], per_dt['sql_type'],
-                    per_dt['executions'], per_dt['elapsed_time'], per_dt['cpu_time'], per_dt['queue_time'],
-                    per_dt['getplan_time'], per_dt['netwait_time'], per_dt['iowait_time'],
-                    per_dt['total_wait_time'], per_dt['logical_reads'], per_dt['return_rows'],
-                    per_dt['affected_rows'], per_dt['fail_times'], per_dt['retry_cnt'],
-                    per_dt['rpc_count'], per_dt['remote_plans'], per_dt['miss_plans'],
-                    unit_info['cluster_name'], unit_info['tenant_name'], unit_info['svr_ip'],
-                    per_dt['client_ip'], per_dt['user_name'], per_dt['plan_hash'], per_dt['table_scan']
+                    unit_info['db_id'],
+                    per_dt['sql_id'],
+                    per_dt['request_time'],
+                    per_dt['sql_type'],
+                    per_dt['executions'],
+                    per_dt['elapsed_time'],
+                    per_dt['cpu_time'],
+                    per_dt['queue_time'],
+                    per_dt['getplan_time'],
+                    per_dt['netwait_time'],
+                    per_dt['iowait_time'],
+                    per_dt['total_wait_time'],
+                    per_dt['logical_reads'],
+                    per_dt['return_rows'],
+                    per_dt['affected_rows'],
+                    per_dt['fail_times'],
+                    per_dt['retry_cnt'],
+                    per_dt['rpc_count'],
+                    per_dt['remote_plans'],
+                    per_dt['miss_plans'],
+                    unit_info['cluster_name'],
+                    unit_info['tenant_name'],
+                    unit_info['svr_ip'],
+                    per_dt['client_ip'],
+                    per_dt['user_name'],
+                    per_dt['plan_hash'],
+                    per_dt['table_scan'],
                 )
                 value_list.append(detail_value)
                 # compare sql text, aggregate sql_id to batch deal
@@ -428,22 +512,35 @@ def get_topn_rst(meta_conn, unit_info, audit_list):
                             query_sql = per_dt['query_sql'][:1000]
                         # sql text is too long, then cut off
                         elif len(per_dt['query_sql']) > 20000:
-                            query_sql = per_dt['query_sql'][:19800] + per_dt['query_sql'][-200:]
+                            query_sql = (
+                                per_dt['query_sql'][:19800] + per_dt['query_sql'][-200:]
+                            )
                         else:
                             query_sql = per_dt['query_sql']
                         table_list = []
                         try:
-                            if per_dt['sql_type'] == 1 or per_dt['sql_type'] == 2 or per_dt['sql_type'] == 4 \
-                                    or per_dt['sql_type'] == 5:
+                            if (
+                                per_dt['sql_type'] == 1
+                                or per_dt['sql_type'] == 2
+                                or per_dt['sql_type'] == 4
+                                or per_dt['sql_type'] == 5
+                            ):
                                 sql = Utils.remove_sql_text_affects_parser(query_sql)
-                                visitor = ParserUtils.format_statement(OceanBaseEngine().parse(sql))
+                                visitor = ParserUtils.format_statement(
+                                    OceanBaseEngine().parse(sql)
+                                )
                                 for _table in visitor.table_list:
                                     table_list.append(_table['table_name'])
                         except Exception as e:
                             log.exception(e)
                         txt_param = (
-                            unit_info['db_id'], sql_id, per_dt['sql_type'], query_sql, per_dt['user_name'],
-                            ','.join(table_list))
+                            unit_info['db_id'],
+                            sql_id,
+                            per_dt['sql_type'],
+                            query_sql,
+                            per_dt['user_name'],
+                            ','.join(table_list),
+                        )
                         sub_txt_list.append(txt_param)
                         sql_id_list.append(sql_id)
         except Exception as e:
@@ -451,7 +548,10 @@ def get_topn_rst(meta_conn, unit_info, audit_list):
             continue
     # batch compare sql text is exists
     if sql_id_list:
-        comp_list = div_list(sql_id_list, math.ceil(len(sql_id_list) / config_dict.get("batch_text", 100)))
+        comp_list = div_list(
+            sql_id_list,
+            math.ceil(len(sql_id_list) / config_dict.get("batch_text", 100)),
+        )
         for per_comp in comp_list:
             sql_id_str = '\'' + '\', \''.join(per_comp) + '\''
             txt_exist = meta_conn.func_check_text(unit_info['db_id'], sql_id_str)
@@ -460,7 +560,9 @@ def get_topn_rst(meta_conn, unit_info, audit_list):
                     txt_list.append(sub_txt_list[sql_id_list.index(sql_id)])
     # aggregate audit list to batch insert
     if value_list:
-        new_list = div_list(value_list, math.ceil(len(value_list) / config_dict.get("batch_insert", 50)))
+        new_list = div_list(
+            value_list, math.ceil(len(value_list) / config_dict.get("batch_insert", 50))
+        )
         for per_batch in new_list:
             batch_value = ', '.join(per_batch)
             detail_sql = detail_pre + batch_value
@@ -469,14 +571,14 @@ def get_topn_rst(meta_conn, unit_info, audit_list):
 
 
 def schedule_topsql_ob(db_conf, queue_info, schedule_type):
-    """ get sql audit from user oceanbase
-        design principles:
-            1.In order to reduce the performance loss of online database, scheduler is single thread
-                for single observer, sql audit is sampling, rather than the full workload
-            2.In order to reduce the performance loss of online database, each interval must be greater than
-                a period of time or range threshold, avoid frequent reading library
-            3.In order to guarantee the real time data, when consumption scheduling found checkpoint
-                delay is too large, according to the current largest request_id to jump
+    """get sql audit from user oceanbase
+    design principles:
+        1.In order to reduce the performance loss of online database, scheduler is single thread
+            for single observer, sql audit is sampling, rather than the full workload
+        2.In order to reduce the performance loss of online database, each interval must be greater than
+            a period of time or range threshold, avoid frequent reading library
+        3.In order to guarantee the real time data, when consumption scheduling found checkpoint
+            delay is too large, according to the current largest request_id to jump
     """
     db_id = db_conf['db_id']
     # connect user oceanbase and metadb
@@ -498,7 +600,9 @@ def schedule_topsql_ob(db_conf, queue_info, schedule_type):
         # get current checkpoint
         max_id, max_time = user_conn.get_current_maxid(unit_info)
         # get queue checkpoint
-        queue_key = '{0}:{1}:{2}'.format(db_id, unit_info['svr_ip'], unit_info['svr_port'])
+        queue_key = '{0}:{1}:{2}'.format(
+            db_id, unit_info['svr_ip'], unit_info['svr_port']
+        )
         min_id = queue_info.get(queue_key, {}).get('request_id', 0)
         min_time = queue_info.get(queue_key, {}).get('request_time', 0)
         # deal start and end request_id
@@ -508,7 +612,9 @@ def schedule_topsql_ob(db_conf, queue_info, schedule_type):
             continue
 
         # get sqlaudit
-        audit_list = get_sqlaudit_rst(user_conn, unit_info, point_dict['min_id'], point_dict['max_id'])
+        audit_list = get_sqlaudit_rst(
+            user_conn, unit_info, point_dict['min_id'], point_dict['max_id']
+        )
         if not audit_list:
             continue
         # filtrate sqlaudit
@@ -518,16 +624,21 @@ def schedule_topsql_ob(db_conf, queue_info, schedule_type):
         # write sql text
         if txt_list:
             txt_sql = '''INSERT INTO {text_table}(db_id,sql_id,sql_type,sql_text,user_name,table_list,gmt_create)
-                VALUES(%s,%s,%s,%s,%s,%s,now());'''.format(text_table=TEXT_TABLE)
+                VALUES(%s,%s,%s,%s,%s,%s,now());'''.format(
+                text_table=TEXT_TABLE
+            )
             meta_conn.func_write_storedb(txt_list, txt_sql)
         # write sql audit
         if dt_list:
             meta_conn.func_write_storedb(dt_list)
         # update checkpoint
         queue_sql = '''REPLACE INTO {queue_table}(db_id,run_type,object_info,check_point,gmt_create)
-                VALUES(%s,%s,%s,%s,now());'''.format(queue_table=QUEUE_TABLE)
-        check_point = """{{'request_id':{}, 'request_time':{}}}""".format(point_dict['max_id'],
-                                                                          point_dict['max_time'])
+                VALUES(%s,%s,%s,%s,now());'''.format(
+            queue_table=QUEUE_TABLE
+        )
+        check_point = """{{'request_id':{}, 'request_time':{}}}""".format(
+            point_dict['max_id'], point_dict['max_time']
+        )
         queue_list = [(db_conf['db_id'], schedule_type, queue_key, check_point)]
         meta_conn.func_write_storedb(queue_list, queue_sql)
 

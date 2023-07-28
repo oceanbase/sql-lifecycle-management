@@ -17,12 +17,11 @@ import unittest
 
 from src.metadata.catalog import Catalog
 from src.metadata.metadata_utils import MetaDataUtils
-from src.parser.mysql_parser import parser
+from src.parser.mysql_parser.parser import parser
 from src.parser.parser_utils import ParserUtils
 
 
 class MyTestCase(unittest.TestCase):
-
     @classmethod
     def setUpClass(self):
         self.catalog_json = """{"columns": [{"schema":"luli1","table":"ob_topsql_baseline",
@@ -121,7 +120,9 @@ class MyTestCase(unittest.TestCase):
             and sql_id = ?
             and end_time >= ?
             and end_time <  ?"""
-        self.catalog_object = MetaDataUtils.json_to_catalog(json.loads(self.catalog_json))
+        self.catalog_object = MetaDataUtils.json_to_catalog(
+            json.loads(self.catalog_json)
+        )
         visitor = ParserUtils.format_statement(parser.parse(self.sql))
         self.table_list = visitor.table_list
         self.projection_column_list = visitor.projection_column_list
@@ -141,9 +142,13 @@ class MyTestCase(unittest.TestCase):
                 filter_column_list = _table['filter_column_list']
                 if _table['table_name'] == _table_name:
                     for _index in _index_list:
-                        is_index_back = MetaDataUtils.is_index_back(_index.column_list, filter_column_list,
-                                                                    self.projection_column_list,
-                                                                    self.order_list, _index.index_type)
+                        is_index_back = MetaDataUtils.is_index_back(
+                            _index.column_list,
+                            filter_column_list,
+                            self.projection_column_list,
+                            self.order_list,
+                            _index.index_type,
+                        )
                         is_index_back_list.append(is_index_back)
         assert is_index_back_list == [False, True, True, True]
 
@@ -157,16 +162,26 @@ class MyTestCase(unittest.TestCase):
                 filter_column_list = _table['filter_column_list']
                 if _table['table_name'] == _table_name:
                     for _index in _index_list:
-                        extract_range = MetaDataUtils.extract_range(_index.column_list, filter_column_list)
+                        extract_range = MetaDataUtils.extract_range(
+                            _index.column_list, filter_column_list
+                        )
                         extract_range_list.append(extract_range)
-        assert extract_range_list == [['cluster', 'tenant_name', 'end_time'], ['sql_id', 'end_time'],
-                                      ['cluster', 'end_time'], ['end_time']]
+        assert extract_range_list == [
+            ['cluster', 'tenant_name', 'end_time'],
+            ['sql_id', 'end_time'],
+            ['cluster', 'end_time'],
+            ['end_time'],
+        ]
 
     def test_has_interesting_order(self):
         catalog_object = self.catalog_object
         interesting_order_list = []
-        extract_range_list = [['cluster', 'tenant_name', 'end_time'], ['sql_id', 'end_time'],
-                              ['cluster', 'end_time'], ['end_time']]
+        extract_range_list = [
+            ['cluster', 'tenant_name', 'end_time'],
+            ['sql_id', 'end_time'],
+            ['cluster', 'end_time'],
+            ['end_time'],
+        ]
         for _schema in catalog_object.table_list:
             _table_name = _schema.table_name
             _index_list = _schema.index_list
@@ -174,9 +189,13 @@ class MyTestCase(unittest.TestCase):
                 filter_column_list = _table['filter_column_list']
                 if _table['table_name'] == _table_name:
                     for _index in _index_list:
-                        interesting_order = MetaDataUtils.has_interesting_order(_index.column_list, self.order_list,
-                                                                                self.min_max_list, extract_range_list,
-                                                                                filter_column_list)
+                        interesting_order = MetaDataUtils.has_interesting_order(
+                            _index.column_list,
+                            self.order_list,
+                            self.min_max_list,
+                            extract_range_list,
+                            filter_column_list,
+                        )
                         interesting_order_list.append(interesting_order)
         assert interesting_order_list == [False, False, False, False]
 

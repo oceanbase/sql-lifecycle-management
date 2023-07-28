@@ -38,6 +38,7 @@ class OptType(Enum):
     For example, a > ? and a = ? = is better than in,
     where the cost calculation of a needs to be calculated according to =
     """
+
     EQUAL = 7
     IN = 6
     # a > ? and a < ?

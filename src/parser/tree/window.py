@@ -14,7 +14,9 @@ from .node import Node
 
 
 class Window(Node):
-    def __init__(self, line=None, pos=None, partition_by=None, order_by=None, frame=None):
+    def __init__(
+        self, line=None, pos=None, partition_by=None, order_by=None, frame=None
+    ):
         super(Window, self).__init__(line, pos)
         self.partition_by = partition_by
         self.order_by = order_by

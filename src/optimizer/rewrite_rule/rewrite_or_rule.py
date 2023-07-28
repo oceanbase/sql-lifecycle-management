@@ -9,8 +9,17 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
+from src.parser.tree.expression import (
+    ComparisonExpression,
+    InListExpression,
+    InPredicate,
+    LogicalBinaryExpression,
+    QualifiedNameReference,
+)
+from src.parser.tree.query_specification import QuerySpecification
+from src.parser.tree.set_operation import Union
+from src.parser.tree.statement import Query, Statement
 from src.optimizer.optimizer_enum import IndexType
-from src.parser.tree import *
 from src.parser.tree.visitor import DefaultTraversalVisitor
 from ..abstract_rule import AbstractRewriteRule
 
@@ -36,7 +45,6 @@ class RewriteMySQLORRule(AbstractRewriteRule):
     """
 
     def match(self, root: Statement, catalog=None) -> bool:
-
         class Visitor(DefaultTraversalVisitor):
             def __init__(self):
                 self.is_match = False
@@ -108,52 +116,94 @@ class RewriteMySQLORRule(AbstractRewriteRule):
                 is_match = False
 
                 # SELECT * FROM T1 WHERE C1 = 20000 OR C1 = 30 ;
-                if isinstance(left, ComparisonExpression) and isinstance(right, ComparisonExpression):
+                if isinstance(left, ComparisonExpression) and isinstance(
+                    right, ComparisonExpression
+                ):
                     if left.type == right.type == '=':
-                        left_qualified_name_reference = left.left if isinstance(left.left, QualifiedNameReference) \
+                        left_qualified_name_reference = (
+                            left.left
+                            if isinstance(left.left, QualifiedNameReference)
                             else left.right
-                        left_value = left.right if isinstance(left.left, QualifiedNameReference) \
+                        )
+                        left_value = (
+                            left.right
+                            if isinstance(left.left, QualifiedNameReference)
                             else left.left
-                        right_qualified_name_reference = right.left if isinstance(right.left, QualifiedNameReference) \
+                        )
+                        right_qualified_name_reference = (
+                            right.left
+                            if isinstance(right.left, QualifiedNameReference)
                             else right.right
-                        right_value = right.right if isinstance(right.left, QualifiedNameReference) \
+                        )
+                        right_value = (
+                            right.right
+                            if isinstance(right.left, QualifiedNameReference)
                             else right.left
+                        )
 
-                        if left_qualified_name_reference == right_qualified_name_reference:
+                        if (
+                            left_qualified_name_reference
+                            == right_qualified_name_reference
+                        ):
                             is_match = True
-                            query_body.where = InPredicate(value=left_qualified_name_reference,
-                                                           value_list=InListExpression(
-                                                               values=[left_value, right_value]))
+                            query_body.where = InPredicate(
+                                value=left_qualified_name_reference,
+                                value_list=InListExpression(
+                                    values=[left_value, right_value]
+                                ),
+                            )
                 # SELECT * FROM T1 WHERE C1 in (20000) OR C1 = 30
-                if (isinstance(left, ComparisonExpression) and isinstance(right, InPredicate)) or \
-                        (isinstance(left, InPredicate) and isinstance(right, ComparisonExpression)):
+                if (
+                    isinstance(left, ComparisonExpression)
+                    and isinstance(right, InPredicate)
+                ) or (
+                    isinstance(left, InPredicate)
+                    and isinstance(right, ComparisonExpression)
+                ):
                     in_expression = left if isinstance(left, InPredicate) else right
-                    comparison_expression = left if isinstance(left, ComparisonExpression) else right
+                    comparison_expression = (
+                        left if isinstance(left, ComparisonExpression) else right
+                    )
                     if comparison_expression.type == '=':
-                        qualified_name_reference = comparison_expression.left \
-                            if isinstance(comparison_expression.left, QualifiedNameReference) \
+                        qualified_name_reference = (
+                            comparison_expression.left
+                            if isinstance(
+                                comparison_expression.left, QualifiedNameReference
+                            )
                             else comparison_expression.right
-                        comparison_value = comparison_expression.right \
-                            if isinstance(comparison_expression.left, QualifiedNameReference) \
+                        )
+                        comparison_value = (
+                            comparison_expression.right
+                            if isinstance(
+                                comparison_expression.left, QualifiedNameReference
+                            )
                             else comparison_expression.left
+                        )
 
-                        if qualified_name_reference == in_expression.value and isinstance(in_expression.value_list,
-                                                                                          InListExpression):
+                        if (
+                            qualified_name_reference == in_expression.value
+                            and isinstance(in_expression.value_list, InListExpression)
+                        ):
                             in_expression.value_list.values.append(comparison_value)
                             query_body.where = in_expression
                             is_match = True
 
                 # SELECT * FROM T1 WHERE C1 in (20000) OR C1 in (30)
                 if isinstance(left, InPredicate) and isinstance(right, InPredicate):
-                    if left.value == right.value and isinstance(left.value_list, InListExpression) and isinstance(
-                            right.value_list, InListExpression):
+                    if (
+                        left.value == right.value
+                        and isinstance(left.value_list, InListExpression)
+                        and isinstance(right.value_list, InListExpression)
+                    ):
                         left.value_list.values.extend(right.value_list.values)
                         query_body.where = left
                         is_match = True
 
                 if not is_match:
-                    relations = [QuerySpecification(select=select, from_=table, where=left),
-                                 QuerySpecification(select=select, from_=table, where=right)]
+                    relations = [
+                        QuerySpecification(select=select, from_=table, where=left),
+                        QuerySpecification(select=select, from_=table, where=right),
+                    ]
                     node.query_body = Union(relations=relations)
 
             def visit_update(self, node, context):

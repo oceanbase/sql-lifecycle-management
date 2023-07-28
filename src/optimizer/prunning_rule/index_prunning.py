@@ -16,12 +16,16 @@ from enum import Enum, unique
 @unique
 class CompareStat(Enum):
     UNCOMPARABLE = -2  # two dimension can't not compare
-    RIGHT_DOMINATED = -1  # right dominate left, at least one dimension of right is better than left
+    RIGHT_DOMINATED = (
+        -1
+    )  # right dominate left, at least one dimension of right is better than left
     EQUAL = 0
-    LEFT_DOMINATED = 1  # left dominate right, at least one dimension of left is better right
+    LEFT_DOMINATED = (
+        1  # left dominate right, at least one dimension of left is better right
+    )
 
 
-class IndexPrunning():
+class IndexPrunning:
     """
     The logic of pruning is to compare indexes in pairs,
     A LEFT_DOMINATED B, then A has at least one dimension that is better than B, and other dimensions must be EQUAL
@@ -49,8 +53,12 @@ class IndexPrunning():
             # only when the restrict info on the left is the super set on the right,
             # and the columns on the left are less than the columns on the right,
             # the left Dominated to the right
-            if (not left.has_interesting_order) and (not left.extract_range) and (
-                    not right.has_interesting_order) and (not right.extract_range):
+            if (
+                (not left.has_interesting_order)
+                and (not left.extract_range)
+                and (not right.has_interesting_order)
+                and (not right.extract_range)
+            ):
                 if 0 == self.filter_column_cnt:
                     # If there is no filter condition on the right,
                     # it will go through full table scan and index back, so pruning
@@ -60,8 +68,12 @@ class IndexPrunning():
             else:
                 status = CompareStat.LEFT_DOMINATED
         elif left.index_back and not right.index_back:
-            if (not left.has_interesting_order) and (not left.extract_range) and (
-                    not right.has_interesting_order) and (not right.extract_range):
+            if (
+                (not left.has_interesting_order)
+                and (not left.extract_range)
+                and (not right.has_interesting_order)
+                and (not right.extract_range)
+            ):
                 if 0 == self.filter_column_cnt:
                     # If there is no filter condition on the left,
                     # it will go through full table scan and index back, so pruning
@@ -106,7 +118,6 @@ class IndexPrunning():
     # if one dimension UNCOMPARABLE, then cannot compare
     # A LEFT_DOMINATED B, Then A is better than B in at least one dimension, and other dimensions must be EQUAL
     def skyline_compare(self) -> CompareStat:
-
         dim1 = self.index_back_dim_compare().value
         dim2 = self.interesting_order_dim_compare().value
         dim3 = self.query_range_dim_compare().value
@@ -114,8 +125,12 @@ class IndexPrunning():
         if dim1 >= 0 and dim2 >= 0 and dim3 >= 0 and dim1 + dim2 + dim3 != 0:
             return CompareStat.LEFT_DOMINATED
 
-        if (dim1 == -1 or dim1 == 0) and (dim2 == -1 or dim2 == 0) and (dim3 == -1 or dim3 == 0) \
-                and dim1 + dim2 + dim3 != 0:
+        if (
+            (dim1 == -1 or dim1 == 0)
+            and (dim2 == -1 or dim2 == 0)
+            and (dim3 == -1 or dim3 == 0)
+            and dim1 + dim2 + dim3 != 0
+        ):
             return CompareStat.RIGHT_DOMINATED
 
         return CompareStat.UNCOMPARABLE

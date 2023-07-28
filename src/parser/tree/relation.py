@@ -22,7 +22,9 @@ class Relation(Node):
 
 
 class AliasedRelation(Relation):
-    def __init__(self, line=None, pos=None, relation=None, alias=None, column_names=None):
+    def __init__(
+        self, line=None, pos=None, relation=None, alias=None, column_names=None
+    ):
         super(AliasedRelation, self).__init__(line, pos)
         self.relation = relation
         self.alias = alias
@@ -35,7 +37,9 @@ class AliasedRelation(Relation):
 class Join(Relation):
     TYPES = "CROSS LEFT RIGHT FULL INNER".split(" ")
 
-    def __init__(self, line=None, pos=None, join_type=None, left=None, right=None, criteria=None):
+    def __init__(
+        self, line=None, pos=None, join_type=None, left=None, right=None, criteria=None
+    ):
         super(Join, self).__init__(line, pos)
         self.join_type = join_type
         self.left = left

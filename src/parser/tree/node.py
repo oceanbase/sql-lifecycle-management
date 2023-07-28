@@ -29,7 +29,11 @@ class Node(object):
 
     def __repr__(self):
         clz = self.__class__
-        argspec = [x for x in getfullargspec(clz.__init__).args[3:] if self.__dict__[x] is not None]
+        argspec = [
+            x
+            for x in getfullargspec(clz.__init__).args[3:]
+            if self.__dict__[x] is not None
+        ]
         args = ", ".join(["=".join((arg, repr(getattr(self, arg)))) for arg in argspec])
         return "{name}({args})".format(name=clz.__name__, args=args)
 
@@ -44,4 +48,3 @@ class Node(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-

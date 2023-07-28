@@ -14,9 +14,21 @@ from .relation import QueryBody
 
 
 class QuerySpecification(QueryBody):
-    def __init__(self, line=None, pos=None, select=None, from_=None, where=None,
-                 group_by=None, having=None, order_by=None, limit=None, offset=None,
-                 for_update=False, nowait_or_wait=False):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        select=None,
+        from_=None,
+        where=None,
+        group_by=None,
+        having=None,
+        order_by=None,
+        limit=None,
+        offset=None,
+        for_update=False,
+        nowait_or_wait=False,
+    ):
         super(QuerySpecification, self).__init__(line, pos)
         self.select = select
         self.from_ = from_

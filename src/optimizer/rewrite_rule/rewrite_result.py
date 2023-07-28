@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 
 class RewriteResult(object):
-
     def __init__(self, sql, rule_explanation_list):
         self.sql = sql
         self.rule_explanation_list = rule_explanation_list

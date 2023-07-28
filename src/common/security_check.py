@@ -18,5 +18,4 @@ ALLOWED_EXTENSIONS = {'xml', 'log', 'txt'}
 # Check if the file type is legal
 def allowed_file(filename):
     # Determine whether the extension of the file is in the configuration item ALLOWED_EXTENSIONS
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS

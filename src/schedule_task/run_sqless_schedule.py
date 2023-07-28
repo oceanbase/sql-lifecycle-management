@@ -14,15 +14,16 @@ import os
 import sys
 import time
 
-import schedule
 
-from src.common.const import *
+from src.common.const import DB_CONNECT_RETRY, APPROVE_SCOPE_DELIMITER
 from src.common.db_query import DealMetaDBInfo
-from src.common.enum import *
+from src.common.enum import ApproveScopeEunm
 from src.common.logger import Logger
 from src.schedule_task.oceanbase.schedule_plan_oceanbase import schedule_plan_ob
 from src.schedule_task.oceanbase.schedule_schema_oceanbase import schedule_schema_ob
-from src.schedule_task.oceanbase.schedule_statistics_oceanbase import schedule_statistics_ob
+from src.schedule_task.oceanbase.schedule_statistics_oceanbase import (
+    schedule_statistics_ob,
+)
 from src.schedule_task.oceanbase.schedule_topsql_oceanbase import schedule_topsql_ob
 
 log_file = os.path.basename(sys.argv[0]).split(".")[0] + '.log'
@@ -35,9 +36,16 @@ def schedule_func():
     # get list to be scheduled
     todo_list = meta_conn.get_schedule_task('pull')
     for db_conf in todo_list:
-        log.info('Schedule task: {} {}-{} {}:{} {}'.format(db_conf['db_id'], db_conf['engine'],
-                                                           db_conf['version'], db_conf['host'],
-                                                           db_conf['port'], db_conf['user']))
+        log.info(
+            'Schedule task: {} {}-{} {}:{} {}'.format(
+                db_conf['db_id'],
+                db_conf['engine'],
+                db_conf['version'],
+                db_conf['host'],
+                db_conf['port'],
+                db_conf['user'],
+            )
+        )
         # schedule_task oceanbase task
         if db_conf['engine'] == 'OceanBase':
             # Currently only support 3.x and 4.x version
@@ -55,13 +63,17 @@ def schedule_func():
                 db_conf['cluster_name'] = db_conf['user'].split(':')[0]
                 db_conf['tenant_name'] = db_conf['user'].split(':')[1]
             else:
-                log.error("oceanbase connect user config error: {}".format(db_conf['user']))
+                log.error(
+                    "oceanbase connect user config error: {}".format(db_conf['user'])
+                )
                 continue
             approve_scope = db_conf['approve_scope']
 
             for approved_type in approve_scope.split(APPROVE_SCOPE_DELIMITER):
                 # get checkpoint
-                queue_dict = meta_conn.get_schedule_queue(db_conf['db_id'], approved_type)
+                queue_dict = meta_conn.get_schedule_queue(
+                    db_conf['db_id'], approved_type
+                )
                 if approved_type == ApproveScopeEunm.SQL.value:
                     schedule_topsql_ob(db_conf, queue_dict, approved_type)
                 if approved_type == ApproveScopeEunm.PLAN.value:

@@ -14,7 +14,6 @@ from .node import Node
 
 
 class SelectItem(Node):
-
     def __init__(self, line=None, pos=None):
         super(SelectItem, self).__init__(line, pos)
 

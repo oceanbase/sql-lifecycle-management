@@ -27,21 +27,21 @@ class BaseAPI(Resource):
         super(BaseAPI, self).__init__(*args, **kwargs)
         self.user_id = 'sqless'
 
-    def construct_success_response_entity(self, data={}, success=True, total_count=0, message='', code=200):
-        return jsonify({
-            "data": data,
-            "code": code,
-            "success": success,
-            "message": message,
-            "totalCount": total_count
-        })
+    def construct_success_response_entity(
+        self, data={}, success=True, total_count=0, message='', code=200
+    ):
+        return jsonify(
+            {
+                "data": data,
+                "code": code,
+                "success": success,
+                "message": message,
+                "totalCount": total_count,
+            }
+        )
 
     def construct_error_response_entity(self, message, code=500):
-        return jsonify({
-            "code": code,
-            "success": False,
-            "message": message
-        })
+        return jsonify({"code": code, "success": False, "message": message})
 
 
 class APIArgument(Argument):

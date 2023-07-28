@@ -20,7 +20,6 @@ from src.optimizer.optimizer import Optimizer
 
 
 class MyTestCase(unittest.TestCase):
-
     @classmethod
     def setUpClass(self):
         self.catalog_json = """{"columns": [{"schema":"luli1","table":"ob_topsql_baseline",
@@ -119,18 +118,27 @@ class MyTestCase(unittest.TestCase):
                 and sql_id = ?
                 and end_time >= ?
                 and end_time <  ? """
-        self.catalog_object = MetaDataUtils.json_to_catalog(json.loads(self.catalog_json))
+        self.catalog_object = MetaDataUtils.json_to_catalog(
+            json.loads(self.catalog_json)
+        )
         self.optimizer = Optimizer()
 
     def test_optimize(self):
-        index_optimization_recommendation_list, development_specification_recommendation_list, after_sql_rewrite_formatter = self.optimizer.optimize(
-            self.sql, self.catalog_object)
-        assert index_optimization_recommendation_list == [{
-            'index_recommendation': "Among the existing indexes, the optimal index is: PRIMARY(['cluster', 'tenant_name', 'end_time', 'sql_id', 'svr_ip', 'start_time'])",
-            'diagnosis_reason': "Query Range : ['cluster', 'tenant_name', 'end_time'] , Index Back : False , Interesting Order : False"},
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = self.optimizer.optimize(self.sql, self.catalog_object)
+        assert index_optimization_recommendation_list == [
+            {
+                'index_recommendation': "Among the existing indexes, the optimal index is: PRIMARY(['cluster', 'tenant_name', 'end_time', 'sql_id', 'svr_ip', 'start_time'])",
+                'diagnosis_reason': "Query Range : ['cluster', 'tenant_name', 'end_time'] , Index Back : False , Interesting Order : False",
+            },
             {
                 'index_recommendation': 'alter table ob_topsql_baseline add index idx_sqless_cluster_tenant_name_sql_id_end_time(cluster,tenant_name,sql_id,end_time)',
-                'diagnosis_reason': 'This is a better query range index'}]
+                'diagnosis_reason': 'This is a better query range index',
+            },
+        ]
 
     def test_optimize_like(self):
         catalog_json = """
@@ -154,26 +162,41 @@ class MyTestCase(unittest.TestCase):
         optimizer = Optimizer()
         catalog_object = MetaDataUtils.json_to_catalog(json.loads(catalog_json))
         sql1 = """select * from sqless_base where d like 'a%' """
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = optimizer.optimize(sql1, catalog_object)
-        assert index_optimization_recommendation_list == [{
-            'index_recommendation': 'Among the existing indexes, the optimal index is: test(d)',
-            'diagnosis_reason': "Query Range : ['d'] , Index Back : True , Interesting Order : False"}]
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = optimizer.optimize(sql1, catalog_object)
+        assert index_optimization_recommendation_list == [
+            {
+                'index_recommendation': 'Among the existing indexes, the optimal index is: test(d)',
+                'diagnosis_reason': "Query Range : ['d'] , Index Back : True , Interesting Order : False",
+            }
+        ]
         sql2 = """select * from sqless_base where d like '%a%' """
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = optimizer.optimize(sql2, catalog_object)
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = optimizer.optimize(sql2, catalog_object)
         assert index_optimization_recommendation_list == [
-            {'index_recommendation': 'Among the existing indexes, the optimal index is: PRIMARY(c)',
-             'diagnosis_reason': 'Query Range : [] , Index Back : False , Interesting Order : False'}]
+            {
+                'index_recommendation': 'Among the existing indexes, the optimal index is: PRIMARY(c)',
+                'diagnosis_reason': 'Query Range : [] , Index Back : False , Interesting Order : False',
+            }
+        ]
         sql3 = """select * from sqless_base where d like '%a' """
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = optimizer.optimize(sql3, catalog_object)
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = optimizer.optimize(sql3, catalog_object)
         assert index_optimization_recommendation_list == [
-            {'index_recommendation': 'Among the existing indexes, the optimal index is: PRIMARY(c)',
-             'diagnosis_reason': 'Query Range : [] , Index Back : False , Interesting Order : False'}]
+            {
+                'index_recommendation': 'Among the existing indexes, the optimal index is: PRIMARY(c)',
+                'diagnosis_reason': 'Query Range : [] , Index Back : False , Interesting Order : False',
+            }
+        ]
 
     def test_optimize_qm(self):
         catalog_json = """
@@ -220,69 +243,111 @@ class MyTestCase(unittest.TestCase):
         "server_name": "dbadmin.eu95", "version": "5.7.36"}
 """
         sql = """select * FROM cm_relation    WHERE status = ?               AND primary_id = ?                     AND rel_type = ?                AND rel_biz_type = ?"""
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = Optimizer().optimize(sql, MetaDataUtils.json_to_catalog(json.loads(catalog_json)))
-        assert index_optimization_recommendation_list == [{
-            'index_recommendation': "Among the existing indexes, the optimal index is: idx_prr(['primary_id', 'rel_type', 'rel_biz_type'])",
-            'diagnosis_reason': "Query Range : ['primary_id', 'rel_type', 'rel_biz_type'] , Index Back : True , Interesting Order : False"}]
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = Optimizer().optimize(
+            sql, MetaDataUtils.json_to_catalog(json.loads(catalog_json))
+        )
+        assert index_optimization_recommendation_list == [
+            {
+                'index_recommendation': "Among the existing indexes, the optimal index is: idx_prr(['primary_id', 'rel_type', 'rel_biz_type'])",
+                'diagnosis_reason': "Query Range : ['primary_id', 'rel_type', 'rel_biz_type'] , Index Back : True , Interesting Order : False",
+            }
+        ]
 
     def test_optimize_update_delete(self):
         optimizer = Optimizer()
         sql1 = """update sqless_base set nick=1231 where a = 1 and b = 2 """
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = optimizer.optimize(sql1, None)
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = optimizer.optimize(sql1, None)
 
         assert index_optimization_recommendation_list == [
-            {'index_recommendation': 'alter table sqless_base add index idx_sqless_a_b(a,b)',
-             'diagnosis_reason': 'This is a better query range index'}]
+            {
+                'index_recommendation': 'alter table sqless_base add index idx_sqless_a_b(a,b)',
+                'diagnosis_reason': 'This is a better query range index',
+            }
+        ]
 
         sql2 = """delete from sqless_base where a = 1 and b = 2 """
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = optimizer.optimize(sql2, None)
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = optimizer.optimize(sql2, None)
 
         assert index_optimization_recommendation_list == [
-            {'index_recommendation': 'alter table sqless_base add index idx_sqless_a_b(a,b)',
-             'diagnosis_reason': 'This is a better query range index'}]
+            {
+                'index_recommendation': 'alter table sqless_base add index idx_sqless_a_b(a,b)',
+                'diagnosis_reason': 'This is a better query range index',
+            }
+        ]
 
     def test_optimize_index_recommendation(self):
         optimizer = Optimizer()
         sql1 = """
         SELECT out_trade_no FROM `scardcenter02`.offlinepay_order_log WHERE actual_order_time > ? AND card_type = ? GROUP BY out_trade_no HAVING COUNT(*) > ? LIMIT ?
         """
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = optimizer.optimize(sql1, None)
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = optimizer.optimize(sql1, None)
 
-        assert index_optimization_recommendation_list == [{
-                                                              'index_recommendation': 'alter table offlinepay_order_log add index idx_sqless_card_type_actual_order_time(card_type,actual_order_time)',
-                                                              'diagnosis_reason': 'This is a better query range index'}]
-
+        assert index_optimization_recommendation_list == [
+            {
+                'index_recommendation': 'alter table offlinepay_order_log add index idx_sqless_card_type_actual_order_time(card_type,actual_order_time)',
+                'diagnosis_reason': 'This is a better query range index',
+            }
+        ]
 
     def test_optimize_index_recommendation2(self):
         optimizer = Optimizer()
         sql1 = """
         SELECT * FROM t1 WHERE  t1.c1 IN (?) AND t1.c2 = ? AND t1.c3 > ? and t1.c4 not in (select t2.c5 from t2 where t2.c5 in (?,?))
         """
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = optimizer.optimize(sql1, None)
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = optimizer.optimize(sql1, None)
 
-        assert index_optimization_recommendation_list == [{'index_recommendation': 'alter table t1 add index idx_sqless_c1_c2_c3(c1,c2,c3)', 'diagnosis_reason': 'This is a better query range index'}, {'index_recommendation': 'alter table t2 add index idx_sqless_c5(c5)', 'diagnosis_reason': 'This is a better query range index'}]
-
+        assert index_optimization_recommendation_list == [
+            {
+                'index_recommendation': 'alter table t1 add index idx_sqless_c1_c2_c3(c1,c2,c3)',
+                'diagnosis_reason': 'This is a better query range index',
+            },
+            {
+                'index_recommendation': 'alter table t2 add index idx_sqless_c5(c5)',
+                'diagnosis_reason': 'This is a better query range index',
+            },
+        ]
 
     def test_1(self):
         optimizer = Optimizer()
         sql1 = """
         SELECT * FROM t1 WHERE  t1.c1 IN (?) AND t1.c2 = ? AND t1.c3 > ? and t1.c4 not in (select t2.c5 from t2 where t2.c5 in (?,?))
         """
-        index_optimization_recommendation_list, \
-        development_specification_recommendation_list, \
-        after_sql_rewrite_formatter = optimizer.optimize(sql1, None)
+        (
+            index_optimization_recommendation_list,
+            development_specification_recommendation_list,
+            after_sql_rewrite_formatter,
+        ) = optimizer.optimize(sql1, None)
 
-        assert index_optimization_recommendation_list == [{'index_recommendation': 'alter table t1 add index idx_sqless_c1_c2_c3(c1,c2,c3)', 'diagnosis_reason': 'This is a better query range index'}, {'index_recommendation': 'alter table t2 add index idx_sqless_c5(c5)', 'diagnosis_reason': 'This is a better query range index'}]
+        assert index_optimization_recommendation_list == [
+            {
+                'index_recommendation': 'alter table t1 add index idx_sqless_c1_c2_c3(c1,c2,c3)',
+                'diagnosis_reason': 'This is a better query range index',
+            },
+            {
+                'index_recommendation': 'alter table t2 add index idx_sqless_c5(c5)',
+                'diagnosis_reason': 'This is a better query range index',
+            },
+        ]
 
 
 if __name__ == '__main__':

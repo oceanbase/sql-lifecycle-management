@@ -20,14 +20,13 @@ from src.consume.mybatis_sqlmap_parse import MybatisXmlParser
 
 
 class MyTestCase(unittest.TestCase):
-
     def test_include_define(self):
         f_path = os.getcwd()
         file_list = [f_path + '/test/consume/mybatis_xml/AffEventMapper.xml']
         for file_name in file_list:
             xml_parse = MybatisXmlFile(file_name)
             is_valid, tree, error_msg = xml_parse.load_xml_file()
-            assert is_valid == True
+            assert is_valid is True
             if not is_valid:
                 print(f"skip invalid mybatis xml file: {file_name}")
                 continue
@@ -38,22 +37,24 @@ class MyTestCase(unittest.TestCase):
                 print(f"load xml file [{file_name}] success.")
             include_sql_dict = get_include_define(tree)
             if include_sql_dict:
-                print('include_sql_dict:',include_sql_dict)
+                print('include_sql_dict:', include_sql_dict)
                 for i in include_sql_dict.keys():
-                    print('include_node: ',i,tostring(include_sql_dict[i]).decode())
+                    print('include_node: ', i, tostring(include_sql_dict[i]).decode())
             print('\n###############################################################\n')
 
     def test_xml_file(self):
         f_path = os.getcwd()
-        file_list = [f_path + '/test/consume/mybatis_xml/InfoSchemaMapper.xml',
-                     f_path + '/test/consume/mybatis_xml/AffEventMapper.xml',
-                     f_path + '/test/consume/mybatis_xml/ObTopsqlBaselineMapper.xml']
-        #file_list = [f_path + '/test/consume/mybatis_xml/AffEventMapper.xml']
-        #file_list = [f_path + '/test/consume/mybatis_xml/InfoSchemaMapper.xml']
+        file_list = [
+            f_path + '/test/consume/mybatis_xml/InfoSchemaMapper.xml',
+            f_path + '/test/consume/mybatis_xml/AffEventMapper.xml',
+            f_path + '/test/consume/mybatis_xml/ObTopsqlBaselineMapper.xml',
+        ]
+        # file_list = [f_path + '/test/consume/mybatis_xml/AffEventMapper.xml']
+        # file_list = [f_path + '/test/consume/mybatis_xml/InfoSchemaMapper.xml']
         for file_name in file_list:
             xml_parse = MybatisXmlFile(file_name)
             is_valid, tree, error_msg = xml_parse.load_xml_file()
-            assert is_valid == True
+            assert is_valid is True
             if not is_valid:
                 print(f"skip invalid mybatis xml file: {file_name}")
                 continue
@@ -70,29 +71,31 @@ class MyTestCase(unittest.TestCase):
             sql_list = xml_parse.parse_xml_content(tree)
             for per_sql in sql_list:
                 print(per_sql)
-                print('sql_id: ',per_sql['sql_id'])
-                print('error_msg: ',per_sql['error_msg'])
-                print('xml: ',per_sql['xml'])
-                print('sql_text: ',per_sql['sql_text'])
+                print('sql_id: ', per_sql['sql_id'])
+                print('error_msg: ', per_sql['error_msg'])
+                print('xml: ', per_sql['xml'])
+                print('sql_text: ', per_sql['sql_text'])
                 print('\n**************************\n')
             print('\n###############################################################\n')
 
     def test_parse_xml_file(self):
         f_path = os.getcwd()
-        file_list = [f_path + '/test/consume/mybatis_xml/InfoSchemaMapper.xml',
-                     f_path + '/test/consume/mybatis_xml/AffEventMapper.xml',
-                     f_path + '/test/consume/mybatis_xml/ObTopsqlBaselineMapper.xml']
-        #file_list = [f_path + '/test/consume/mybatis_xml/AffEventMapper.xml']
-        #file_list = [f_path + '/test/consume/mybatis_xml/InfoSchemaMapper.xml']
+        file_list = [
+            f_path + '/test/consume/mybatis_xml/InfoSchemaMapper.xml',
+            f_path + '/test/consume/mybatis_xml/AffEventMapper.xml',
+            f_path + '/test/consume/mybatis_xml/ObTopsqlBaselineMapper.xml',
+        ]
+        # file_list = [f_path + '/test/consume/mybatis_xml/AffEventMapper.xml']
+        # file_list = [f_path + '/test/consume/mybatis_xml/InfoSchemaMapper.xml']
         xml_parse = MybatisXmlParser()
         for file_name in file_list:
             sql_list = xml_parse.parse_mybatis_xml_file(file_name)
             for per_sql in sql_list:
                 print(per_sql)
-                print('sql_id: ',per_sql['sql_id'])
-                print('error_msg: ',per_sql['error_msg'])
-                print('xml: ',per_sql['xml'])
-                print('sql_text: ',per_sql['sql_text'])
+                print('sql_id: ', per_sql['sql_id'])
+                print('error_msg: ', per_sql['error_msg'])
+                print('xml: ', per_sql['xml'])
+                print('sql_text: ', per_sql['sql_text'])
                 print('\n**************************\n')
             print('\n###############################################################\n')
 
@@ -102,10 +105,10 @@ class MyTestCase(unittest.TestCase):
         sql_list = xml_parse.glob_path_file_and_parse(f_path)
         for per_sql in sql_list:
             print(per_sql)
-            print('sql_id: ',per_sql['sql_id'])
-            print('error_msg: ',per_sql['error_msg'])
-            print('xml: ',per_sql['xml'])
-            print('sql_text: ',per_sql['sql_text'])
+            print('sql_id: ', per_sql['sql_id'])
+            print('error_msg: ', per_sql['error_msg'])
+            print('xml: ', per_sql['xml'])
+            print('sql_text: ', per_sql['sql_text'])
             print('\n**************************\n')
         print('\n###############################################################\n')
 

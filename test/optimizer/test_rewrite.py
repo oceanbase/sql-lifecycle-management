@@ -3,17 +3,22 @@ import unittest
 
 from src.metadata.metadata_utils import MetaDataUtils
 from src.optimizer.formatter import format_sql
-from src.optimizer.rewrite_rule import *
-from src.parser.mysql_parser import parser
+from src.optimizer.rewrite_rule import (
+    RewriteMySQLORRule,
+    RemoveOrderByInDeleteUpdateRule,
+    RewriteSupplementColumnRule,
+)
+from src.parser.mysql_parser.parser import parser
 
 
 class MyTestCase(unittest.TestCase):
-
     def test_or(self):
         statement = parser.parse("SELECT * FROM T1 WHERE C1 < 20000 OR C2 < 30")
         RewriteMySQLORRule().match_action(statement)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """SELECT *
+        assert (
+            after_sql_rewrite_format
+            == """SELECT *
 FROM
   T1
 WHERE C1 < 20000
@@ -21,6 +26,7 @@ UNION SELECT *
 FROM
   T1
 WHERE C2 < 30"""
+        )
 
     def test_supplement_column_rewrite(self):
         statement = parser.parse("SELECT * FROM sqless_base")
@@ -35,11 +41,14 @@ WHERE C2 < 30"""
         catalog_object = MetaDataUtils.json_to_catalog(json.loads(catalog_json))
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """SELECT
+        assert (
+            after_sql_rewrite_format
+            == """SELECT
   a
 , b
 FROM
   sqless_base"""
+        )
 
     def test_supplement_column_rewrite_rule_match(self):
         statement = parser.parse("SELECT * FROM sqless_base")
@@ -83,37 +92,49 @@ FROM
         statement = parser.parse("SELECT * FROM d1")
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """SELECT
+        assert (
+            after_sql_rewrite_format
+            == """SELECT
   a
 , c
 FROM
   d1"""
+        )
         statement = parser.parse("SELECT a.* FROM d1 a")
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """SELECT
+        assert (
+            after_sql_rewrite_format
+            == """SELECT
   a.a
 , a.c
 FROM
   d1 a"""
+        )
         statement = parser.parse("SELECT a.* FROM d1 as a")
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """SELECT
+        assert (
+            after_sql_rewrite_format
+            == """SELECT
   a.a
 , a.c
 FROM
   d1 AS a"""
+        )
         statement = parser.parse("SELECT c.* , d2.b FROM a.d1 c,d2")
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """SELECT
+        assert (
+            after_sql_rewrite_format
+            == """SELECT
   c.a
 , c.c
 , d2.b
 FROM
   a.d1 c
 , d2"""
+        )
 
     def test_or_same_column(self):
         after_sql_rewrite_format = """SELECT *
@@ -139,7 +160,9 @@ WHERE C1 IN (20000, 30)"""
         statement = parser.parse("SELECT * FROM T1 WHERE C1 in (20000) OR C2 in (30)")
         RewriteMySQLORRule().match_action(statement)
         result = format_sql(statement, 0)
-        assert result == """SELECT *
+        assert (
+            result
+            == """SELECT *
 FROM
   T1
 WHERE C1 IN (20000)
@@ -147,6 +170,7 @@ UNION SELECT *
 FROM
   T1
 WHERE C2 IN (30)"""
+        )
 
     def test_like(self):
         statement = parser.parse("select * from sqless_base where d like 'a%'")
@@ -168,18 +192,25 @@ WHERE C2 IN (30)"""
                         ],
                     "version": "5.7.36"}
                 """
-        RewriteSupplementColumnRule().match_action(statement, MetaDataUtils.json_to_catalog(json.loads(catalog_json)))
+        RewriteSupplementColumnRule().match_action(
+            statement, MetaDataUtils.json_to_catalog(json.loads(catalog_json))
+        )
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """SELECT
+        assert (
+            after_sql_rewrite_format
+            == """SELECT
   c
 , d
 FROM
   sqless_base
 WHERE d LIKE \'a%\'"""
+        )
 
     def test_qm(self):
-        statement = parser.parse("""select * FROM cm_relation    WHERE status = ?               
-        AND primary_id = ?                     AND rel_type = ?                AND rel_biz_type = ?""")
+        statement = parser.parse(
+            """select * FROM cm_relation    WHERE status = ?               
+        AND primary_id = ?                     AND rel_type = ?                AND rel_biz_type = ?"""
+        )
         catalog_json = """
         {"columns": [{"schema":"luli1","table":"cm_relation",
 "name":"db_id","type":"bigint(20)","nullable":false,"collation":""},{"schema":"luli1","table":"cm_relation",
@@ -234,7 +265,9 @@ WHERE d LIKE \'a%\'"""
         catalog_object = MetaDataUtils.json_to_catalog(json.loads(catalog_json))
         RewriteSupplementColumnRule().match_action(statement, catalog_object)
         after_sql_rewrite_format = format_sql(statement, 0)
-        assert after_sql_rewrite_format == """SELECT
+        assert (
+            after_sql_rewrite_format
+            == """SELECT
   db_id
 , tnt_inst_id
 , id
@@ -249,6 +282,7 @@ WHERE d LIKE \'a%\'"""
 FROM
   cm_relation
 WHERE status = ? AND primary_id = ? AND rel_type = ? AND rel_biz_type = ?"""
+        )
 
     def test_delete_update_order(self):
         statement = parser.parse("""delete from tbl where col1 = ? order by col""")
@@ -257,22 +291,30 @@ WHERE status = ? AND primary_id = ? AND rel_type = ? AND rel_biz_type = ?"""
         RemoveOrderByInDeleteUpdateRule().match_action(statement, None)
         after_sql_rewrite_format = format_sql(statement, 0)
         assert after_sql_rewrite_format == """DELETE FROM tbl WHERE col1 = ?"""
-        statement = parser.parse("""delete from tbl where col1 = ? order by col limit 1""")
+        statement = parser.parse(
+            """delete from tbl where col1 = ? order by col limit 1"""
+        )
         match = RemoveOrderByInDeleteUpdateRule().match(statement, None)
         assert not match
 
-        statement = parser.parse("""update tbl set col1 = ? where col2 = ? order by col""")
+        statement = parser.parse(
+            """update tbl set col1 = ? where col2 = ? order by col"""
+        )
         match = RemoveOrderByInDeleteUpdateRule().match(statement, None)
         assert match
         RemoveOrderByInDeleteUpdateRule().match_action(statement, None)
         after_sql_rewrite_format = format_sql(statement, 0)
         assert after_sql_rewrite_format == """UPDATE tbl SET col1 = ? WHERE col2 = ?"""
-        statement = parser.parse("""update tbl set col1 = ? where col2 = ? order by col limit 1""")
+        statement = parser.parse(
+            """update tbl set col1 = ? where col2 = ? order by col limit 1"""
+        )
         match = RemoveOrderByInDeleteUpdateRule().match(statement, None)
         assert not match
 
     def test_subquery_or(self):
-        statement = parser.parse("SELECT t1.* FROM t1 WHERE  t1.c1 IN (?) AND t1.c2 = ? AND t1.c3 > ? and c4 not in (select t2.c5 from t2 where t2.c5 = ? or t2.c5 = ?)")
+        statement = parser.parse(
+            "SELECT t1.* FROM t1 WHERE  t1.c1 IN (?) AND t1.c2 = ? AND t1.c3 > ? and c4 not in (select t2.c5 from t2 where t2.c5 = ? or t2.c5 = ?)"
+        )
         is_match = RewriteMySQLORRule().match(statement)
         assert not is_match
 

@@ -32,11 +32,11 @@ re_hint = re.compile(r"\/\*.*\*\/")
 
 
 class SlowQueryParser(object):
-    """ parse mysql slow query log and turn it into a sql log stream
-        :param
-            log_file: slow query logfile name
-            db_version: default 5.6
-            sort: global=total_time, indicator_name like avg_query_time, default is null
+    """parse mysql slow query log and turn it into a sql log stream
+    :param
+        log_file: slow query logfile name
+        db_version: default 5.6
+        sort: global=total_time, indicator_name like avg_query_time, default is null
     """
 
     def __init__(self, log_file, db_version='5.6', sort=''):
@@ -45,7 +45,7 @@ class SlowQueryParser(object):
         self.sort = sort
 
     def pattern(self, sql):
-        """ parameterize sql values for unifing sql pattern """
+        """parameterize sql values for unifing sql pattern"""
         if not sql:
             raise ValueError("Invalid sql: %s" % sql)
         statement = sql
@@ -55,11 +55,15 @@ class SlowQueryParser(object):
             statement = statement.replace(sql_hint, '')
         # Parameterize sql, normalize the value, and generate a sql_id
         # Currently only the select syntax is supported
-        if statement.strip().lower().startswith('select ') \
-                or statement.strip().lower().startswith('update ') \
-                or statement.strip().lower().startswith('delete ') :
+        if (
+            statement.strip().lower().startswith('select ')
+            or statement.strip().lower().startswith('update ')
+            or statement.strip().lower().startswith('delete ')
+        ):
             try:
-                statement_node = ParserUtils.parameterized_query(parser.parse(statement))
+                statement_node = ParserUtils.parameterized_query(
+                    parser.parse(statement)
+                )
                 statement = format_sql(statement_node, 0)
             except Exception as e:
                 log.error(statement)
@@ -77,17 +81,17 @@ class SlowQueryParser(object):
         skip_patterns = ['use ', 'SET timestamp']
         for p in skip_patterns:
             if sql.startswith(p):
-                sql = sql[sql.find(';') + 1:].strip()
+                sql = sql[sql.find(';') + 1 :].strip()
         return sql.strip(';')
 
     def cutoff_sql(self, sql):
-        """ sql is too long, cut off to remain head and tail """
+        """sql is too long, cut off to remain head and tail"""
         if len(sql) > 4000:
             return sql[0:2000] + '...' + sql[-2000:]
         return sql
 
     def group_sql(self):
-        """ After parameterizing the sql, normalize it, and then group by the normalized sql """
+        """After parameterizing the sql, normalize it, and then group by the normalized sql"""
         ret = {}
         # get file encoding
         read_encoding = get_encoding(self.log_file)
@@ -107,7 +111,7 @@ class SlowQueryParser(object):
                     m1 = re.search(re_trace, sql_text)
                     m2 = re.search(re_annotation, sql_text.lstrip())
                     if m1 or m2:
-                        sql_text = sql_text[sql_text.index(' */') + 3:]
+                        sql_text = sql_text[sql_text.index(' */') + 3 :]
                     # get normalized sql_id parameterized with sql text
                     sql_id, statement = self.pattern(sql_text)
                     e.query = sql_text
@@ -121,7 +125,7 @@ class SlowQueryParser(object):
         return ret
 
     def calc_stats(self):
-        """ calculate performance consumption group by sql_id """
+        """calculate performance consumption group by sql_id"""
         slow_queries = self.group_sql()
         # calculate grouped aggregate values ​​for each sql_id
         ret = {}
@@ -136,11 +140,15 @@ class SlowQueryParser(object):
                 'org': entry_list[0],
                 'avg_query_time': sum_query_time / len(entry_list),
                 'max_query_time': max_query_time,
-                'first_execute_time': entry_list[0].datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                'last_execute_time': entry_list[-1].datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                'first_execute_time': entry_list[0].datetime.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+                'last_execute_time': entry_list[-1].datetime.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
                 'count': len(entry_list),
                 'sql_id': sql_id,
-                'sql_text': self.cutoff_sql(entry_list[0].query.strip())
+                'sql_text': self.cutoff_sql(entry_list[0].query.strip()),
             }
             ret[sql_id] = entry
         return ret
@@ -151,7 +159,9 @@ class SlowQueryParser(object):
         for sql_id, entry in stats.items():
             res.append(entry)
         if res and self.sort == 'total_time':
-            res = sorted(res, reverse=True, key=lambda x: x['avg_query_time'] * x['count'])
+            res = sorted(
+                res, reverse=True, key=lambda x: x['avg_query_time'] * x['count']
+            )
         elif res and self.sort and self.sort in res[0]:
             res = sorted(res, reverse=True, key=lambda x: x[self.sort])
         return res

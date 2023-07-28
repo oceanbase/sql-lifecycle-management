@@ -19,20 +19,21 @@ from .pmd_rule import common_pmd_list
 
 
 class Engine(metaclass=ABCMeta):
-
     @abstractmethod
     def parse(self, sql: str, tracking: bool) -> List:
         pass
 
     @abstractmethod
-    def rewrite(self, statement: Statement, catalog = None) -> Statement:
+    def rewrite(self, statement: Statement, catalog=None) -> Statement:
         pass
 
     def rbo(self, statement: Statement, candidate_index_list):
         # heuristic_rule
         for heuristic_rule in heuristic_rule_list:
             if heuristic_rule.match(statement, candidate_index_list):
-                heuristic_rule_return_result = heuristic_rule.match_action(statement, candidate_index_list)
+                heuristic_rule_return_result = heuristic_rule.match_action(
+                    statement, candidate_index_list
+                )
                 if heuristic_rule_return_result:
                     return heuristic_rule_return_result
 

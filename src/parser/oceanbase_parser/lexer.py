@@ -12,29 +12,50 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 from ply import lex
 
-from src.parser.oceanbase_parser.reserved import *
+from src.parser.oceanbase_parser.reserved import presto_nonreserved, presto_tokens
 
 reserved = sorted(set(presto_tokens).difference(presto_nonreserved))
 
-tokens = ['INTEGER', 'NUMBER', 'DOUBLE',
-          'IDENTIFIER', 'DIGIT_IDENTIFIER',
-          'QUOTED_IDENTIFIER', 'BACKQUOTED_IDENTIFIER',
-          'STRING', 'PERIOD',
-          'COMMA',
-          'PLUS', 'MINUS',
-          'LPAREN', 'RPAREN',
-          'GT', 'GE',
-          'LT', 'LE',
-          'EQ', 'NE',
-          'BIT_OR', 'BIT_AND',
-          'BIT_XOR', 'BIT_OPPOSITE',
-          'BIT_MOVE_LEFT', 'BIT_MOVE_RIGHT',
-          'CONCAT', 'SLASH',
-          'ASTERISK', 'PERCENT',
-          'TOP',  # ADQL
-          'NON_RESERVED',
-          'QM', 'SCONST'
-          ] + reserved + list(presto_nonreserved)
+tokens = (
+    [
+        'INTEGER',
+        'NUMBER',
+        'DOUBLE',
+        'IDENTIFIER',
+        'DIGIT_IDENTIFIER',
+        'QUOTED_IDENTIFIER',
+        'BACKQUOTED_IDENTIFIER',
+        'STRING',
+        'PERIOD',
+        'COMMA',
+        'PLUS',
+        'MINUS',
+        'LPAREN',
+        'RPAREN',
+        'GT',
+        'GE',
+        'LT',
+        'LE',
+        'EQ',
+        'NE',
+        'BIT_OR',
+        'BIT_AND',
+        'BIT_XOR',
+        'BIT_OPPOSITE',
+        'BIT_MOVE_LEFT',
+        'BIT_MOVE_RIGHT',
+        'CONCAT',
+        'SLASH',
+        'ASTERISK',
+        'PERCENT',
+        'TOP',  # ADQL
+        'NON_RESERVED',
+        'QM',
+        'SCONST',
+    ]
+    + reserved
+    + list(presto_nonreserved)
+)
 
 t_LPAREN = '\('
 t_RPAREN = '\)'
@@ -83,7 +104,7 @@ def t_INTEGER(t):
 
 # String literal
 def t_SCONST(t):
-    r'\'([^\']|\'\')*\''
+    r'\'([^\']|\'\')*\' '
     t.type = "SCONST"
     return t
 

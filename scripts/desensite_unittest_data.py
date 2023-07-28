@@ -13,11 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 import os
 
 from src.consume.file_parse_common import get_encoding
-from src.consume.mysql_slowlog_parse  import MysqlSlowLogParse
+from src.consume.mysql_slowlog_parse import MysqlSlowLogParse
 
 
 def func_desensitize_slowlog(file_list, db_version):
-    ''' parse sensitive info in test file, then desensitize '''
+    '''parse sensitive info in test file, then desensitize'''
     f_path = os.path.abspath('..')
     file_n = 0
     for log_file in file_list:
@@ -31,13 +31,23 @@ def func_desensitize_slowlog(file_list, db_version):
                     ip_list.append(e.host)
                 if e.user and e.user not in db_list and len(e.user) >= 4:
                     db_list.append(e.user)
-                if db_version == '5.6' and e.schema and e.schema not in db_list and len(e.schema) >= 4:
+                if (
+                    db_version == '5.6'
+                    and e.schema
+                    and e.schema not in db_list
+                    and len(e.schema) >= 4
+                ):
                     db_list.append(e.schema)
-                elif db_version == '5.7' and e.database and e.database not in db_list and len(e.database) >= 4:
+                elif (
+                    db_version == '5.7'
+                    and e.database
+                    and e.database not in db_list
+                    and len(e.database) >= 4
+                ):
                     db_list.append(e.database)
-        print('log_file:',log_file)
-        print('ip_list:',ip_list)
-        print('db_list:',db_list)
+        print('log_file:', log_file)
+        print('ip_list:', ip_list)
+        print('db_list:', db_list)
         # update desensitizing file
         des_ip = '127.0.0.1'
         des_db = 'asdfasdf'
@@ -46,9 +56,18 @@ def func_desensitize_slowlog(file_list, db_version):
             f_v = '56'
         else:
             f_v = '57'
-        new_file = f_path + '/test/consume/mysql_slowlog/mysql_slowlog_test_' + f_v + '_' + str(file_n) + '.txt'
-        print('new_file:',new_file)
-        with open(log_file, "r", encoding=read_encoding) as f1, open(new_file, "w", encoding="utf-8") as f2:
+        new_file = (
+            f_path
+            + '/test/consume/mysql_slowlog/mysql_slowlog_test_'
+            + f_v
+            + '_'
+            + str(file_n)
+            + '.txt'
+        )
+        print('new_file:', new_file)
+        with open(log_file, "r", encoding=read_encoding) as f1, open(
+            new_file, "w", encoding="utf-8"
+        ) as f2:
             for line in f1:
                 # check ip address
                 for ip_info in ip_list:
@@ -64,8 +83,6 @@ def func_desensitize_slowlog(file_list, db_version):
         print('####################################################################\n')
 
 
-
-
 if __name__ == '__main__':
     f_path = os.path.abspath('..')
     # file_list = [ f_path + '/test/consume/mysql_slowlog/mysql_slowlog_56.txt' ]
@@ -74,13 +91,13 @@ if __name__ == '__main__':
         f_path + '/test/consume/mysql_slowlog/mysql_slowlog_56.txt',
         f_path + '/test/consume/mysql_slowlog/mysql_slowlog_56_2.txt',
         f_path + '/test/consume/mysql_slowlog/mysql_slowlog_56_3.txt',
-        f_path + '/test/consume/mysql_slowlog/mysql_slowlog_56_4.txt'
+        f_path + '/test/consume/mysql_slowlog/mysql_slowlog_56_4.txt',
     ]
     func_desensitize_slowlog(file_list_56, '5.6')
 
     file_list_57 = [
         f_path + '/test/consume/mysql_slowlog/mysql_slowlog_57.txt',
         f_path + '/test/consume/mysql_slowlog/slow57_2.txt',
-        f_path + '/test/consume/mysql_slowlog/slow57_3.txt'
+        f_path + '/test/consume/mysql_slowlog/slow57_3.txt',
     ]
     func_desensitize_slowlog(file_list_57, '5.7')

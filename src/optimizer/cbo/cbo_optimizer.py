@@ -27,8 +27,14 @@ log = Logger(logfile)
 
 
 class CBOOptimizer:
-
-    def get_cbo_index(self, candidate_index_list, visitor, filter_column_list, selectivity_list, table_rows):
+    def get_cbo_index(
+        self,
+        candidate_index_list,
+        visitor,
+        filter_column_list,
+        selectivity_list,
+        table_rows,
+    ):
         """
 
         :param candidate_index_list:
@@ -57,8 +63,12 @@ class CBOOptimizer:
                 _selectivity_dict[selectivity.column_name] = selectivity.ndv
 
         if not _selectivity_dict or not table_rows:
-            recommend_index, recommend_index_column = self.get_recommend_index_without_statistics(candidate_index_list,
-                                                                                                  filter_column_list)
+            (
+                recommend_index,
+                recommend_index_column,
+            ) = self.get_recommend_index_without_statistics(
+                candidate_index_list, filter_column_list
+            )
 
         if not recommend_index:
             min_selectivity = sys.maxsize
@@ -69,11 +79,18 @@ class CBOOptimizer:
                 index_column_list = index_dict.column_list
                 column_count = index_dict.column_count
 
-                selectivity = self.calculate_selectivity(index_dict, visitor, filter_column_list, _selectivity_dict,
-                                                         table_rows)
+                selectivity = self.calculate_selectivity(
+                    index_dict,
+                    visitor,
+                    filter_column_list,
+                    _selectivity_dict,
+                    table_rows,
+                )
                 if selectivity and selectivity <= min_selectivity:
                     if selectivity < min_selectivity or (
-                            selectivity == min_selectivity and column_count < recommend_index_column_count):
+                        selectivity == min_selectivity
+                        and column_count < recommend_index_column_count
+                    ):
                         recommend_index = index_name
                         recommend_index_column = ','.join(index_column_list)
                         min_selectivity = selectivity
@@ -81,7 +98,9 @@ class CBOOptimizer:
 
         return recommend_index, recommend_index_column, min_selectivity
 
-    def calculate_selectivity(self, index: Index, visitor, filter_column_list, selectivity_dict, table_rows):
+    def calculate_selectivity(
+        self, index: Index, visitor, filter_column_list, selectivity_dict, table_rows
+    ):
         """
         Calculate the selectivity of an index
         selectivity = the proportion of eligible data in the total data
@@ -134,7 +153,11 @@ class CBOOptimizer:
                 if column not in column_list:
                     is_index_cover_all_column = False
 
-        if not has_interesting_order and not extract_range and index_type != IndexType.PRIMARY.value:
+        if (
+            not has_interesting_order
+            and not extract_range
+            and index_type != IndexType.PRIMARY.value
+        ):
             # If this index does not have extract_range and can not eliminate sorting,
             # return max directly, not as primary key
             return sys.maxsize
@@ -148,8 +171,9 @@ class CBOOptimizer:
             opt_type = None
             for column in extract_range:
                 # the last extract_range column operator
-                opt_type = MetaDataUtils.get_column_opt_for_cost(column, filter_column_name_list,
-                                                                 filter_column_opt_list)
+                opt_type = MetaDataUtils.get_column_opt_for_cost(
+                    column, filter_column_name_list, filter_column_opt_list
+                )
                 if opt_type == OptType.IN and len(in_count_list) > in_count:
                     in_factor = in_factor * in_count_list[in_count]
                     in_count += 1
@@ -167,11 +191,18 @@ class CBOOptimizer:
                 if not ndv and extract_range[:-1]:
                     return None
                 if ndv:
-                    query_range_selectivity = 1 / ndv * in_factor * self.get_selectivity_by_opt_type(opt_type,
-                                                                                                     selectivity_dict,
-                                                                                                     last_column)
+                    query_range_selectivity = (
+                        1
+                        / ndv
+                        * in_factor
+                        * self.get_selectivity_by_opt_type(
+                            opt_type, selectivity_dict, last_column
+                        )
+                    )
                 else:
-                    query_range_selectivity = self.get_selectivity_by_opt_type(opt_type, selectivity_dict, last_column)
+                    query_range_selectivity = self.get_selectivity_by_opt_type(
+                        opt_type, selectivity_dict, last_column
+                    )
 
         # calculate the selectivity of index back
         if index_back:
@@ -188,8 +219,9 @@ class CBOOptimizer:
             # coefficient of in = value of in_count
             in_factor = 1
             for remain_column in remain_column_list:
-                opt_type = MetaDataUtils.get_column_opt_for_cost(remain_column, filter_column_name_list,
-                                                                 filter_column_opt_list)
+                opt_type = MetaDataUtils.get_column_opt_for_cost(
+                    remain_column, filter_column_name_list, filter_column_opt_list
+                )
 
                 if opt_type == OptType.EQUAL or opt_type == OptType.IN:
                     if opt_type == OptType.IN and len(in_count_list) > in_count:
@@ -202,7 +234,9 @@ class CBOOptimizer:
             ndv = self.calculate_multi_col_ndv(remain_equal_in_list, selectivity_dict)
             if ndv:
                 if query_range_selectivity:
-                    index_back_selectivity = query_range_selectivity * (1 / ndv) * in_factor
+                    index_back_selectivity = (
+                        query_range_selectivity * (1 / ndv) * in_factor
+                    )
                 else:
                     # normally query_range_selectivity != 0
                     index_back_selectivity = (1 / ndv) * in_factor
@@ -210,9 +244,12 @@ class CBOOptimizer:
                 index_back_selectivity = query_range_selectivity
 
             for other_column in other_list:
-                opt_type = MetaDataUtils.get_column_opt_for_cost(other_column, filter_column_name_list,
-                                                                 filter_column_opt_list)
-                selectivity = self.get_selectivity_by_opt_type(opt_type, selectivity_dict, other_column)
+                opt_type = MetaDataUtils.get_column_opt_for_cost(
+                    other_column, filter_column_name_list, filter_column_opt_list
+                )
+                selectivity = self.get_selectivity_by_opt_type(
+                    opt_type, selectivity_dict, other_column
+                )
                 if index_back_selectivity:
                     index_back_selectivity = index_back_selectivity * selectivity
                 else:
@@ -236,7 +273,11 @@ class CBOOptimizer:
         if not has_interesting_order:
             interesting_order_cost = query_range_selectivity * 0.01
 
-        return query_range_selectivity + 10 * index_back_selectivity + interesting_order_cost
+        return (
+            query_range_selectivity
+            + 10 * index_back_selectivity
+            + interesting_order_cost
+        )
 
     def get_selectivity_by_opt_type(self, opt_type, selectivity_dict, column_name):
         """
@@ -264,14 +305,18 @@ class CBOOptimizer:
         elif opt_type == OptType.CLOSED_RANGE_HALF_EQUAL:
             # a > ? and a <= ? selectivity = a > ? and a < ? + 1 / ndv(a)
             if selectivity_dict.get(column_name):
-                selectivity = ob_default_closed_range_sel + 1 / selectivity_dict.get(column_name)
+                selectivity = ob_default_closed_range_sel + 1 / selectivity_dict.get(
+                    column_name
+                )
             else:
                 # no ndv is handled as a > ? and a < ?
                 selectivity = ob_default_closed_range_sel
         elif opt_type == OptType.CLOSED_RANGE_EQUAL_ALL:
             # a >= ? and a <= ? selectivity = a > ? and a < ? + 2 / ndv(a)
             if selectivity_dict.get(column_name):
-                selectivity = ob_default_closed_range_sel + 2 / selectivity_dict.get(column_name)
+                selectivity = ob_default_closed_range_sel + 2 / selectivity_dict.get(
+                    column_name
+                )
             else:
                 # no ndv is handled as a > ? and a < ?
                 selectivity = ob_default_closed_range_sel
@@ -279,12 +324,16 @@ class CBOOptimizer:
             selectivity = ob_default_half_open_range_sel
         elif opt_type == OptType.HALF_OPEN_RANGE_EQUAL:
             if selectivity_dict.get(column_name):
-                selectivity = ob_default_half_open_range_sel + 1 / selectivity_dict.get(column_name)
+                selectivity = ob_default_half_open_range_sel + 1 / selectivity_dict.get(
+                    column_name
+                )
             else:
                 selectivity = ob_default_half_open_range_sel
         elif opt_type == OptType.NOT_EQUAL:
             if selectivity_dict.get(column_name):
-                selectivity = (selectivity_dict.get(column_name) - 1) / selectivity_dict.get(column_name)
+                selectivity = (
+                    selectivity_dict.get(column_name) - 1
+                ) / selectivity_dict.get(column_name)
 
         return selectivity
 
@@ -319,7 +368,9 @@ class CBOOptimizer:
                             remain_ndv = selectivity_dict.get(remain_multi_column)
                         else:
                             # Whether there is a performance problem with recursion here needs to be verified
-                            remain_ndv = self.calculate_multi_col_ndv(remain_list, selectivity_dict)
+                            remain_ndv = self.calculate_multi_col_ndv(
+                                remain_list, selectivity_dict
+                            )
                     else:
                         # full match
                         return ndv
@@ -330,7 +381,9 @@ class CBOOptimizer:
                             max_ndv = total_ndv
         return max_ndv
 
-    def get_recommend_index_without_statistics(self, candidate_index_list, filter_column_list):
+    def get_recommend_index_without_statistics(
+        self, candidate_index_list, filter_column_list
+    ):
         """
         In the absence of statistics, get the best index according to the rules
         :param candidate_index_list:
@@ -359,7 +412,9 @@ class CBOOptimizer:
                 col_rank += 1
                 if column_name in filter_column_name_list:
                     hit_num += 1
-                    sub_score = self.get_opt_weight(column_name, filter_column_name_list, filter_column_opt_list)
+                    sub_score = self.get_opt_weight(
+                        column_name, filter_column_name_list, filter_column_opt_list
+                    )
                     ops_score += float(math.pow(0.1, col_rank - 1) * sub_score)
                 else:
                     # If the column is not in the filter column, break directly
@@ -368,7 +423,9 @@ class CBOOptimizer:
                 ops_score += 0.1
             per_idx.hit_num = hit_num
             per_idx.ops_score = ops_score
-        data_list = sorted(candidate_index_list, reverse=True, key=lambda item: (item.ops_score))
+        data_list = sorted(
+            candidate_index_list, reverse=True, key=lambda item: (item.ops_score)
+        )
 
         # take the highest value according to the weight value,
         # if there are multiple highest values:
@@ -376,7 +433,9 @@ class CBOOptimizer:
         # 2. All index column are hit and are unique keys;
         # 3. The number of hit column is large;
         # 4. The number of index column is small
-        for (ops_score), group_data in itertools.groupby(data_list, key=lambda item: (item.ops_score)):
+        for (ops_score), group_data in itertools.groupby(
+            data_list, key=lambda item: (item.ops_score)
+        ):
             try:
                 hit_index = ''
                 hit_index_column = ''
@@ -395,21 +454,29 @@ class CBOOptimizer:
                     if hit_index != per_idx.index_name:
                         # If the current index is the primary key and the recommended index is not the primary key,
                         # update the recommended index as the primary key and immediately jump out of the loop
-                        if per_idx.index_type == IndexType.PRIMARY and hit_idx_type != IndexType.PRIMARY:
+                        if (
+                            per_idx.index_type == IndexType.PRIMARY
+                            and hit_idx_type != IndexType.PRIMARY
+                        ):
                             hit_index = per_idx.index_name
                             hit_index_column = per_idx.column_list
                             break
                         # If the hit column count is the same as index column count,
                         # and the index type is unique, update the recommended index
-                        if per_idx.hit_num == per_idx.column_count \
-                                and per_idx.index_type == IndexType.UNIQUE \
-                                and hit_idx_type != IndexType.UNIQUE:
+                        if (
+                            per_idx.hit_num == per_idx.column_count
+                            and per_idx.index_type == IndexType.UNIQUE
+                            and hit_idx_type != IndexType.UNIQUE
+                        ):
                             reset_mark = 1
                         # If the hit column count is larger than the recommended index count,
                         # update the recommended index
                         elif per_idx.hit_num > hit_col_num:
                             # the full match unique index will be skip
-                            if hit_idx_type == IndexType.UNIQUE and hit_col_num == hit_idx_cols:
+                            if (
+                                hit_idx_type == IndexType.UNIQUE
+                                and hit_col_num == hit_idx_cols
+                            ):
                                 reset_mark = 0
                             else:
                                 reset_mark = 1
@@ -417,15 +484,20 @@ class CBOOptimizer:
                         # but the index column count is less than the recommended index, update the recommended index
                         elif per_idx.hit_num == hit_col_num:
                             # the full match unique index will be skip
-                            if hit_idx_type == IndexType.UNIQUE and hit_col_num == hit_idx_cols:
+                            if (
+                                hit_idx_type == IndexType.UNIQUE
+                                and hit_col_num == hit_idx_cols
+                            ):
                                 reset_mark = 0
                             elif per_idx.column_count < hit_idx_cols:
                                 reset_mark = 1
                             # When the hit column count and the index column count are all equal,
                             # the priority of the unique index is higher than that of the normal index
-                            elif per_idx.column_count == hit_idx_cols \
-                                    and hit_idx_type != IndexType.UNIQUE \
-                                    and per_idx.index_type == IndexType.UNIQUE:
+                            elif (
+                                per_idx.column_count == hit_idx_cols
+                                and hit_idx_type != IndexType.UNIQUE
+                                and per_idx.index_type == IndexType.UNIQUE
+                            ):
                                 reset_mark = 1
                     if reset_mark:
                         reset_mark = 0
@@ -456,14 +528,20 @@ class CBOOptimizer:
                 elif opt == 'limit':
                     rt_weight = 2
                 # Score 1 if there is a range or ordering
-                elif opt == '<' or opt == '<=' or opt == '>' or opt == '>=' or opt == 'order':
+                elif (
+                    opt == '<'
+                    or opt == '<='
+                    or opt == '>'
+                    or opt == '>='
+                    or opt == 'order'
+                ):
                     rt_weight = 1
             else:
                 tmp_cols = deepcopy(cols)
                 tmp_opt = deepcopy(opts)
                 tmp_hit = []
                 # the weight score judgment is the same as above
-                while (col_cnt > 0):
+                while col_cnt > 0:
                     pos = tmp_cols.index(column_name)
                     opt = tmp_opt[pos]
                     if opt == '=' or opt == 'in':

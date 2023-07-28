@@ -61,13 +61,11 @@ RE_COMMON_HEADER = re.compile(r"(.+), Version: (\d+)\.(\d+)\.(\d+)(?:-(\S+))?")
 RE_COMMON_SERVER = re.compile(r"Tcp port:\s*(\d+)\s+Unix socket:\s+(.*)")
 
 # Schema: fpdecision  Last_errno: 0  Killed: 0
-RE_COMMON_SCHEMA = re.compile(r"#\sSchema:\s"
-                              r"(?:([\w\d]+))?\s*"
-                              r"Last_errno:\s(\d*)\s*"
-                              r"Killed:\s(\d*)")
+RE_COMMON_SCHEMA = re.compile(
+    r"#\sSchema:\s" r"(?:([\w\d]+))?\s*" r"Last_errno:\s(\d*)\s*" r"Killed:\s(\d*)"
+)
 # Thread_id: 23733137  Schema: 69hzw9btqxbkg06g
-RE_COMMON_THREAD = re.compile(r"#\sThread_id:\s(\d*)\s*"
-                              r"Schema:\s(.*)")
+RE_COMMON_THREAD = re.compile(r"#\sThread_id:\s(\d*)\s*" r"Schema:\s(.*)")
 
 # according to the MySQL version, the log format is different, and the difference between the regular
 # MySQL 5.6
@@ -75,23 +73,27 @@ RE_COMMON_THREAD = re.compile(r"#\sThread_id:\s(\d*)\s*"
 FMT_MYSQL56_DATE = r"\d{6}\s+\d{1,2}:\d{2}:\d{2}"
 RE_MYSQL56_SLOW_TIMESTAMP = re.compile(r"#\s+Time:\s+(" + FMT_MYSQL56_DATE + r")")
 # User@Host: fpdecision[fpdecision] @  [127.0.0.1]  Id: 89512547
-RE_MYSQL56_SLOW_USERHOST = re.compile(r"#\s+User@Host:\s+"
-                                   r"(?:([\w\d]+))?\s*"
-                                   r"\[\s*([\w\d]+)\s*\]\s*"
-                                   r"@\s*"
-                                   r"([\w\d\.\-]*)\s*"
-                                   r"\[\s*([\d.]*)\s*\]\s*"
-                                   r"(?:Id\:\s*(\d+)?\s*)?")
+RE_MYSQL56_SLOW_USERHOST = re.compile(
+    r"#\s+User@Host:\s+"
+    r"(?:([\w\d]+))?\s*"
+    r"\[\s*([\w\d]+)\s*\]\s*"
+    r"@\s*"
+    r"([\w\d\.\-]*)\s*"
+    r"\[\s*([\d.]*)\s*\]\s*"
+    r"(?:Id\:\s*(\d+)?\s*)?"
+)
 # Query_time: 0.778688  Lock_time: 0.000038  Rows_sent: 3381  Rows_examined: 35617  Rows_affected: 0
-RE_MYSQL56_SLOW_STATS = re.compile(r"#\sQuery_time:\s(\d*\.\d{1,6})\s*"
-                                r"Lock_time:\s(\d*\.\d{1,6})\s*"
-                                r"Rows_sent:\s(\d*)\s*"
-                                r"Rows_examined:\s(\d*)\s*"
-                                r"Rows_affected:\s(\d*)")
+RE_MYSQL56_SLOW_STATS = re.compile(
+    r"#\sQuery_time:\s(\d*\.\d{1,6})\s*"
+    r"Lock_time:\s(\d*\.\d{1,6})\s*"
+    r"Rows_sent:\s(\d*)\s*"
+    r"Rows_examined:\s(\d*)\s*"
+    r"Rows_affected:\s(\d*)"
+)
 # general log
 RE_MYSQL56_GENERAL_ENTRY = re.compile(
-    r'(?:(' + FMT_MYSQL56_DATE + '))?\s*'
-                             r'(\d+)\s([\w ]+)\t*(?:(.+))?$')
+    r'(?:(' + FMT_MYSQL56_DATE + '))?\s*' r'(\d+)\s([\w ]+)\t*(?:(.+))?$'
+)
 
 # MySQL 5.7
 # Time: 2022-08-01T06:22:21.148963Z
@@ -99,34 +101,38 @@ FMT_UTC_TIME = "%Y-%m-%dT%H:%M:%S.%fZ"
 FMT_MYSQL57_DATE = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.?\d+Z?"
 RE_MYSQL57_SLOW_TIMESTAMP = re.compile(r"#\s+Time:\s+(" + FMT_MYSQL57_DATE + r")")
 # User@Host: admin[admin] @  [127.0.0.1]  Id:  3987
-RE_MYSQL57_SLOW_USERHOST = re.compile(r"#\s+User@Host:\s+"
-                                   r"(?:([\w\d]+))?\s*"
-                                   r"\[\s*([\w\d]+)\s*\]\s*"
-                                   r"@\s*"
-                                   r"([\w\d\.\-]*)\s*"
-                                   r"\[\s*([\d.]*)\s*\]\s*"
-                                   r"(?:Id\:\s*(\d+)?\s*)?")
+RE_MYSQL57_SLOW_USERHOST = re.compile(
+    r"#\s+User@Host:\s+"
+    r"(?:([\w\d]+))?\s*"
+    r"\[\s*([\w\d]+)\s*\]\s*"
+    r"@\s*"
+    r"([\w\d\.\-]*)\s*"
+    r"\[\s*([\d.]*)\s*\]\s*"
+    r"(?:Id\:\s*(\d+)?\s*)?"
+)
 # Query_time: 11.959699  Lock_time: 0.000188 Rows_sent: 0  Rows_examined: 843008
-RE_MYSQL57_SLOW_STATS = re.compile(r"#\sQuery_time:\s(\d*\.\d{1,6})\s*"
-                                r"Lock_time:\s(\d*\.\d{1,6})\s*"
-                                r"Rows_sent:\s(\d*)\s*"
-                                r"Rows_examined:\s(\d*)")
+RE_MYSQL57_SLOW_STATS = re.compile(
+    r"#\sQuery_time:\s(\d*\.\d{1,6})\s*"
+    r"Lock_time:\s(\d*\.\d{1,6})\s*"
+    r"Rows_sent:\s(\d*)\s*"
+    r"Rows_examined:\s(\d*)"
+)
 # general log
 RE_MYSQL57_GENERAL_ENTRY = re.compile(
-    r'(?:(' + FMT_MYSQL57_DATE + '))?\s*'
-                             r'(\d+)\s([\w ]+)\t*(?:(.+))?$')
+    r'(?:(' + FMT_MYSQL57_DATE + '))?\s*' r'(\d+)\s([\w ]+)\t*(?:(.+))?$'
+)
 
 
 class MysqlLogParserBase(object):
-    """ MySQL log parse foundation class,
-        include slowqueyr log and general log(in the near future)
+    """MySQL log parse foundation class,
+    include slowqueyr log and general log(in the near future)
 
-        Input: logfile stream, must check file type first
-        Output: iterator to retrieve the next line from stream
+    Input: logfile stream, must check file type first
+    Output: iterator to retrieve the next line from stream
     """
 
     def __init__(self, stream):
-        """ stream: open("/path/to/mysql.log") """
+        """stream: open("/path/to/mysql.log")"""
         self._stream = None
         self._version = None
         self._program = None
@@ -149,7 +155,7 @@ class MysqlLogParserBase(object):
             self._stream.seek(start_pos)
 
     def _get_next_line(self):
-        """ Get next line from stream """
+        """Get next line from stream"""
         try:
             line = self._stream.readline()
         except:
@@ -190,66 +196,66 @@ class MysqlLogParserBase(object):
 
     @property
     def version(self):
-        """ return version like: (major, minor, patch, extra) """
+        """return version like: (major, minor, patch, extra)"""
         return self._version
 
     @property
     def program(self):
-        """ return executable like: /usr/local/mysql/bin/mysqld """
+        """return executable like: /usr/local/mysql/bin/mysqld"""
         return self._program
 
     @property
     def port(self):
-        """ :return server port like: 3306 """
+        """:return server port like: 3306"""
         return self._port
 
     @property
     def socket(self):
-        """ return UNIX socket like: /u01/mysql/mysql.sock """
+        """return UNIX socket like: /u01/mysql/mysql.sock"""
         return self._socket
 
     @property
     def start_time(self):
-        """ return the first time like: 2022-08-01 06:22:21.148963 (datatime) """
+        """return the first time like: 2022-08-01 06:22:21.148963 (datatime)"""
         return self._start_time
 
     @property
     def last_time(self):
-        """ return the last time like: 2022-08-01 06:22:21.148963 (datatime) """
+        """return the last time like: 2022-08-01 06:22:21.148963 (datatime)"""
         return self._last_time
 
     def __iter__(self):
-        """ return iterator to read every line of the log file """
+        """return iterator to read every line of the log file"""
         return self
 
     def __next__(self):
-        """ return the next line """
+        """return the next line"""
         entry = self._parse_entry()
         if entry is None:
             raise StopIteration
         return entry
 
     def __str__(self):
-        """ return description(string) """
+        """return description(string)"""
         return "<%(classsname)s, MySQL v%(version)s>" % dict(
             classsname=self.__class__.__name__,
-            version='.'.join([str(v) for v in self._version[0:3]]) +
-                    (self._version[3] or '')
+            version='.'.join([str(v) for v in self._version[0:3]])
+            + (self._version[3] or ''),
         )
 
 
 class MysqlSlowLogParse(MysqlLogParserBase):
-    """ MySQL Slow Query Log parse class
-        Input:
-            logfile stream: file stream, must check file type and charset first
-            MySQL version: 5.6/5.7, default is 5.6(8.0 in the near future)
-        Output: get SQL text, performance data, request time
+    """MySQL Slow Query Log parse class
+    Input:
+        logfile stream: file stream, must check file type and charset first
+        MySQL version: 5.6/5.7, default is 5.6(8.0 in the near future)
+    Output: get SQL text, performance data, request time
     """
 
     def __init__(self, stream, db_version='5.6'):
-        """ Input:
-                stream: open("/path/to/mysql.log")
-                db_version: 5.6 5.7, default is 5.6(8.0 in the near future)
+        """Input:
+        stream: open("/path/to/mysql.log")
+        db_version: 5.6 5.7, default is 5.6(8.0 in the near future)
         """
         super(MysqlSlowLogParse, self).__init__(stream)
         self._cache_line = None
@@ -257,11 +263,11 @@ class MysqlSlowLogParse(MysqlLogParserBase):
         self.db_version = db_version
 
     def _parse_line(self, regex, line):
-        """ parse every line to get formatted data
-            Input:
-                regex: Matching of regular expressions
-                line: String of logfile
-            Output: tuple, like: (Query_time, Lock_time, Rows_sent, Rows_examined)
+        """parse every line to get formatted data
+        Input:
+            regex: Matching of regular expressions
+            line: String of logfile
+        Output: tuple, like: (Query_time, Lock_time, Rows_sent, Rows_examined)
         """
         info = regex.match(line)
         if info is None:
@@ -269,40 +275,44 @@ class MysqlSlowLogParse(MysqlLogParserBase):
         return info.groups()
 
     def _parse_connect_info(self, line, entry):
-        """ parse connect info
-            Input:
-                line: String of logfile
-                entry: slowlog instance
-            Example:
-                # User@Host: admin[admin] @ [xx.xx.xx.xx] Id: 3987
+        """parse connect info
+        Input:
+            line: String of logfile
+            entry: slowlog instance
+        Example:
+            # User@Host: admin[admin] @ [xx.xx.xx.xx] Id: 3987
         """
         if self.db_version == '5.6':
-            (priv_user, unpriv_user, host, ip, sid) = self._parse_line(RE_MYSQL56_SLOW_USERHOST, line)
+            (priv_user, unpriv_user, host, ip, sid) = self._parse_line(
+                RE_MYSQL56_SLOW_USERHOST, line
+            )
         else:
-            (priv_user, unpriv_user, host, ip, sid) = self._parse_line(RE_MYSQL57_SLOW_USERHOST, line)
+            (priv_user, unpriv_user, host, ip, sid) = self._parse_line(
+                RE_MYSQL57_SLOW_USERHOST, line
+            )
         entry['user'] = priv_user if priv_user else unpriv_user
         entry['host'] = host if host else ip
         entry['session_id'] = sid
 
     def _parse_thread_info(self, line, entry):
-        """ parse connect info
-            Input:
-                line: String of logfile
-                entry: slowlog instance
-            Example:
-                # Thread_id: 123456  Schema: asdgawergxxx
+        """parse connect info
+        Input:
+            line: String of logfile
+            entry: slowlog instance
+        Example:
+            # Thread_id: 123456  Schema: asdgawergxxx
         """
         (thread_id, schema) = self._parse_line(RE_COMMON_THREAD, line)
         entry['thread_id'] = thread_id
         entry['schema'] = schema
 
     def _parse_schema_info(self, line, entry):
-        """ parse connect info
-            Input:
-                line: String of logfile
-                entry: slowlog instance
-            Example:
-                # Schema: db_name  Last_errno: 0  Killed: 0
+        """parse connect info
+        Input:
+            line: String of logfile
+            entry: slowlog instance
+        Example:
+            # Schema: db_name  Last_errno: 0  Killed: 0
         """
         (schema, last_errno, killed) = self._parse_line(RE_COMMON_SCHEMA, line)
         entry['schema'] = schema
@@ -311,16 +321,16 @@ class MysqlSlowLogParse(MysqlLogParserBase):
 
     def _parse_timestamp(self, line, entry):
         """parse connect info
-            Input:
-                line: String of logfile
-                entry: slowlog instance
-            Example:
-                # MySQL 5.6
-                # Time: 210720 11:59:46
-                # MySQL 5.7
-                # Time: 2022-08-01T06:22:21.148963Z
-                # MySQL 5.7 include timezone
-                # Time: 2021-03-11T00:50:08.177158+08:00
+        Input:
+            line: String of logfile
+            entry: slowlog instance
+        Example:
+            # MySQL 5.6
+            # Time: 210720 11:59:46
+            # MySQL 5.7
+            # Time: 2022-08-01T06:22:21.148963Z
+            # MySQL 5.7 include timezone
+            # Time: 2021-03-11T00:50:08.177158+08:00
         """
         if self.db_version == '5.6':
             info = self._parse_line(RE_MYSQL56_SLOW_TIMESTAMP, line)
@@ -329,24 +339,28 @@ class MysqlSlowLogParse(MysqlLogParserBase):
             info = self._parse_line(RE_MYSQL57_SLOW_TIMESTAMP, line)
             # Time: 2021-03-11T00:50:08.177158+08:00
             if not info[0].endswith('Z'):
-                entry['datetime'] = datetime.datetime.strptime(info[0], FMT_UTC_TIME[:-1]) + datetime.timedelta(hours=8)
+                entry['datetime'] = datetime.datetime.strptime(
+                    info[0], FMT_UTC_TIME[:-1]
+                ) + datetime.timedelta(hours=8)
             # Time: 2022-08-01T06:22:21.148963Z
             else:
-                entry['datetime'] = datetime.datetime.strptime(info[0], FMT_UTC_TIME) + datetime.timedelta(hours=8)
+                entry['datetime'] = datetime.datetime.strptime(
+                    info[0], FMT_UTC_TIME
+                ) + datetime.timedelta(hours=8)
         if self._start_time is None:
             self._start_time = entry['datetime']
             self._last_time = entry['datetime']
 
     def _parse_performance(self, line, entry):
-        """ parse SQL running performance data
-            Input:
-                line: String of logfile
-                entry: slowlog instance
-            Example:
-                # MySQL 5.6
-                Query_time: 0.778688  Lock_time: 0.000038  Rows_sent: 33  Rows_examined: 617  Rows_affected: 0
-                # MySQL 5.7
-                Query_time: 11.959699  Lock_time: 0.000188 Rows_sent: 0  Rows_examined: 843008
+        """parse SQL running performance data
+        Input:
+            line: String of logfile
+            entry: slowlog instance
+        Example:
+            # MySQL 5.6
+            Query_time: 0.778688  Lock_time: 0.000038  Rows_sent: 33  Rows_examined: 617  Rows_affected: 0
+            # MySQL 5.7
+            Query_time: 11.959699  Lock_time: 0.000188 Rows_sent: 0  Rows_examined: 843008
         """
         if self.db_version == '5.6':
             result = self._parse_line(RE_MYSQL56_SLOW_STATS, line)
@@ -360,15 +374,15 @@ class MysqlSlowLogParse(MysqlLogParserBase):
         # entry['rows_read'] = int(result[5])
 
     def _parse_query(self, line, entry):
-        """ parse SQL statement
-            Input:
-                line: String of logfile
-                entry: slowlog instance
-            Example:
-                use INFORMATION_SCHEMA  -- switch database
-                SET timestamp=1323169459;  -- set actual request time
-                SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA
-                   WHERE SCHEMA_NAME = 'mysql';  -- SQL statement
+        """parse SQL statement
+        Input:
+            line: String of logfile
+            entry: slowlog instance
+        Example:
+            use INFORMATION_SCHEMA  -- switch database
+            SET timestamp=1323169459;  -- set actual request time
+            SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA
+               WHERE SCHEMA_NAME = 'mysql';  -- SQL statement
         """
         query = []
         while True:
@@ -378,9 +392,13 @@ class MysqlSlowLogParse(MysqlLogParserBase):
                 entry['database'] = self._current_db = line.split(' ')[1]
             elif line.startswith('SET timestamp='):
                 entry['datetime'] = datetime.datetime.fromtimestamp(
-                    int(line[14:].strip(';')))
-            elif (line.startswith('# Time:') or line.startswith("# User@Host")
-                  or line.endswith('started with:')):
+                    int(line[14:].strip(';'))
+                )
+            elif (
+                line.startswith('# Time:')
+                or line.startswith("# User@Host")
+                or line.endswith('started with:')
+            ):
                 break
             # 去除部分引擎自带的一些无用信息
             if not line.startswith('# '):
@@ -395,17 +413,17 @@ class MysqlSlowLogParse(MysqlLogParserBase):
         self._cache_line = line
 
     def _parse_entry(self):
-        """ parse entry enumeration:
-            1. request time, starts with '#'
-            2. user info, starts with '#'
-            3. schema info, starts with '#'
-            4. thread info, starts with '#'
-            5. performance info, starts with '#'
-            6. SQL statement
-                use <database>;
-                SET timestamp=<request_time>;
-                SET session variables;
-                SQL statement;
+        """parse entry enumeration:
+        1. request time, starts with '#'
+        2. user info, starts with '#'
+        3. schema info, starts with '#'
+        4. thread info, starts with '#'
+        5. performance info, starts with '#'
+        6. SQL statement
+            use <database>;
+            SET timestamp=<request_time>;
+            SET session variables;
+            SQL statement;
         """
         if self._cache_line is not None:
             line = self._cache_line
@@ -417,7 +435,7 @@ class MysqlSlowLogParse(MysqlLogParserBase):
 
         while line.endswith('started with:'):
             # first header line
-            header = self._parse_header(line)
+            self._parse_header(line)
             line = self._get_next_line()
             if line is None:
                 return None
@@ -450,8 +468,8 @@ class MysqlSlowLogParse(MysqlLogParserBase):
 
 
 class MysqlLogEntryBase(dict):
-    """ log entry class, include slowquery log and general log(soon)
-        dict element can be accessed using attributes like: entry['user'] = entry.user
+    """log entry class, include slowquery log and general log(soon)
+    dict element can be accessed using attributes like: entry['user'] = entry.user
     """
 
     def __init__(self):
@@ -465,12 +483,13 @@ class MysqlLogEntryBase(dict):
         if name in self:
             return self[name]
         else:
-            raise AttributeError("%s has no attribute '%s'" % (
-                self.__class__.__name__, name))
+            raise AttributeError(
+                "%s has no attribute '%s'" % (self.__class__.__name__, name)
+            )
 
 
 class MysqlSlowLogEntry(MysqlLogEntryBase):
-    """ slowquery log entry, attribute can be used just like dictionary """
+    """slowquery log entry, attribute can be used just like dictionary"""
 
     def __init__(self):
         super(MysqlSlowLogEntry, self).__init__()
@@ -483,13 +502,14 @@ class MysqlSlowLogEntry(MysqlLogEntryBase):
         self['rows_read'] = None
 
     def __str__(self):
-        """ String representation """
+        """String representation"""
         param = self.copy()
         param['classsname'] = self.__class__.__name__
         try:
             param['datetime'] = param['datetime'].strftime("%Y-%m-%d %H:%M:%S")
         except AttributeError:
             param['datetime'] = ''
-        return ("<%(classsname)s %(datetime)s [%(user)s@%(host)s] "
-                "%(query_time)s/%(lock_time)s/%(rows_examined)s/%(rows_sent)s>"
-                ) % param
+        return (
+            "<%(classsname)s %(datetime)s [%(user)s@%(host)s] "
+            "%(query_time)s/%(lock_time)s/%(rows_examined)s/%(rows_sent)s>"
+        ) % param

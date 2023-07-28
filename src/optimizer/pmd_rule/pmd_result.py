@@ -12,13 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 
 class PMDResultRule(object):
-
     def __init__(self, level, message):
         self.level = level
         self.message = message
 
     def __str__(self):
-        return {
-            "pmdLevel": self.level.value,
-            "pmdRule": self.message
-        }
+        return {"pmdLevel": self.level.value, "pmdRule": self.message}

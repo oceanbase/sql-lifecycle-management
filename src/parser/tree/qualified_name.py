@@ -10,6 +10,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
+
 class QualifiedName(object):
     def __init__(self, parts=None):
         self.parts = parts
