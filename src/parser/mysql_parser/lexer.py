@@ -45,7 +45,7 @@ tokens = (
         'EXCLA_MARK',
         'BIT_MOVE_LEFT',
         'BIT_MOVE_RIGHT',
-        'CONCAT',
+        'PIPES',
         'SLASH',
         'ASTERISK',
         'NON_RESERVED',
@@ -80,7 +80,7 @@ t_QM = r'\?'
 # By default, || is a logical OR operator.
 # With PIPES_AS_CONCAT enabled, || is string concatenation.
 # Need support or semantics in future development
-t_CONCAT = r'\|\|'
+t_PIPES = r'\|\|'
 
 t_ignore = ' \t'
 
