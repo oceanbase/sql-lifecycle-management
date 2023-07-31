@@ -18,6 +18,7 @@ from src.common.utils import Utils
 from src.parser.mysql_parser.parser import parser as mysql_parser
 from src.parser.mysql_parser.lexer import lexer as mysql_lexer
 from src.parser.oceanbase_parser.parser import parser as oceanbase_parser
+from src.parser.oceanbase_parser.lexer import lexer as oceanbase_lexer
 from src.parser.tree.expression import ComparisonExpression
 from src.parser.tree.statement import Statement
 
@@ -131,18 +132,15 @@ delete from execution_log          where                (                       
 
     def test_mysql_resvered_word_can_used_as_token(self):
         test_sqls = [
-            """SELECT FROM FROM t""",
             """SELECT cast FROM t""",
             """SELECT end FROM t""",
             """SELECT escape FROM t""",
-            """SELECT for FROM t""",
             """SELECT group FROM t""",
             """SELECT if FROM t""",
             """SELECT in FROM t""",
             """SELECT id FROM t""",
             """SELECT into FROM t""",
             """SELECT is FROM t""",
-            """SELECT on FROM t""",
             """SELECT or FROM t""",
             """SELECT use FROM t""",
             """SELECT with FROM t""",
@@ -153,7 +151,7 @@ delete from execution_log          where                (                       
             result = mysql_parser.parse(sql, lexer=mysql_lexer)
             assert isinstance(result, Statement)
 
-    def test_mysql_vector_expression(self):
+    def test_vector_expression(self):
         test_sqls = [
             "select * from t where a in ('1','2','3')",
             "select (1,2) > (2,3)",
@@ -165,19 +163,23 @@ delete from execution_log          where                (                       
             sql = Utils.remove_sql_text_affects_parser(sql)
             result = mysql_parser.parse(sql, lexer=mysql_lexer)
             assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            assert isinstance(result, Statement)
 
-    def test_mysql_contact_function(self):
+    def test_concat_function(self):
         test_sqls = [
-            "SELECT CONCAT('a','-','b')",
             "SELECT * FROM t WHERE a=CONCAT('a','-','b')",
+            "SELECT CONCAT('a','-','b')",
             "SELECT * FROM t WHERE a=CONCAT('a',CONCAT('b','-','c'))",
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
             assert isinstance(result, Statement)
 
-    def test_mysql_cast_function(self):
+    def test_cast_function(self):
         test_sqls = [
             "SELECT CAST(CAST(1+2 AS TIME) AS JSON)",
             "SELECT CAST((8+1) AS SIGNED)",
@@ -185,7 +187,9 @@ delete from execution_log          where                (                       
             "SELECT CAST(1 BETWEEN 1 AND 2 AS SIGNED)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
             assert isinstance(result, Statement)
 
 

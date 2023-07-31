@@ -456,7 +456,8 @@ class DefaultTraversalVisitor(AstVisitor):
         return None
 
     def visit_simple_case_expression(self, node, context):
-        self.process(node.operand, context)
+        if node.operand != None:
+            self.process(node.operand, context)
         for clause in node.when_clauses:
             self.process(clause, context)
         if node.default_value:

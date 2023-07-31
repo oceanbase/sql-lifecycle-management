@@ -28,7 +28,8 @@ class MyTestCase(unittest.TestCase):
         result = oceanbase_parser.parse(
             "select name,age,count(*),avg(age) from blog join a on a.id = blog.id "
             "where a.b = 1 and blog.c = 2 group by name,age "
-            "having count(*)>2 and avg(age)<20 order by a asc,b desc limit 1 OFFSET 3"
+            "having count(*)>2 and avg(age)<20 order by a asc,b desc limit 1 OFFSET 3",
+            debug=True,
         )
         assert isinstance(result, Statement)
         assert isinstance(result.query_body.from_, Join)

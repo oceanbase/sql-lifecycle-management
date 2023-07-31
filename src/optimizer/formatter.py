@@ -239,7 +239,8 @@ class Formatter(AstVisitor):
 
     def visit_simple_case_expression(self, node, unmangle_names):
         parts = ["CASE", self.process(node.operand, unmangle_names)]
-
+        if node.operand != None:
+            parts.append(self.process(node.operand, unmangle_names))
         for when_clause in node.when_clauses:
             parts.append(self.process(when_clause, unmangle_names))
 
@@ -490,10 +491,12 @@ class SqlFormatter(AstVisitor):
         self.process(node.relation, indent)
 
         self.builder.append(' ')
-        if node.alias[0]:
+        if len(node.alias) == 2:
             self.builder.append('AS')
             self.builder.append(' ')
-        self.builder.append(node.alias[1])
+            self.builder.append(node.alias[1])
+        elif len(node.alias) == 1:
+            self.builder.append(node.alias[0])
 
         append_alias_columns(self.builder, node.column_names)
 

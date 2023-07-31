@@ -82,7 +82,7 @@ class FullScanRule(AbstractRewriteRule):
                 return True
 
         # between exists in may be able to extract the range
-        if (
+        if not where.is_not and (
             isinstance(where, BetweenPredicate)
             or isinstance(where, ExistsPredicate)
             or isinstance(where, InPredicate)

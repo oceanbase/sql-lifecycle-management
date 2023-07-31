@@ -148,6 +148,7 @@ class RewriteMySQLORRule(AbstractRewriteRule):
                             is_match = True
                             query_body.where = InPredicate(
                                 value=left_qualified_name_reference,
+                                is_not=False,
                                 value_list=InListExpression(
                                     values=[left_value, right_value]
                                 ),

@@ -1,5 +1,6 @@
 LICENSE
 README.md
+pyproject.toml
 setup.cfg
 setup.py
 src/__init__.py
@@ -90,6 +91,7 @@ src/parser/tree/approximate.py
 src/parser/tree/call_argument.py
 src/parser/tree/explain.py
 src/parser/tree/expression.py
+src/parser/tree/field_type.py
 src/parser/tree/grouping.py
 src/parser/tree/join_criteria.py
 src/parser/tree/literal.py

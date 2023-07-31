@@ -16,6 +16,7 @@ import types
 from src.parser.tree.expression import (
     ArithmeticBinaryExpression,
     ArithmeticUnaryExpression,
+    AssignmentExpression,
     BetweenPredicate,
     Cast,
     ComparisonExpression,
@@ -24,14 +25,13 @@ from src.parser.tree.expression import (
     FunctionCall,
     InListExpression,
     InPredicate,
-    IsNotNullPredicate,
     IsNullPredicate,
     LikePredicate,
+    ListExpression,
     LogicalBinaryExpression,
     NotExpression,
     QualifiedNameReference,
     RegexpPredicate,
-    SearchedCaseExpression,
     SimpleCaseExpression,
     SubqueryExpression,
     WhenClause,
@@ -56,12 +56,34 @@ from src.parser.tree.sort_item import SortItem
 from src.parser.tree.statement import Delete, Insert, Query, Update
 from src.parser.tree.table import Table, TableSubquery
 from src.parser.tree.values import Values
+from src.parser.tree.field_type import UNSPECIFIEDLENGTH, FieldType, MySQLType
 
 from ply import yacc
 from src.optimizer.optimizer_enum import IndexType
 from src.parser.oceanbase_parser.lexer import tokens
 
 tokens = tokens
+
+precedence = (
+    ('right', 'ASSIGNMENTEQ'),
+    ('left', 'PIPES', 'OR'),
+    ('left', 'XOR'),
+    ('left', 'AND', 'ANDAND'),
+    ('right', 'NOT'),
+    ('left', 'BETWEEN', 'CASE', 'WHEN', 'THEN', 'ELSE'),
+    ('left', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'IS', 'LIKE', 'RLIKE', 'REGEXP', 'IN'),
+    ('left', 'BIT_OR'),
+    ('left', 'BIT_AND'),
+    ('left', 'BIT_MOVE_LEFT', 'BIT_MOVE_RIGHT'),
+    ('left', 'PLUS', 'MINUS'),
+    ('left', 'ASTERISK', 'SLASH', 'PERCENT', 'DIV', 'MOD'),
+    ('left', 'BIT_XOR'),
+    ('left', 'BIT_OPPOSITE'),
+    ('right', 'NEG'),
+    ('left', 'EXCLA_MARK'),
+    ('left', 'LPAREN'),
+    ('right', 'RPAREN'),
+)
 
 
 def p_command(p):
@@ -97,14 +119,14 @@ def p_create_table_end(p):
     r"""create_table_end : ENGINE EQ identifier create_table_end
     | DEFAULT CHARSET EQ identifier create_table_end
     | COLLATE EQ identifier create_table_end
-    | AUTO_INCREMENT EQ integer create_table_end
+    | AUTO_INCREMENT EQ number create_table_end
     | COMMENT EQ SCONST create_table_end
     | COMPRESSION EQ SCONST create_table_end
-    | REPLICA_NUM EQ integer create_table_end
-    | BLOCK_SIZE EQ integer create_table_end
+    | REPLICA_NUM EQ number create_table_end
+    | BLOCK_SIZE EQ number create_table_end
     | USE_BLOOM_FILTER EQ FALSE create_table_end
-    | TABLET_SIZE EQ integer create_table_end
-    | PCTFREE EQ integer create_table_end
+    | TABLET_SIZE EQ number create_table_end
+    | PCTFREE EQ number create_table_end
     | empty
     """
     pass
@@ -137,17 +159,17 @@ def p_column(p):
 def p_column_type(p):
     r"""
     column_type : INT column_end
-                | INT LPAREN integer RPAREN column_end
+                | INT LPAREN number RPAREN column_end
                 | FLOAT column_end
                 | BIGINT column_end
-                | BIGINT LPAREN integer RPAREN column_end
-                | TINYINT LPAREN integer RPAREN column_end
+                | BIGINT LPAREN number RPAREN column_end
+                | TINYINT LPAREN number RPAREN column_end
                 | DATETIME column_end
-                | DATETIME LPAREN integer RPAREN column_end
-                | VARCHAR LPAREN integer RPAREN column_end
-                | CHAR LPAREN integer RPAREN column_end
+                | DATETIME LPAREN number RPAREN column_end
+                | VARCHAR LPAREN number RPAREN column_end
+                | CHAR LPAREN number RPAREN column_end
                 | TIMESTAMP column_end
-                | DECIMAL LPAREN integer COMMA integer RPAREN column_end
+                | DECIMAL LPAREN number COMMA number RPAREN column_end
     """
     p[0] = p[1].lower()
 
@@ -232,7 +254,7 @@ def p_index_column_list(p):
 
 def p_index_end(p):
     r"""
-    index_end : BLOCK_SIZE integer
+    index_end : BLOCK_SIZE number
               | empty
     """
 
@@ -278,7 +300,7 @@ def p_delete(p):
 
 
 def p_update(p):
-    r"""update : UPDATE relations SET update_set_list where_opt order_by_opt limit_opt"""
+    r"""update : UPDATE relations SET assignment_list where_opt order_by_opt limit_opt"""
     p_limit = p[7]
     offset = 0
     limit = 0
@@ -290,15 +312,27 @@ def p_update(p):
     )
 
 
-def p_update_set_list(p):
-    r"""update_set_list : update_set
-    | update_set_list COMMA update_set
-    | update_set_list AND update_set"""
+def p_assignment_list(p):
+    r"""assignment_list : assignment
+    | assignment_list COMMA assignment"""
     _item_list(p)
 
 
-def p_update_set(p):
-    r"""update_set : comparison_predicate"""
+def p_assignment(p):
+    r"""assignment : qualified_name eq_or_assignment_eq expr_or_default"""
+    name = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
+    p[0] = AssignmentExpression(p.lineno(1), p.lexpos(1), p[2], name, p[3])
+
+
+def p_eq_or_assignment_eq(p):
+    r"""eq_or_assignment_eq : EQ
+    | ASSIGNMENTEQ"""
+    p[0] = p[1]
+
+
+def p_expr_or_default(p):
+    r"""expr_or_default : expression
+    | DEFAULT"""
     p[0] = p[1]
 
 
@@ -378,7 +412,7 @@ def p_subquery(p):
 def p_for_update_opt(p):
     r"""for_update_opt : FOR UPDATE
     | FOR UPDATE NOWAIT
-    | FOR UPDATE WAIT integer
+    | FOR UPDATE WAIT number
     | empty"""
     if len(p) == 3:
         p[0] = (True, False)
@@ -449,12 +483,12 @@ def p_null_ordering_opt(p):
 
 # LIMIT
 def p_limit_opt(p):
-    r"""limit_opt : LIMIT integer
-    | LIMIT integer COMMA integer
+    r"""limit_opt : LIMIT number
+    | LIMIT number COMMA number
     | LIMIT QM
     | LIMIT QM COMMA QM
     | LIMIT ALL
-    | LIMIT integer OFFSET integer
+    | LIMIT number OFFSET number
     | empty"""
     if len(p) < 5:
         p[0] = (0, p[2]) if p[1] else None
@@ -465,8 +499,8 @@ def p_limit_opt(p):
             p[0] = (p[4], p[2])
 
 
-def p_integer(p):
-    r"""integer : INTEGER"""
+def p_number(p):
+    r"""number : NUMBER"""
     p[0] = p[1]
 
 
@@ -608,10 +642,9 @@ def p_query_spec(p):
 
 def p_where_opt(p):
     r"""where_opt : WHERE search_condition
-    | WHERE LPAREN search_condition RPAREN
     | empty"""
     if p.slice[1].type == "WHERE":
-        p[0] = p[2] if len(p) == 3 else p[3]
+        p[0] = p[2]
     else:
         p[0] = None
 
@@ -649,8 +682,7 @@ def p_select_items(p):
 def p_select_item(p):
     r"""select_item : derived_column
     | DISTINCT LPAREN derived_column RPAREN
-    | DISTINCT derived_column
-    | predicate"""
+    | DISTINCT derived_column"""
     if len(p) == 2:
         p[0] = p[1]
     elif len(p) == 3:
@@ -660,7 +692,7 @@ def p_select_item(p):
 
 
 def p_derived_column(p):
-    r"""derived_column : value_expression alias_opt"""
+    r"""derived_column : boolean_factor alias_opt"""
     p[0] = SingleColumn(p.lineno(1), p.lexpos(1), alias=p[2], expression=p[1])
 
 
@@ -803,14 +835,15 @@ def p_derived_table(p):
 
 
 def p_alias_opt(p):
-    r"""alias_opt : alias
+    r"""alias_opt : AS identifier
+    | identifier
     | empty"""
-    p[0] = p[1]
-
-
-def p_alias(p):
-    r"""alias : as_opt identifier"""
-    p[0] = (p[1], p[2])
+    if p.slice[1].type == "AS":
+        p[0] = (p[1], p[2])
+    elif p.slice[1].type == "identifier":
+        p[0] = p[1]
+    else:
+        p[0] = p[1]
 
 
 def p_expression(p):
@@ -819,100 +852,109 @@ def p_expression(p):
 
 
 def p_search_condition(p):
-    r"""search_condition : boolean_term
-    | LPAREN search_condition RPAREN
+    r"""search_condition : boolean_factor
     | search_condition OR search_condition
-    | search_condition AND search_condition
-    | search_condition bit_operation search_condition
-    | BIT_OPPOSITE search_condition"""
+    | search_condition logical_and search_condition
+    | search_condition XOR search_condition
+    | NOT search_condition"""
     if len(p) == 2:
         p[0] = p[1]
-    elif p.slice[1].type == "LPAREN":
-        p[0] = p[2]
     elif p.slice[2].type == "OR":
         p[0] = LogicalBinaryExpression(
             p.lineno(1), p.lexpos(1), type="OR", left=p[1], right=p[3]
         )
-    elif p.slice[2].type == "AND":
+    elif p.slice[2].type == "logical_and":
         p[0] = LogicalBinaryExpression(
             p.lineno(1), p.lexpos(1), type="AND", left=p[1], right=p[3]
         )
-    elif p.slice[2].type == 'bit_operation':
+    elif p.slice[2] == "XOR":
         p[0] = LogicalBinaryExpression(
-            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+            p.lineno(1), p.lexpos(1), type="XOR", left=p[1], right=p[3]
         )
+    elif p.slice[1] == "NOT":
+        p[0] = NotExpression(p.lineno(1), p.lexpos(1), value=p[2])
 
 
-def p_bit_operation(p):
-    r"""bit_operation : BIT_AND
-    | BIT_OR
-    | BIT_XOR
-    | BIT_MOVE_LEFT
-    | BIT_MOVE_RIGHT"""
+def p_logical_and(p):
+    r"""logical_and : AND
+    | ANDAND"""
     p[0] = p[1]
-
-
-def p_boolean_term(p):
-    r"""boolean_term : boolean_factor
-    | LPAREN boolean_term RPAREN"""
-    if len(p) == 2:
-        p[0] = p[1]
-    elif len(p) == 4 and p.slice[1].type == "LPAREN":
-        p[0] = p[2]
 
 
 def p_boolean_factor(p):
-    r"""boolean_factor : not_opt boolean_test"""
-    if p[1]:
-        p[0] = NotExpression(p.lineno(1), p.lexpos(1), value=p[2])
+    r"""boolean_factor : boolean_factor comparison_operator predicate
+    | predicate"""
+    if len(p) == 4:
+        p[0] = ComparisonExpression(
+            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+        )
     else:
-        p[0] = p[2]
-
-
-def p_boolean_test(p):
-    r"""boolean_test : boolean_primary"""
-    # No IS NOT? (TRUE|FALSE)
-    p[0] = p[1]
-
-
-def p_boolean_primary(p):
-    r"""boolean_primary : predicate
-    | value_expression"""
-    p[0] = p[1]
+        p[0] = p[1]
 
 
 def p_predicate(p):
-    r"""predicate : comparison_predicate
-    | between_predicate
+    r"""predicate : between_predicate
     | in_predicate
     | like_predicate
     | regexp_predicate
     | null_predicate
-    | exists_predicate"""
+    | exists_predicate
+    | value_expression"""
     p[0] = p[1]
 
 
-def p_comparison_predicate(p):
-    r"""comparison_predicate : value_expression comparison_operator value_expression"""
-    p[0] = ComparisonExpression(
-        p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+def p_between_predicate(p):
+    r"between_predicate : value_expression between_opt predicate AND predicate"
+    p[0] = BetweenPredicate(
+        p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], min=p[3], max=p[5]
     )
 
 
-def p_between_predicate(p):
-    r"between_predicate : value_expression not_opt BETWEEN value_expression AND value_expression"
-    p[0] = BetweenPredicate(p.lineno(1), p.lexpos(1), value=p[1], min=p[4], max=p[6])
-    _check_not(p)
-
-
 def p_in_predicate(p):
-    r"""in_predicate : value_expression not_opt IN in_value"""
-    p[0] = InPredicate(p.lineno(1), p.lexpos(1), value=p[1], value_list=p[4])
-    _check_not(p)
+    r"""in_predicate : value_expression in_opt in_value"""
+    p[0] = InPredicate(
+        p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], value_list=p[3]
+    )
+
+
+def p_like_predicate(p):
+    r"""like_predicate : value_expression like_opt value_expression"""
+    p[0] = LikePredicate(
+        p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], pattern=p[3]
+    )
+
+
+def p_regexp_predicate(p):
+    r"""regexp_predicate : value_expression reg_sym_opt value_expression"""
+    p[0] = RegexpPredicate(
+        p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], pattern=p[3]
+    )
+
+
+def p_null_predicate(p):
+    r"""null_predicate : value_expression is_opt NULL"""
+    p[0] = IsNullPredicate(p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1])
+
+
+def p_exists_predicate(p):
+    r"""exists_predicate : exists_opt subquery"""
+    p[0] = ExistsPredicate(p.lineno(1), p.lexpos(1), is_not=p[1], subquery=p[2])
+
+
+def p_between_opt(p):
+    r"""between_opt : NOT BETWEEN
+    | BETWEEN"""
+    p[0] = p.slice[1].type == "NOT"
+
+
+def p_in_opt(p):
+    r"""in_opt : NOT IN
+    | IN"""
+    p[0] = p.slice[1].type == "NOT"
 
 
 def p_in_value(p):
-    r"""in_value : LPAREN in_expressions RPAREN
+    r"""in_value : LPAREN call_list RPAREN
     | subquery"""
     if p.slice[1].type == "subquery":
         p[0] = p[1]
@@ -920,39 +962,34 @@ def p_in_value(p):
         p[0] = InListExpression(p.lineno(1), p.lexpos(1), values=p[2])
 
 
-def p_in_expressions(p):
-    r"""in_expressions : value_expression
-    | in_expressions COMMA value_expression"""
-    _item_list(p)
+def p_like_opt(p):
+    r"""like_opt : NOT LIKE
+    | LIKE"""
+    p[0] = p.slice[1].type == "NOT"
 
 
-def p_like_predicate(p):
-    r"""like_predicate : value_expression not_opt LIKE value_expression"""
-    p[0] = LikePredicate(p.lineno(1), p.lexpos(1), value=p[1], pattern=p[4])
-    _check_not(p)
+def p_exists_opt(p):
+    r"""exists_opt : NOT EXISTS
+    | EXISTS"""
+    p[0] = p.slice[1].type == "NOT"
 
 
-def p_regexp_predicate(p):
-    r"""regexp_predicate : value_expression REGEXP value_expression"""
-    p[0] = RegexpPredicate(p.lineno(1), p.lexpos(1), value=p[1], pattern=p[3])
+def p_is_opt(p):
+    r"""is_opt : IS NOT
+    | IS"""
+    p[0] = len(p) == 3
 
 
-def _check_not(p):
-    if p[2] and p.slice[2].type == "not_opt":
-        p[0] = NotExpression(line=p[0].line, pos=p[0].pos, value=p[0])
+def p_reg_sym_opt(p):
+    r"""reg_sym_opt : NOT regexp_sym
+    | regexp_sym"""
+    p[0] = p.slice[1].type == "NOT"
 
 
-def p_null_predicate(p):
-    r"""null_predicate : value_expression IS not_opt NULL"""
-    if p[3]:  # Not null
-        p[0] = IsNotNullPredicate(p.lineno(1), p.lexpos(1), value=p[1])
-    else:
-        p[0] = IsNullPredicate(p.lineno(1), p.lexpos(1), value=p[1])
-
-
-def p_exists_predicate(p):
-    r"""exists_predicate : EXISTS subquery"""
-    p[0] = ExistsPredicate(p.lineno(1), p.lexpos(1), subquery=p[2])
+def p_regexp_sym(p):
+    r"""regexp_sym : REGEXP
+    | RLIKE"""
+    pass
 
 
 def p_value_expression(p):
@@ -961,63 +998,71 @@ def p_value_expression(p):
 
 
 def p_numeric_value_expression(p):
-    r"""numeric_value_expression : numeric_value_expression PLUS term
-    | numeric_value_expression MINUS term
-    | term"""
-    if p.slice[1].type == "numeric_value_expression":
-        p[0] = ArithmeticBinaryExpression(
-            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
-        )
-    else:
-        p[0] = p[1]
-
-
-def p_term(p):
-    r"""term : term ASTERISK factor
-    | term SLASH factor
-    | term PERCENT factor
-    | term CONCAT factor
+    r"""numeric_value_expression : numeric_value_expression arithmetic_opt numeric_value_expression
+    | numeric_value_expression bit_opt numeric_value_expression
     | factor"""
-    if p.slice[1].type == "factor":
-        p[0] = p[1]
+    if len(p) == 4:
+        if p.slice[2].type == "arithmetic_opt":
+            p[0] = ArithmeticBinaryExpression(
+                p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+            )
+        elif p.slice[2].type == "bit_opt":
+            p[0] = LogicalBinaryExpression(
+                p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+            )
     else:
-        p[0] = ArithmeticBinaryExpression(
-            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
-        )
+        p[0] = p[1]
 
 
+def p_arithmetic_opt(p):
+    r"""arithmetic_opt : PLUS
+    | MINUS
+    | ASTERISK
+    | SLASH
+    | DIV
+    | MOD
+    | PERCENT
+    | PIPES"""
+    p[0] = p[1]
+
+
+def p_bit_opt(p):
+    r"""bit_opt : BIT_AND
+    | BIT_OR
+    | BIT_XOR
+    | BIT_MOVE_LEFT
+    | BIT_MOVE_RIGHT"""
+    p[0] = p[1]
+
+
+# TODO ADD OPPOSITE or
 def p_factor(p):
-    r"""factor : sign_opt primary_expression"""
-    if p[1]:
+    r"""factor : BIT_OPPOSITE factor
+    | MINUS factor %prec NEG
+    | PLUS factor %prec NEG
+    | EXCLA_MARK factor
+    | base_primary_expression"""
+    if len(p) == 3:
         p[0] = ArithmeticUnaryExpression(
             p.lineno(1), p.lexpos(1), value=p[2], sign=p[1]
         )
     else:
-        p[0] = p[2]
-
-
-def p_primary_expression(p):
-    r"""primary_expression : parenthetic_primary_expression
-    | base_primary_expression"""
-    p[0] = p[1]
-
-
-def p_parenthetic_primary_expression(p):
-    r"""parenthetic_primary_expression : LPAREN value_expression RPAREN
-    | LPAREN parenthetic_primary_expression RPAREN"""
-    p[0] = p[2]
+        p[0] = p[1]
 
 
 def p_base_primary_expression(p):
     r"""base_primary_expression : value
     | qualified_name
-    | subquery
+    | subquery %prec NEG
     | function_call
     | date_time
+    | LPAREN call_list RPAREN
     | case_specification
     | cast_specification"""
     if p.slice[1].type == "qualified_name":
         p[0] = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
+    elif len(p) == 4:
+        p[0] = ListExpression(p.lineno(1), p.lexpos(1), values=p[2])
     else:
         p[0] = p[1]
 
@@ -1025,7 +1070,7 @@ def p_base_primary_expression(p):
 def p_value(p):
     r"""value : NULL
     | SCONST
-    | number
+    | figure
     | boolean_value
     | QUOTED_IDENTIFIER
     | QM"""
@@ -1071,28 +1116,26 @@ def p_empty_call_args(p):
 
 
 def p_case_specification(p):
-    r"""case_specification : simple_case
-    | searched_case"""
+    r"""case_specification : simple_case"""
     p[0] = p[1]
 
 
 def p_simple_case(p):
-    r"""simple_case : CASE value_expression when_clauses else_opt END"""
+    r"""simple_case : CASE expression_opt when_clauses else_opt END"""
     p[0] = SimpleCaseExpression(
         p.lineno(1), p.lexpos(1), operand=p[2], when_clauses=p[3], default_value=p[4]
     )
 
 
-def p_searched_case(p):
-    r"""searched_case : CASE when_clauses else_opt END"""
-    p[0] = SearchedCaseExpression(
-        p.lineno(1), p.lexpos(1), when_clauses=p[2], default_value=p[3]
-    )
-
-
 def p_cast_specification(p):
-    r"""cast_specification : CAST LPAREN value_expression AS data_type RPAREN"""
+    r"""cast_specification : CAST LPAREN expression AS cast_field RPAREN"""
     p[0] = Cast(p.lineno(1), p.lexpos(1), expression=p[3], data_type=p[5], safe=False)
+
+
+def p_expression_opt(p):
+    r"""expression_opt : expression
+    | empty"""
+    p[0] = p[1]
 
 
 def p_when_clauses(p):
@@ -1112,7 +1155,7 @@ def p_when_clause(p):
     p[0] = WhenClause(p.lineno(1), p.lexpos(1), operand=p[2], result=p[4])
 
 
-def p_else_clause(p):
+def p_else_opt(p):
     r"""else_opt : ELSE value_expression
     | empty"""
     p[0] = p[2] if p[1] else None
@@ -1124,31 +1167,108 @@ def p_call_list(p):
     _item_list(p)
 
 
-def p_data_type(p):
-    r"""data_type : base_data_type type_param_list_opt"""
-    signature = p[1]
-    if p[2]:
-        # Normalize param list
-        type_params = [str(_type) for _type in p[2]]
-        signature += "(" + ','.join(type_params) + ")"
-    p[0] = signature
+def p_cast_field(p):
+    r"""cast_field : BINARY field_len_opt
+    | char_type field_len_opt field_param_list_opt
+    | DATE
+    | YEAR
+    | DATETIME field_len_opt
+    | DECIMAL float_opt
+    | TIME field_len_opt
+    | SIGNED integer_opt
+    | UNSIGNED integer_opt
+    | JSON
+    | DOUBLE
+    | FLOAT float_opt
+    | REAL"""
+    field = FieldType(p.lineno(1), p.lexpos(1))
+    if p.slice[1].type == "BINARY":
+        field.set_tp(MySQLType.BINARY, "BINARY")
+        field.set_length(p[2])
+    elif p.slice[1].type == "char_type":
+        field.set_tp(MySQLType.CHAR, p[1])
+        field.set_length(p[2])
+        if p[3] != None:
+            field.set_charset_and_collation(f"({','.join(p[3])})")
+    elif p.slice[1].type == "DATE":
+        field.set_tp(MySQLType.DATE, "DATE")
+    elif p.slice[1].type == "YEAR":
+        field.set_tp(MySQLType.YEAR, "YEAR")
+    elif p.slice[1].type == 'DATETIME':
+        field.set_tp(MySQLType.DATETIME, "DATETIME")
+        field.set_length(p[2])
+    elif p.slice[1].type == 'DECIMAL':
+        field.set_tp(MySQLType.DECIMAL, "DEMCIMAL")
+        field.set_length(p[2].length)
+        field.set_decimal(p[2].decimal)
+    elif p.slice[1].type == "TIME":
+        field.set_tp(MySQLType.TIME, "TIME")
+        field.set_length(p[2])
+    elif p.slice[1].type == "SIGNED":
+        field.set_tp(MySQLType.INTEGER, p[2])
+    elif p.slice[1].type == "UNSIGNED":
+        field.set_tp(MySQLType.INTEGER, p[2])
+    elif p.slice[1].type == "JSON":
+        field.set_tp(MySQLType.JSON, "JSON")
+    elif p.slice[1].type == "DOUBLE":
+        field.set_tp(MySQLType.DOUBLE, "DOUBLE")
+    elif p.slice[1].type == "FLOAT":
+        field.set_tp(MySQLType.FLOAT, "FLOAT")
+        field.set_length(p[2].length)
+        field.set_decimal(p[2].decimal)
+    elif p.slice[1].type == "REAL":
+        field.set_tp(MySQLType.REAL, "REAL")
 
 
-def p_type_param_list_opt(p):
-    r"""type_param_list_opt : LPAREN type_param_list RPAREN
+def p_field_len_opt(p):
+    r"""field_len_opt : LPAREN NUMBER RPAREN
+    | empty"""
+    if len(p) == 4:
+        p[0] = p[2].value & 0xFFFFFFFF  # convert to unsigned int
+    p[0] = UNSPECIFIEDLENGTH
+
+
+def p_field_param_list_opt(p):
+    r"""field_param_list_opt : LPAREN field_param_list RPAREN
     | empty"""
     p[0] = p[2] if p[1] else p[1]
 
 
-def p_type_param_list(p):
-    r"""type_param_list : type_param_list COMMA type_parameter
-    | type_parameter"""
+def p_field_param_list(p):
+    r"""field_param_list : field_param_list COMMA field_parameter
+    | field_parameter"""
     _item_list(p)
 
 
-def p_type_parameter(p):
-    r"""type_parameter : integer
+def p_field_parameter(p):
+    r"""field_parameter : number
     | base_data_type"""
+    p[0] = p[1]
+
+
+def p_float_opt(p):
+    r"""float_opt : LPAREN NUMBER RPAREN
+    | LPAREN NUMBER COMMA NUMBER RPAREN
+    | empty"""
+    # First is length,Second is decimal
+    if len(p) == 2:
+        p[0] = {'length': UNSPECIFIEDLENGTH, 'decimal': UNSPECIFIEDLENGTH}
+    elif len(p) == 4:
+        p[0] = {'length': p[2], 'decimal': UNSPECIFIEDLENGTH}
+    elif len(p) == 6:
+        p[0] = {'length': p[2], 'decimal': p[4]}
+
+
+def p_char_type(p):
+    r"""char_type : CHARACTER
+    | CHAR"""
+    p[0] = p[1]
+
+
+def p_integer_opt(p):
+    r"""integer_opt : INTEGER
+    | INT
+    | empty"""
     p[0] = p[1]
 
 
@@ -1159,10 +1279,10 @@ def p_base_data_type(p):
 
 def p_date_time(p):
     r"""date_time : CURRENT_DATE
-    | CURRENT_TIME      integer_param_opt
-    | CURRENT_TIMESTAMP integer_param_opt
-    | LOCALTIME         integer_param_opt
-    | LOCALTIMESTAMP    integer_param_opt"""
+    | CURRENT_TIME      number_param_opt
+    | CURRENT_TIMESTAMP number_param_opt
+    | LOCALTIME         number_param_opt
+    | LOCALTIMESTAMP    number_param_opt"""
     precision = p[2] if len(p) == 3 else None
     p[0] = CurrentTime(p.lineno(1), p.lexpos(1), type=p[1], precision=precision)
 
@@ -1177,47 +1297,29 @@ def p_comparison_operator(p):
     p[0] = p[1]
 
 
-def p_as_opt(p):
-    r"""as_opt : AS
-    | empty"""
-    p[0] = p[1]
-
-
-def p_not_opt(p):
-    r"""not_opt : NOT
-    | empty"""
-    p[0] = p[1]
-
-
 def p_boolean_value(p):
     r"""boolean_value : TRUE
     | FALSE"""
     p[0] = BooleanLiteral(p.lineno(1), p.lexpos(1), value=p[1])
 
 
-def p_sign_opt(p):
-    r"""sign_opt : sign
-    | empty"""
-    p[0] = p[1]
-
-
-def p_sign(p):
-    r"""sign : PLUS
-    | MINUS"""
-    p[0] = p[1]
-
-
-def p_integer_param_opt(p):
-    """integer_param_opt : LPAREN integer RPAREN
+def p_number_param_opt(p):
+    """number_param_opt : LPAREN number RPAREN
     | LPAREN RPAREN
     | empty"""
     p[0] = int(p[2]) if len(p) == 4 else None
 
 
 def p_qualified_name(p):
-    r"""qualified_name : qualified_name PERIOD qualified_name
-    | identifier"""
-    parts = [p[1]] if len(p) == 2 else p[1].parts + p[3].parts
+    r"""qualified_name : identifier
+    | identifier PERIOD identifier
+    | identifier PERIOD identifier PERIOD identifier"""
+    parts = [p[1]]
+    if len(p) == 4:
+        parts.append(p[3])
+    if len(p) == 6:
+        parts.append(p[3])
+        parts.append(p[5])
     p[0] = QualifiedName(parts=parts)
 
 
@@ -1231,7 +1333,768 @@ def p_identifier(p):
 
 
 def p_non_reserved(p):
-    r"""non_reserved : NON_RESERVED"""
+    r"""non_reserved : ACCESSIBLE
+    | ACCOUNT
+    | ACTION
+    | ACTIVE
+    | ADDDATE
+    | AFTER
+    | AGAINST
+    | AGGREGATE
+    | ALGORITHM
+    | ALWAYS
+    | ANALYSE
+    | ANY
+    | APPROX_COUNT_DISTINCT
+    | APPROX_COUNT_DISTINCT_SYNOPSIS
+    | APPROX_COUNT_DISTINCT_SYNOPSIS_MERGE
+    | ASCII
+    | ASENSITIVE
+    | AT
+    | AUTHORS
+    | AUTO
+    | AUTOEXTEND_SIZE
+    | AUTO_INCREMENT
+    | AVG
+    | AVG_ROW_LENGTH
+    | BACKUP
+    | BALANCE
+    | BASE
+    | BASELINE
+    | BASELINE_ID
+    | BASIC
+    | BEGI
+    | BEFORE
+    | BINARY
+    | BINDING
+    | BINLOG
+    | BIT
+    | BLOCK
+    | BLOCK_INDEX
+    | BLOCK_SIZE
+    | BLOOM_FILTER
+    | BOOL
+    | BOOLEAN
+    | BOOTSTRAP
+    | BOTH
+    | BTREE
+    | BYTE
+    | BREADTH
+    | BUCKETS
+    | BULK
+    | CACHE
+    | KVCACHE
+    | FILE_ID
+    | ILOGCACHE
+    | CANCEL
+    | CASCADED
+    | CAST
+    | CATALOG_NAME
+    | CHAIN
+    | CHANGED
+    | CHARSET
+    | CHECKSUM
+    | CHECKPOINT
+    | CHUNK
+    | CIPHER
+    | CLASS_ORIGIN
+    | CLEAN
+    | CLEAR
+    | CLIENT
+    | CLOG
+    | CLOSE
+    | CLUSTER
+    | CLUSTER_ID
+    | CLUSTER_NAME
+    | COALESCE
+    | COLUMN_STAT
+    | CODE
+    | COLLATION
+    | COLUMN_FORMAT
+    | COLUMN_NAME
+    | COLUMNS
+    | COMMENT
+    | COMMIT
+    | COMMITTED
+    | COMPACT
+    | COMPLETION
+    | COMPRESSED
+    | COMPRESSION
+    | CONCURRENT
+    | CONNECTION
+    | CONSISTENT
+    | CONSISTENT_MODE
+    | CONSTRAINT_CATALOG
+    | CONSTRAINT_NAME
+    | CONSTRAINT_SCHEMA
+    | CONTAINS
+    | CONTEXT
+    | CONTRIBUTORS
+    | COPY
+    | COUNT
+    | CPU
+    | CREATE_TIMESTAMP
+    | CTXCAT
+    | CTX_ID
+    | CUBE
+    | CURDATE
+    | CURRENT
+    | CURTIME
+    | CURSOR_NAME
+    | CUME_DIST
+    | CYCLE
+    | CALL
+    | CASCADE
+    | CHANGE
+    | CHARACTER
+    | CONSTRAINT
+    | CONTINUE
+    | CONVERT
+    | COLLATE
+    | CROSS
+    | CURSOR
+    | DATA
+    | DATAFILE
+    | DATA_TABLE_ID
+    | DATE
+    | DATE_ADD
+    | DATE_SUB
+    | DATETIME
+    | DAY
+    | DEALLOCATE
+    | DEFAULT_AUTH
+    | DEFINER
+    | DELAY
+    | DELAY_KEY_WRITE
+    | DEPTH
+    | DES_KEY_FILE
+    | DENSE_RANK
+    | DESTINATION
+    | DIAGNOSTICS
+    | DIRECTORY
+    | DISABLE
+    | DISCARD
+    | DISK
+    | DISKGROUP
+    | DO
+    | DUMP
+    | DUMPFILE
+    | DUPLICATE
+    | DUPLICATE_SCOPE
+    | DYNAMIC
+    | DATABASE_ID
+    | DEFAULT_TABLEGROUP
+    | DAY_HOUR
+    | DAY_MICROSECOND
+    | DAY_MINUTE
+    | DAY_SECOND
+    | DATABASES
+    | DEC
+    | DECLARE
+    | DELAYED
+    | DETERMINISTIC
+    | DISTINCTROW
+    | DIV
+    | DUAL
+    | EFFECTIVE
+    | ENABLE
+    | ENCRYPTION
+    | END
+    | ENDS
+    | ENGINE_
+    | ENGINES
+    | ENUM
+    | ENTITY
+    | ERROR_CODE
+    | ERROR_P
+    | ERRORS
+    | ESCAPE
+    | EVENT
+    | EVENTS
+    | EVERY
+    | EXCHANGE
+    | EXECUTE
+    | EXPANSION
+    | EXPIRE
+    | EXPIRE_INFO
+    | EXPORT
+    | OUTLINE
+    | EXTENDED
+    | EXTENDED_NOADDR
+    | EXTENT_SIZE
+    | EXTRACT
+    | EACH
+    | ENCLOSED
+    | ELSEIF
+    | ESCAPED
+    | EXIT
+    | EXPLAIN
+    | FAST
+    | FAULTS
+    | FIELDS
+    | FILEX
+    | FINAL_COUNT
+    | FIRST
+    | FIRST_VALUE
+    | FIXED
+    | FLUSH
+    | FOLLOWER
+    | FORMAT
+    | FOUND
+    | FREEZE
+    | FREQUENCY
+    | FUNCTION
+    | FOLLOWING
+    | FETCH
+    | FLOAT4
+    | FLOAT8
+    | FORCE
+    | FLASHBACK
+    | GENERAL
+    | GEOMETRY
+    | GEOMETRYCOLLECTION
+    | GET_FORMAT
+    | GLOBAL
+    | GRANTS
+    | GROUP_CONCAT
+    | GROUPING
+    | GTS
+    | GET
+    | GENERATED
+    | GLOBAL_NAME
+    | HANDLER
+    | HASH
+    | HELP
+    | HISTOGRAM
+    | HOST
+    | HOSTS
+    | HOUR
+    | ID
+    | IDC
+    | HIGH_PRIORITY
+    | HOUR_MICROSECOND
+    | HOUR_MINUTE
+    | HOUR_SECOND
+    | IDENTIFIED
+    | IGNORE_SERVER_IDS
+    | ILOG
+    | IMPORT
+    | INCR
+    | INDEXES
+    | INDEX_TABLE_ID
+    | INFO
+    | INITIAL_SIZE
+    | INNODB
+    | INSERT_METHOD
+    | INSTALL
+    | INSTANCE
+    | INVOKER
+    | IO
+    | IO_THREAD
+    | IPC
+    | ISOLATION
+    | ISSUER
+    | IS_TENANT_SYS_POOL
+    | INVISIBLE
+    | IF
+    | IFIGNORE
+    | IGNORE
+    | INNER
+    | INFILE
+    | INOUT
+    | INSENSITIVE
+    | INT
+    | INT1
+    | INT2
+    | INT3
+    | INT4
+    | INT8
+    | MERGE
+    | IO_AFTER_GTIDS
+    | IO_BEFORE_GTIDS
+    | ISNULL
+    | ITERATE
+    | JOB
+    | JSON
+    | KEY_BLOCK_SIZE
+    | KEY_VERSION
+    | KEYS
+    | KILL
+    | LAG
+    | LANGUAGE
+    | LAST
+    | LAST_VALUE
+    | LEAD
+    | LEADER
+    | LEAVES
+    | LESS
+    | LEAK
+    | LEAK_MOD
+    | LINESTRING
+    | LIST_
+    | LISTAGG
+    | LOCAL
+    | LOCALITY
+    | LOCATION
+    | LOCKED
+    | LOCKS
+    | LOGFILE
+    | LOGONLY_REPLICA_NUM
+    | LOGS
+    | LEADING
+    | LEAVE
+    | LEFT
+    | LINEAR
+    | LINES
+    | LOAD
+    | LOCK_
+    | LONGB
+    | LOB
+    | LONGTEXT
+    | LOOP
+    | LOW_PRIORITY
+    | MAJOR
+    | MANUAL
+    | MASTER
+    | MASTER_AUTO_POSITION
+    | MASTER_CONNECT_RETRY
+    | MASTER_DELAY
+    | MASTER_HEARTBEAT_PERIOD
+    | MASTER_HOST
+    | MASTER_LOG_FILE
+    | MASTER_LOG_POS
+    | MASTER_PASSWORD
+    | MASTER_PORT
+    | MASTER_RETRY_COUNT
+    | MASTER_SERVER_ID
+    | MASTER_SSL
+    | MASTER_SSL_CA
+    | MASTER_SSL_CAPATH
+    | MASTER_SSL_CERT
+    | MASTER_SSL_CIPHER
+    | MASTER_SSL_CRL
+    | MASTER_SSL_CRLPATH
+    | MASTER_SSL_KEY
+    | MASTER_USER
+    | MAX
+    | MAX_CONNECTIONS_PER_HOUR
+    | MAX_CPU
+    | MAX_DISK_SIZE
+    | MAX_IOPS
+    | MAX_MEMORY
+    | MAX_QUERIES_PER_HOUR
+    | MAX_ROWS
+    | MAX_SESSION_NUM
+    | MAX_SIZE
+    | MAX_UPDATES_PER_HOUR
+    | MAX_USER_CONNECTIONS
+    | MEDIUM
+    | MEMORY
+    | MEMTABLE
+    | MESSAGE_TEXT
+    | META
+    | MICROSECOND
+    | MIGRATE
+    | MIN
+    | MIN_CPU
+    | MIN_IOPS
+    | MIN_MEMORY
+    | MINOR
+    | MIN_ROWS
+    | MINUTE
+    | MODE
+    | MODIFY
+    | MONTH
+    | MOVE
+    | MULTILINESTRING
+    | MULTIPOINT
+    | MULTIPOLYGON
+    | MUTEX
+    | MYSQL_ERRNO
+    | MIGRATION
+    | MAX_USED_PART_ID
+    | MASTER_BIND
+    | MASTER_SSL_VERIFY_SERVER_CERT
+    | MATCH
+    | MAXVALUE
+    | MEDIUMBLOB
+    | MEDIUMINT
+    | MEDIUMTEXT
+    | MIDDLEINT
+    | MINUTE_MICROSECOND
+    | MINUTE_SECOND
+    | MOD
+    | MODIFIES
+    | NATURAL
+    | NO_WRITE_TO_BINLOG
+    | NAME
+    | NAMES
+    | NATIONAL
+    | NCHAR
+    | NDB
+    | NDBCLUSTER
+    | NEW
+    | NEXT
+    | NO
+    | NODEGROUP
+    | NONE
+    | NORMAL
+    | NOW
+    | NOWAIT
+    | NO_WAIT
+    | NULLS
+    | NVARCHAR
+    | NTILE
+    | NTH_VALUE
+    | NUMERIC
+    | OCCUR
+    | OFF
+    | OFFSET
+    | OLD_PASSWORD
+    | ONE
+    | ONE_SHOT
+    | ONLY
+    | OPEN
+    | OPTIONS
+    | ORIG_DEFAULT
+    | OWNER
+    | OLD_KEY
+    | OVER
+    | OPTIMIZE
+    | OPTIONALLY
+    | OUT
+    | OUTER
+    | OUTFILE
+    | PACK_KEYS
+    | PAGE
+    | PARAMETERS
+    | PARSER
+    | PARTIAL
+    | PARTITION_ID
+    | PARTITIONING
+    | PARTITIONS
+    | PASSWORD
+    | PAUSE
+    | PERCENT_RANK
+    | PHASE
+    | PLAN
+    | PHYSICAL
+    | PLANREGRESS
+    | PLUGIN
+    | PLUGIN_DIR
+    | PLUGINS
+    | POINT
+    | POLYGON
+    | PROCEDURE
+    | PURGE
+    | PARTITION
+    | POOL
+    | PORT
+    | POSITION
+    | PREPARE
+    | PRESERVE
+    | PREV
+    | PRIMARY_ZONE
+    | PRIVILEGES
+    | PROCESS
+    | PROCESSLIST
+    | PROFILE
+    | PROFILES
+    | PROXY
+    | PRECEDING
+    | PCTFREE
+    | P_ENTITY
+    | P_CHUNK
+    | QUARTER
+    | QUERY
+    | QUICK
+    | RANK
+    | READ_ONLY
+    | REBUILD
+    | RECOVER
+    | RECYCLE
+    | REDO_BUFFER_SIZE
+    | REDOFILE
+    | REDUNDANT
+    | REFRESH
+    | REGION
+    | RELAY
+    | RELAYLOG
+    | RELAY_LOG_FILE
+    | RELAY_LOG_POS
+    | RELAY_THREAD
+    | RELOAD
+    | REMOVE
+    | REORGANIZE
+    | REPAIR
+    | REPEATABLE
+    | REPLICA
+    | REPLICA_NUM
+    | REPLICA_TYPE
+    | REPLICATION
+    | REPORT
+    | RESET
+    | RESOURCE
+    | RESOURCE_POOL_LIST
+    | RESPECT
+    | RESTART
+    | RESTORE
+    | RESUME
+    | RETURNED_SQLSTATE
+    | RETURNS
+    | REVERSE
+    | REWRITE_MERGE_VERSION
+    | ROLLBACK
+    | ROLLUP
+    | ROOT
+    | ROOTTABLE
+    | ROOTSERVICE
+    | ROUTINE
+    | ROW
+    | RESIGNAL
+    | RESTRICT
+    | RETURN
+    | RIGHT
+    | RLIKE
+    | RETURNING
+    | ROLLING
+    | ROW_COUNT
+    | ROW_FORMAT
+    | ROWS
+    | RTREE
+    | RUN
+    | RECYCLEBIN
+    | ROTATE
+    | ROW_NUMBER
+    | RUDUNDANT
+    | RANGE
+    | RECURSIVE
+    | READ
+    | READ_WRITE
+    | READS
+    | REAL
+    | RELEASE
+    | REFERENCES
+    | REPLACE
+    | REPEAT
+    | REQUIRE
+    | RANDOM
+    | SAMPLE
+    | SAVEPOINT
+    | SCHEDULE
+    | SCHEMA_NAME
+    | SCOPE
+    | SECOND
+    | SECURITY
+    | SEED
+    | SERIAL
+    | SERIALIZABLE
+    | SERVER
+    | SERVER_IP
+    | SERVER_PORT
+    | SERVER_TYPE
+    | SESSION
+    | SESSION_USER
+    | SET_MASTER_CLUSTER
+    | SET_SLAVE_CLUSTER
+    | SET_TP
+    | SHARE
+    | SHUTDOWN
+    | SIGNED
+    | SIMPLE
+    | SLAVE
+    | SLOW
+    | SLOT_IDX
+    | SNAPSHOT
+    | SOCKET
+    | SOME
+    | SONAME
+    | SOUNDS
+    | SOURCE
+    | SPFILE
+    | SPLIT
+    | SQL_AFTER_GTIDS
+    | SQL_AFTER_MTS_GAPS
+    | SQL_BEFORE_GTIDS
+    | SQL_BUFFER_RESULT
+    | SQL_CACHE
+    | SQL_NO_CACHE
+    | SQL_ID
+    | SQL_THREAD
+    | SQL_TSI_DAY
+    | SQL_TSI_HOUR
+    | SQL_TSI_MINUTE
+    | SQL_TSI_MONTH
+    | SQL_TSI_QUARTER
+    | SQL_TSI_SECOND
+    | SQL_TSI_WEEK
+    | SQL_TSI_YEAR
+    | STANDBY
+    | STAT
+    | START
+    | STARTS
+    | STATS_AUTO_RECALC
+    | STATS_PERSISTENT
+    | STATS_SAMPLE_PAGES
+    | STATUS
+    | STDDEV
+    | STDDEV_POP
+    | STDDEV_SAMP
+    | PROGRESSIVE_MERGE_NUM
+    | STOP
+    | STORAGE
+    | STORAGE_FORMAT_VERSION
+    | STORAGE_FORMAT_WORK_VERSION
+    | STORING
+    | STRING
+    | SUBCLASS_ORIGIN
+    | SUBDATE
+    | SUBJECT
+    | SUBPARTITION
+    | SUBPARTITIONS
+    | SUBSTR
+    | SUBSTRING
+    | SUM
+    | SUPER
+    | SUSPEND
+    | SWAPS
+    | SWITCH
+    | SWITCHES
+    | SWITCHOVER
+    | SYSTEM
+    | SYSTEM_USER
+    | SYSDATE
+    | SEARCH
+    | SECOND_MICROSECOND
+    | SCHEMA
+    | SCHEMAS
+    | SEPARATOR
+    | SENSITIVE
+    | SIGNAL
+    | SPATIAL
+    | SPECIFIC
+    | SQL
+    | SQLEXCEPTION
+    | SQLSTATE
+    | SQLWARNING
+    | SQL_BIG_RESULT
+    | SQL_CALC_FOUND_ROWS
+    | SQL_SMALL_RESULT
+    | SSL
+    | STARTING
+    | STRAIGHT_JOIN
+    | STORED
+    | TABLE_CHECKSUM
+    | TABLE_MODE
+    | TABLE_ID
+    | TABLE_NAME
+    | TABLEGROUPS
+    | TABLES
+    | TABLESPACE
+    | TABLET
+    | TABLET_MAX_SIZE
+    | TEMPLATE
+    | TEMPORARY
+    | TEMPTABLE
+    | TENANT
+    | TEXT
+    | THAN
+    | TIME
+    | TIMESTAMP
+    | TIMESTAMPADD
+    | TIMESTAMPDIFF
+    | TP_NO
+    | TP_NAME
+    | TRACE
+    | TRADITIONAL
+    | TRANSACTION
+    | TRIGGERS
+    | TRIM
+    | TRUNCATE
+    | TYPE
+    | TYPES
+    | TASK
+    | TABLET_SIZE
+    | TABLEGROUP_ID
+    | TENANT_ID
+    | TERMINATED
+    | TINYBLOB
+    | TINYTEXT
+    | TABLEGROUP
+    | TRAILING
+    | UNCOMMITTED
+    | UNDEFINED
+    | UNDO_BUFFER_SIZE
+    | UNDOFILE
+    | UNICODE
+    | UNINSTALL
+    | UNIT
+    | UNIT_NUM
+    | UNLOCKED
+    | UNTIL
+    | UNUSUAL
+    | UPGRADE
+    | USE_BLOOM_FILTER
+    | UNKNOWN
+    | USE_FRM
+    | USER
+    | USER_RESOURCES
+    | UNBOUNDED
+    | UNDO
+    | UNLOCK
+    | USING
+    | UTC_DATE
+    | UTC_TIME
+    | UTC_TIMESTAMP
+    | VALID
+    | VALUE
+    | VARIANCE
+    | VARIABLES
+    | VERBOSE
+    | MATERIALIZED
+    | VIEW
+    | VISIBLE
+    | VIRTUAL_COLUMN_ID
+    | VARCHARACTER
+    | VARYING
+    | VIRTUAL
+    | WAIT
+    | WARNINGS
+    | WEEK
+    | WEIGHT_STRING
+    | WITH_ROWID
+    | WORK
+    | WRAPPER
+    | WHILE
+    | WRITE
+    | INNER_PARSE
+    | X509
+    | XA
+    | XML
+    | XOR
+    | YEAR
+    | LEVEL
+    | YEAR_MONTH
+    | ACTIVATE
+    | SYNCHRONIZATION
+    | ZONE
+    | ZONE_LIST
+    | TIME_ZONE_INFO
+    | ZONE_TYPE
+    | MATCHED
+    | AUDIT
+    | PL
+    | ZEROFILL
+    | ARCHIVELOG
+    | NOARCHIVELOG
+    | INCREMENTAL
+    | EXPIRED
+    | PREVIEW
+    | VALIDATE
+    | BACKUPSET
+    | REMOTE_OSS
+    | GLOBAL_ALIAS
+    | SESSION_ALIAS"""
     p[0] = p[1]
 
 
@@ -1240,10 +2103,10 @@ def p_quoted_identifier(p):
     p[0] = p[1][1:-1]
 
 
-def p_number(p):
-    r"""number : DOUBLE
-    | integer"""
-    if p.slice[1].type == "DOUBLE":
+def p_figure(p):
+    r"""figure : FRACTION
+    | NUMBER"""
+    if p.slice[1].type == "FRACTION":
         p[0] = DoubleLiteral(p.lineno(1), p.lexpos(1), p[1])
     else:
         p[0] = LongLiteral(p.lineno(1), p.lexpos(1), p[1])

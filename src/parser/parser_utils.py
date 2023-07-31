@@ -64,11 +64,16 @@ class ParserUtils(object):
                 return self.visit_query_body(node, context)
 
             def visit_aliased_relation(self, node, context):
+                alias = ""
+                if len(node.alias) == 2:
+                    alias = node.alias[1]
+                elif len(node.alias) == 1:
+                    alias = node.alias[0]
                 if not isinstance(node.relation, SubqueryExpression):
                     self.table_list.append(
                         {
                             'table_name': node.relation.name.parts[0],
-                            'alias': node.alias[1],
+                            'alias': alias,
                             'filter_column_list': [],
                         }
                     )
@@ -139,10 +144,9 @@ class ParserUtils(object):
             def visit_in_predicate(self, node, context):
                 value = node.value
 
-                if not context:
+                if not node.is_not:
                     if isinstance(node.value_list, InListExpression):
                         self.in_count_list.append(len(node.value_list.values))
-
                     if isinstance(value, QualifiedNameReference):
                         self.add_filter_column_with_qualified_name_reference(
                             value, 'in'

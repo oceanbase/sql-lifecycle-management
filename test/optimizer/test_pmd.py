@@ -194,6 +194,7 @@ WHERE o.order_id = 1
         SELECT * FROM match_record_id  FOR UPDATE
         """,
             lexer=lexer,
+            debug=True,
         )
         match = PMDNowaitWaitRule().match(statement)
         assert match
@@ -202,6 +203,7 @@ WHERE o.order_id = 1
         SELECT * FROM match_record_id  FOR UPDATE NOWAIT
         """,
             lexer=lexer,
+            debug=True,
         )
         match = PMDNowaitWaitRule().match(statement)
         assert not match
@@ -210,6 +212,7 @@ WHERE o.order_id = 1
         SELECT * FROM match_record_id  FOR UPDATE WAIT 1
         """,
             lexer=lexer,
+            debug=True,
         )
         match = PMDNowaitWaitRule().match(statement)
         assert not match

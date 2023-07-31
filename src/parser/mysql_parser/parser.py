@@ -32,7 +32,6 @@ from src.parser.tree.expression import (
     NotExpression,
     QualifiedNameReference,
     RegexpPredicate,
-    SearchedCaseExpression,
     SimpleCaseExpression,
     SubqueryExpression,
     WhenClause,
@@ -847,12 +846,19 @@ def p_derived_table(p):
 def p_alias_opt(p):
     r"""alias_opt : alias
     | empty"""
-    p[0] = p[1]
+    if p.slice[1].type == "alias":
+        p[0] = p[1]
+    else:
+        p[0] = ()
 
 
 def p_alias(p):
-    r"""alias : as_opt identifier"""
-    p[0] = (p[1], p[2])
+    r"""alias : AS identifier
+    | identifier"""
+    if len(p) == 3:
+        p[0] = (p[1], p[2])
+    else:
+        p[0] = p[1]
 
 
 def p_expression(p):
@@ -1130,23 +1136,21 @@ def p_empty_call_args(p):
 
 
 def p_case_specification(p):
-    r"""case_specification : simple_case
-    | searched_case"""
+    r"""case_specification : simple_case"""
     p[0] = p[1]
 
 
 def p_simple_case(p):
-    r"""simple_case : CASE value_expression when_clauses else_opt END"""
+    r"""simple_case : CASE expression_opt when_clauses else_opt END"""
     p[0] = SimpleCaseExpression(
         p.lineno(1), p.lexpos(1), operand=p[2], when_clauses=p[3], default_value=p[4]
     )
 
 
-def p_searched_case(p):
-    r"""searched_case : CASE when_clauses else_opt END"""
-    p[0] = SearchedCaseExpression(
-        p.lineno(1), p.lexpos(1), when_clauses=p[2], default_value=p[3]
-    )
+def p_expression_opt(p):
+    r"""expression_opt : expression
+    | empty"""
+    p[0] = p[1]
 
 
 def p_cast_specification(p):
@@ -1313,12 +1317,6 @@ def p_comparison_operator(p):
     p[0] = p[1]
 
 
-def p_as_opt(p):
-    r"""as_opt : AS
-    | empty"""
-    p[0] = p[1]
-
-
 def p_boolean_value(p):
     r"""boolean_value : TRUE
     | FALSE"""
@@ -1431,8 +1429,6 @@ def p_non_reserved(p):
     | FILE
     | FIRST
     | FLUSH
-    | FROM
-    | FOR
     | FORMAT
     | FOUND
     | FULL
@@ -1498,7 +1494,6 @@ def p_non_reserved(p):
     | OF
     | OFF
     | OFFSET
-    | ON
     | OR
     | ON_DUPLICATE
     | ONLINE
@@ -1677,9 +1672,9 @@ def p_quoted_identifier(p):
 
 
 def p_figure(p):
-    r"""figure : DOUBLE
+    r"""figure : FRACTION
     | NUMBER"""
-    if p.slice[1].type == "DOUBLE":
+    if p.slice[1].type == "FRACTION":
         p[0] = DoubleLiteral(p.lineno(1), p.lexpos(1), p[1])
     else:
         p[0] = LongLiteral(p.lineno(1), p.lexpos(1), p[1])
