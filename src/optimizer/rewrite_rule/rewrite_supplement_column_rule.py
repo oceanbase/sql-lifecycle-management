@@ -88,16 +88,18 @@ class RewriteSupplementColumnRule(AbstractRewriteRule):
                 return self.visit_query_body(node, context)
 
             def visit_aliased_relation(self, node, context):
-                alias = node.alias
+                alias = ""
+                if len(node.alias) == 2:
+                    alias = node.alias[1]
+                elif len(node.alias) == 1:
+                    alias = node.alias[0]
                 if isinstance(node.relation, Table):
                     parts = node.relation.name.parts
                     if len(parts) == 1:
                         table_name = parts[0]
                     else:
                         table_name = parts[1]
-                    self.alias_list.append(
-                        {'alias': alias[1], 'table_name': table_name}
-                    )
+                    self.alias_list.append({'alias': alias, 'table_name': table_name})
                 return self.process(node.relation, context)
 
             def visit_select(self, node, context):

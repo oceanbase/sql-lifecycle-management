@@ -723,7 +723,7 @@ sql03_reserved = (
     'YEAR',
 )
 
-presto_tokens = (
+reversed = (
     'ADD',
     'ALL',
     'ALTER',
@@ -739,7 +739,6 @@ presto_tokens = (
     'BOTH',
     'BY',
     'BINLOG',
-    'CALL',
     'CASCADE',
     'CASE',
     'CHANGE',
@@ -747,7 +746,6 @@ presto_tokens = (
     'CHAR',
     'CHECK',
     'COLLATE',
-    'COLUMN',
     'CONSTRAINT',
     'CONTINUE',
     'CONVERT',
@@ -789,9 +787,10 @@ presto_tokens = (
     'EXCEPT',
     'FALSE',
     'FETCH',
+    'FOR',
     'FIRST_VALUE',
     'FLOAT',
-    'FOR',
+    'FROM',
     'FORCE',
     'FOREIGN',
     'FULLTEXT',
@@ -819,7 +818,6 @@ presto_tokens = (
     'INT3',
     'INT4',
     'INT8',
-    'ITERATE',
     'JOIN',
     'KEY',
     'KEYS',
@@ -858,7 +856,6 @@ presto_tokens = (
     'NTILE',
     'NULL',
     'NUMERIC',
-    'OF',
     'ON',
     'OPTIMIZE',
     'OPTION',
@@ -867,7 +864,6 @@ presto_tokens = (
     'OUT',
     'OUTER',
     'OVER',
-    'PARTITION',
     'PERCENT_RANK',
     'PRECISION',
     'PRIMARY',
@@ -880,7 +876,6 @@ presto_tokens = (
     'REFERENCES',
     'REGEXP',
     'RELEASE',
-    'RETURN',
     'RETURNED_SQLSTATE',
     'RETURNS',
     'RENAME',
@@ -953,7 +948,7 @@ presto_tokens = (
 )
 
 # resvered word in mysql but can be used as token
-presto_nonreserved = (
+nonreserved = (
     'ACCOUNT',
     'ACTION',
     'ADVISE',
@@ -1028,12 +1023,10 @@ presto_nonreserved = (
     'FILE',
     'FIRST',
     'FLUSH',
-    'FOR',
     'FORMAT',
     'FOUND',
     'FULL',
     'FUNCTION',
-    'FROM',
     'GENERAL',
     'GLOBAL',
     'GRANTS',
@@ -1231,7 +1224,7 @@ presto_nonreserved = (
     'ZEROFILL',
 )
 
-presto_not_keyword_token = (
+not_keyword_token = (
     "ADDDATE",
     "BRIEF",
     "CAST",
@@ -1264,5 +1257,3 @@ presto_not_keyword_token = (
     "TOP",
     "TRIM",
 )
-
-presto_reserved = tuple([i for i in presto_tokens if i not in presto_nonreserved])

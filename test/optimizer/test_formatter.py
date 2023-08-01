@@ -49,7 +49,7 @@ WHERE C2 < 30"""
         )
 
     def test_as(self):
-        statement = parser.parse("""SELECT a.* FROM d1 as a""", lexer=lexer)
+        statement = parser.parse("""SELECT a.* FROM d1 as a""", lexer=lexer, debug=True)
         after_sql_rewrite_format = format_sql(statement, 0)
         assert (
             after_sql_rewrite_format

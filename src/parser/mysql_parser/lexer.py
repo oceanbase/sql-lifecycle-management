@@ -13,9 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from ply import lex
 
 from src.parser.mysql_parser.reserved import (
-    presto_reserved,
-    presto_nonreserved,
-    presto_not_keyword_token,
+    reversed,
+    nonreserved,
+    not_keyword_token,
 )
 
 tokens = (
@@ -48,14 +48,15 @@ tokens = (
         'PIPES',
         'SLASH',
         'ASTERISK',
-        'NON_RESERVED',
+        'PERCENT' 'NON_RESERVED',
         'NUMBER',
+        'FRACTION',
         'QM',
         'SCONST',
     ]
-    + list(presto_reserved)
-    + list(presto_nonreserved)
-    + list(presto_not_keyword_token)
+    + list(reversed)
+    + list(nonreserved)
+    + list(not_keyword_token)
 )
 
 t_LPAREN = '\('
@@ -98,7 +99,7 @@ t_EXCLA_MARK = r'!'
 def t_DOUBLE(t):
     r"""(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\d*(?:\.\d+)(?:[eE][+-]?\d+)?)"""
     if 'e' in t.value or 'E' in t.value or '.' in t.value:
-        t.type = 'DOUBLE'
+        t.type = 'FRACTION'
     else:
         t.type = "NUMBER"
     return t
@@ -122,8 +123,6 @@ def t_IDENTIFIER(t):
     val = t.value.lower()
     if val.upper() in tokens:
         t.type = val.upper()
-    if val in presto_nonreserved:
-        t.type = "NON_RESERVED"
     return t
 
 

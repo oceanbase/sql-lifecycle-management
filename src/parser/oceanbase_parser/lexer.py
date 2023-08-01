@@ -12,26 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 from ply import lex
 
-from src.parser.oceanbase_parser.reserved import presto_nonreserved, presto_tokens
-
-reserved = sorted(set(presto_tokens).difference(presto_nonreserved))
+from src.parser.oceanbase_parser.reserved import reserved, nonreserved
 
 tokens = (
     [
-        'INTEGER',
-        'NUMBER',
-        'DOUBLE',
         'IDENTIFIER',
         'DIGIT_IDENTIFIER',
         'QUOTED_IDENTIFIER',
         'BACKQUOTED_IDENTIFIER',
-        'STRING',
         'PERIOD',
         'COMMA',
         'PLUS',
         'MINUS',
         'LPAREN',
         'RPAREN',
+        'ANDAND',
+        'ASSIGNMENTEQ',
         'GT',
         'GE',
         'LT',
@@ -42,24 +38,27 @@ tokens = (
         'BIT_AND',
         'BIT_XOR',
         'BIT_OPPOSITE',
+        'EXCLA_MARK',
         'BIT_MOVE_LEFT',
         'BIT_MOVE_RIGHT',
-        'CONCAT',
+        'PIPES',
         'SLASH',
         'ASTERISK',
-        'PERCENT',
-        'TOP',  # ADQL
-        'NON_RESERVED',
         'QM',
         'SCONST',
+        'PERCENT',
+        'IGNORE',
+        'FRACTION',
+        'NUMBER',
     ]
-    + reserved
-    + list(presto_nonreserved)
+    + list(reserved)
+    + list(nonreserved)
 )
 
 t_LPAREN = '\('
 t_RPAREN = '\)'
 
+t_ASSIGNMENTEQ = r':='
 t_EQ = r'='
 t_NE = r'<>|!='
 t_LT = r'<'
@@ -75,30 +74,32 @@ t_SLASH = r'/'
 t_PERCENT = r'%'
 t_QM = r'\?'
 
-t_CONCAT = r'\|\|'
+t_PIPES = r'\|\|'
 
 t_ignore = ' \t'
 
+t_ANDAND = r'\&\&'
 t_BIT_OR = r'\|'
 t_BIT_AND = r'\&'
 t_BIT_XOR = r'\^'
 t_BIT_OPPOSITE = r'\~'
-t_BIT_MOVE_LEFT = R'<<'
-t_BIT_MOVE_RIGHT = R'>>'
+t_BIT_MOVE_LEFT = r'<<'
+t_BIT_MOVE_RIGHT = r'>>'
+t_EXCLA_MARK = r'!'
 
 
 def t_DOUBLE(t):
     r"""(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\d*(?:\.\d+)(?:[eE][+-]?\d+)?)"""
     if 'e' in t.value or 'E' in t.value or '.' in t.value:
-        t.type = 'DOUBLE'
+        t.type = "FRACTION"
     else:
-        t.type = "INTEGER"
+        t.type = "NUMBER"
     return t
 
 
 def t_INTEGER(t):
     r'\d+'
-    t.type = "INTEGER"
+    t.type = "NUMBER"
     return t
 
 
@@ -112,28 +113,24 @@ def t_SCONST(t):
 def t_IDENTIFIER(t):
     r"""[a-zA-Z\u4e00-\u9fa5_][a-zA-Z\u4e00-\u9fa50-9_@:]*"""
     val = t.value.lower()
-    if val.upper() in reserved:
+    if val.upper() in tokens:
         t.type = val.upper()
-    if val in presto_nonreserved:
-        t.type = "NON_RESERVED"
-    if val.upper() == "TOP":
-        t.type = "TOP"
     return t
 
 
 def t_QUOTED_IDENTIFIER(t):
     r'"([^"]|"")*"'
     val = t.value.lower()
-    if val in reserved:
-        t.type = reserved[val]
+    if val in tokens:
+        t.type = tokens[val]
     return t
 
 
 def t_BACKQUOTED_IDENTIFIER(t):
     r'`([^`]|``)*`'
     val = t.value.lower()
-    if val in reserved:
-        t.type = reserved[val]
+    if val in tokens:
+        t.type = tokens[val]
     return t
 
 
