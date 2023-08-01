@@ -46,10 +46,11 @@ class Except(SetOperation):
 
 
 class Intersect(SetOperation):
-    def __init__(self, line=None, pos=None, relations=None, distinct=None):
+    def __init__(self, line=None, pos=None, relations=None, distinct=None, all=None):
         super(Intersect, self).__init__(line, pos)
         self.relations = relations
         self.distinct = distinct
+        self.all = all
 
     def accept(self, visitor, context):
         return visitor.visit_intersect(self, context)

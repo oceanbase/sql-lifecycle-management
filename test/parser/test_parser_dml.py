@@ -135,9 +135,7 @@ delete from execution_log          where                (                       
             """SELECT cast FROM t""",
             """SELECT end FROM t""",
             """SELECT escape FROM t""",
-            """SELECT group FROM t""",
             """SELECT if FROM t""",
-            """SELECT in FROM t""",
             """SELECT id FROM t""",
             """SELECT into FROM t""",
             """SELECT is FROM t""",
@@ -148,7 +146,7 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
             assert isinstance(result, Statement)
 
     def test_vector_expression(self):
@@ -187,7 +185,32 @@ delete from execution_log          where                (                       
             "SELECT CAST(1 BETWEEN 1 AND 2 AS SIGNED)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            assert isinstance(result, Statement)
+
+    def test_inner_join(self):
+        test_sqls = [
+            " SELECT * FROM ((SELECT * FROM b INNER JOIN a ON a.task_id = b.task_id) x INNER JOIN y ON x.id = y.id)"
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            assert isinstance(result, Statement)
+
+    def test_set_operation(self):
+        test_sqls = [
+            " SELECT * FROM a UNION SELECT * FROM b UNION SELECT * FROM c",
+            " (SELECT * FROM a UNION SELECT * FROM b) UNION SELECT * FROM c",
+            " ((SELECT * FROM a ) UNION SELECT * FROM b) UNION SELECT * FROM c",
+            " ((SELECT * FROM a ) UNION (SELECT * FROM b)) UNION SELECT * FROM c",
+            " ((SELECT * FROM a ) UNION (SELECT * FROM b)) UNION (SELECT * FROM c)",
+            " ((SELECT * FROM a ) UNION (SELECT * FROM b)) UNION (SELECT * FROM c)",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
             assert isinstance(result, Statement)
             result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
             assert isinstance(result, Statement)

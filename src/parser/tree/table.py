@@ -14,9 +14,22 @@ from .relation import QueryBody
 
 
 class Table(QueryBody):
-    def __init__(self, line=None, pos=None, name=None):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        name=None,
+        order_by=None,
+        limit=None,
+        offset=None,
+        for_update=False,
+    ):
         super(Table, self).__init__(line, pos)
         self.name = name
+        self.order_by = order_by
+        self.limit = limit
+        self.offset = offset
+        self.for_update = for_update
 
     def accept(self, visitor, context):
         return visitor.visit_table(self, context)
