@@ -177,6 +177,17 @@ delete from execution_log          where                (                       
             result = mysql_parser.parse(sql, lexer=mysql_lexer)
             assert isinstance(result, Statement)
 
+    def test_mysql_cast_function(self):
+        test_sqls = [
+            "SELECT CAST(CAST(1+2 AS TIME) AS JSON)",
+            "SELECT CAST((8+1) AS SIGNED)",
+            "SELECT CAST(9 AS TIME)",
+            "SELECT CAST(1 BETWEEN 1 AND 2 AS SIGNED)",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+
 
 if __name__ == "__main__":
     unittest.main()

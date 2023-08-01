@@ -49,6 +49,7 @@ tokens = (
         'SLASH',
         'ASTERISK',
         'NON_RESERVED',
+        'NUMBER',
         'QM',
         'SCONST',
     ]
@@ -99,13 +100,13 @@ def t_DOUBLE(t):
     if 'e' in t.value or 'E' in t.value or '.' in t.value:
         t.type = 'DOUBLE'
     else:
-        t.type = "INTEGER"
+        t.type = "NUMBER"
     return t
 
 
-def t_INTEGER(t):
+def t_NUMBER(t):
     r'\d+'
-    t.type = "INTEGER"
+    t.type = "NUMBER"
     return t
 
 

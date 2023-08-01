@@ -485,6 +485,9 @@ class DefaultTraversalVisitor(AstVisitor):
             self.process(node.false_value, context)
         return None
 
+    def visit_field_type(self, node, unmangle_names):
+        return None
+
     def visit_try_expression(self, node, context):
         self.process(node.inner_expression, context)
         return None

@@ -212,12 +212,6 @@ class LogicalBinaryExpression(Expression):
     def accept(self, visitor, context):
         return visitor.visit_logical_binary_expression(self, context)
 
-    # def and_op(self, left, right):
-    #     return type == "AND"
-    #
-    # def or_op(self, left, right):
-    #     return type == "OR"
-
 
 class CoalesceExpression(Expression):
     def __init__(self, line=None, pos=None, operands=None):
