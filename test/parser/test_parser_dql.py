@@ -38,9 +38,9 @@ class MyTestCase(unittest.TestCase):
         result = oceanbase_parser.parse("select distinct name from a.blog")
         query_body = result.query_body
         assert (
-            query_body is not None
-            and query_body.limit == 0
-            and query_body.where is None
+                query_body is not None
+                and query_body.limit == 0
+                and query_body.where is None
         )
 
     def test_question_mark(self):
@@ -286,6 +286,13 @@ SELECT          server_release_repo.server_release_repo_id,    server_release_re
         result = oceanbase_parser.parse(
             """
         SELECT * FROM `antinvoice93`.einv_base_info WHERE einv_source = ? ORDER BY gmt_create DESC LIMIT ?
+        """
+        )
+        assert result.query_body.limit == '?'
+
+        result = oceanbase_parser.parse(
+            """
+        SELECT * FROM `antinvoice93`.einv_base_info WHERE einv_source = ? ORDER BY gmt_create DESC LIMIT 1,?
         """
         )
         assert result.query_body.limit == '?'
