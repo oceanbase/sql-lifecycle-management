@@ -13,6 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from __future__ import print_function
 
 import types
+
+from ply import yacc
+from src.optimizer.optimizer_enum import IndexType
+from src.parser.oceanbase_parser.lexer import tokens
 from src.parser.tree.expression import (
     ArithmeticBinaryExpression,
     ArithmeticUnaryExpression,
@@ -36,6 +40,7 @@ from src.parser.tree.expression import (
     SubqueryExpression,
     WhenClause,
 )
+from src.parser.tree.field_type import UNSPECIFIEDLENGTH, FieldType, MySQLType
 from src.parser.tree.grouping import SimpleGroupBy
 from src.parser.tree.join_criteria import JoinOn, JoinUsing, NaturalJoin
 from src.parser.tree.literal import (
@@ -56,11 +61,6 @@ from src.parser.tree.sort_item import SortItem
 from src.parser.tree.statement import Delete, Insert, Query, Update
 from src.parser.tree.table import Table, TableSubquery
 from src.parser.tree.values import Values
-from src.parser.tree.field_type import UNSPECIFIEDLENGTH, FieldType, MySQLType
-
-from ply import yacc
-from src.optimizer.optimizer_enum import IndexType
-from src.parser.oceanbase_parser.lexer import tokens
 
 tokens = tokens
 
@@ -483,12 +483,10 @@ def p_null_ordering_opt(p):
 
 # LIMIT
 def p_limit_opt(p):
-    r"""limit_opt : LIMIT number
-    | LIMIT number COMMA number
-    | LIMIT QM
-    | LIMIT QM COMMA QM
+    r"""limit_opt : LIMIT parameterization
+    | LIMIT parameterization COMMA parameterization
+    | LIMIT parameterization OFFSET parameterization
     | LIMIT ALL
-    | LIMIT number OFFSET number
     | empty"""
     if len(p) < 5:
         p[0] = (0, p[2]) if p[1] else None
@@ -497,6 +495,13 @@ def p_limit_opt(p):
             p[0] = (p[2], p[4])
         else:
             p[0] = (p[4], p[2])
+
+
+def p_parameterization(p):
+    r"""parameterization : number
+    | QM
+    """
+    p[0] = p[1]
 
 
 def p_number(p):

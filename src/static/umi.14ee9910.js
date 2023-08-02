@@ -151,7 +151,7 @@ A`,g,g,0,x?1:0,1,c.p1.x,c.p1.y)}return i.join(" ")}}function r_(r,n){n=n||{},n.m
     WHERE table_schema = '`).concat(E,"' AND table_name in (").concat(rt,`)
     AND (0x00) IN (@indexes:=CONCAT_WS(',', @indexes, CONCAT('{"schema":"',indexes.table_schema,'","table":"',indexes.table_name,'",
     "name":"', indexes.index_name, '","column":"', indexes.column_name, '",
-    "cardinality":', indexes.cardinality, ',"unique":', IF(indexes.non_unique = 1, 'false', 'true'), '}')))) ) indexes,
+    "cardinality":', IFNULL(indexes.cardinality, 0), ',"unique":', IF(indexes.non_unique = 1, 'false', 'true'), '}')))) ) indexes,
     (SELECT (@tbls:=NULL), (SELECT (0) FROM information_schema.tables tbls
     WHERE table_schema = '`).concat(E,"' AND table_name in (").concat(rt,`) AND (0x00) IN
     (@tbls:=CONCAT_WS(',', @tbls, CONCAT('{', '"schema":"', \`TABLE_SCHEMA\`, '",', '"table":"', \`TABLE_NAME\`, '",', '"rows":',

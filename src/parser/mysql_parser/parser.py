@@ -484,12 +484,10 @@ def p_null_ordering_opt(p):
 
 # LIMIT
 def p_limit_opt(p):
-    r"""limit_opt : LIMIT number
-    | LIMIT number COMMA number
-    | LIMIT QM
-    | LIMIT QM COMMA QM
+    r"""limit_opt : LIMIT parameterization
+    | LIMIT parameterization COMMA parameterization
+    | LIMIT parameterization OFFSET parameterization
     | LIMIT ALL
-    | LIMIT number OFFSET number
     | empty"""
     if len(p) < 5:
         p[0] = (0, p[2]) if p[1] else None
@@ -498,6 +496,13 @@ def p_limit_opt(p):
             p[0] = (p[2], p[4])
         else:
             p[0] = (p[4], p[2])
+
+
+def p_parameterization(p):
+    r"""parameterization : number
+    | QM
+    """
+    p[0] = p[1]
 
 
 def p_number(p):

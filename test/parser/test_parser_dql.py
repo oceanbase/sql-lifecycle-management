@@ -290,6 +290,13 @@ SELECT          server_release_repo.server_release_repo_id,    server_release_re
         )
         assert result.query_body.limit == '?'
 
+        result = oceanbase_parser.parse(
+            """
+        SELECT * FROM `antinvoice93`.einv_base_info WHERE einv_source = ? ORDER BY gmt_create DESC LIMIT 1,?
+        """
+        )
+        assert result.query_body.limit == '?'
+
     def test_subquery_limit(self):
         result = oceanbase_parser.parse(
             """
