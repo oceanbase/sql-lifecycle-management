@@ -38,9 +38,9 @@ class MyTestCase(unittest.TestCase):
         result = oceanbase_parser.parse("select distinct name from a.blog")
         query_body = result.query_body
         assert (
-                query_body is not None
-                and query_body.limit == 0
-                and query_body.where is None
+            query_body is not None
+            and query_body.limit == 0
+            and query_body.where is None
         )
 
     def test_question_mark(self):

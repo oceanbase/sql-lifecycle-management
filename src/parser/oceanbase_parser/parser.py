@@ -1093,7 +1093,7 @@ def p_function_call(p):
     | CURRENT_DATE LPAREN RPAREN"""
     if len(p) == 5:
         distinct = p[3] is None or (
-                isinstance(p[3], str) and p[3].upper() == "DISTINCT"
+            isinstance(p[3], str) and p[3].upper() == "DISTINCT"
         )
         p[0] = FunctionCall(
             p.lineno(1), p.lexpos(1), name=p[1], distinct=distinct, arguments=p[3]
