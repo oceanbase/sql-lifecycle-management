@@ -419,6 +419,17 @@ delete from execution_log          where                (                       
             'SELECT sconst FROM my_table',
         ]
         for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            assert isinstance(result, Statement)
+
+    def test_like_escape(self):
+        test_sqls = [
+            "select * from t where id like '0049663881' escape '`'",
+            'select * from t where id like "0049663881" escape "`"',
+        ]
+        for sql in test_sqls:
             result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
             assert isinstance(result, Statement)
             result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)

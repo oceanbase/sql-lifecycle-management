@@ -1047,9 +1047,9 @@ def p_in_predicate(p):
 
 
 def p_like_predicate(p):
-    r"""like_predicate : value_expression like_opt value_expression"""
+    r"""like_predicate : value_expression like_opt value_expression escape_opt"""
     p[0] = LikePredicate(
-        p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], pattern=p[3]
+        p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], pattern=p[3], escape=p[4]
     )
 
 
@@ -1074,6 +1074,19 @@ def p_between_opt(p):
     r"""between_opt : NOT BETWEEN
     | BETWEEN"""
     p[0] = p.slice[1].type == "NOT"
+
+
+def p_escape_opt(p):
+    r"""escape_opt : ESCAPE string_lit
+    | empty
+    """
+    p[0] = p[2] if len(p) == 3 else p[1]
+
+
+def p_string_lit(p):
+    r"""string_lit : SCONST
+    | QUOTED_IDENTIFIER"""
+    p[0] = StringLiteral(p.lineno(1), p.lexpos(1), value=p[2])
 
 
 def p_in_opt(p):
