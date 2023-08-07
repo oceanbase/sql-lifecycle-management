@@ -493,6 +493,29 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         result = oceanbase_parser.parse(sql)
         assert isinstance(result, Statement)
 
+    def test_engine_non_reserved(self):
+        sql = """
+        select
+        id,
+        creator,
+        modifier,
+        gmt_create,
+        gmt_modified,
+        api_type,
+        engine,
+        method,
+        uri
+        from
+         antc_gateway_resource 
+         where  api_type = 'http'
+                and gmt_modified >= '2019-07-03 11:51:11.127'
+                and gmt_modified < '2019-07-03 11:56:11.127' 
+        order by gmt_modified desc
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
 
 if __name__ == '__main__':
     unittest.main()
