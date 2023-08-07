@@ -34,6 +34,7 @@ WHERE C2 < 30 AND LNNVL(C1 < 20000)"""
                     SELECT * FROM T1 WHERE C2 < 30
                     """,
             lexer=lexer,
+            debug=True,
         )
         after_sql_rewrite_format = format_sql(statement, 0)
         assert (

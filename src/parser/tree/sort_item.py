@@ -24,3 +24,22 @@ class SortItem(Node):
 
     def accept(self, visitor, context):
         return visitor.visit_sort_item(self, context)
+
+
+class ByItem(Node):
+    def __init__(self, line=None, pos=None, item=None):
+        super(ByItem, self).__init__(line, pos)
+        self.item = item
+
+    def accept(self, visitor, context):
+        return visitor.visit_by_item(self, context)
+
+
+# items is byitem list
+class PartitionByClause(Node):
+    def __init__(self, line=None, pos=None, items=None):
+        super(PartitionByClause, self).__init__(line, pos)
+        self.items = items
+
+    def accept(self, visitor, context):
+        return visitor.visit_partition_by_clause(self, context)

@@ -59,6 +59,8 @@ tokens = (
     + list(not_keyword_token)
 )
 
+sql_tokens = list(reversed) + list(nonreserved) + list(not_keyword_token)
+
 t_LPAREN = '\('
 t_RPAREN = '\)'
 
@@ -121,7 +123,7 @@ def t_SCONST(t):
 def t_IDENTIFIER(t):
     r"""[a-zA-Z\u4e00-\u9fa5_][a-zA-Z\u4e00-\u9fa50-9_@:]*"""
     val = t.value.lower()
-    if val.upper() in tokens:
+    if val.upper() in sql_tokens:
         t.type = val.upper()
     return t
 
@@ -129,7 +131,7 @@ def t_IDENTIFIER(t):
 def t_QUOTED_IDENTIFIER(t):
     r'"([^"]|"")*"'
     val = t.value.lower()
-    if val in tokens:
+    if val in sql_tokens:
         t.type = tokens[val]
     return t
 
