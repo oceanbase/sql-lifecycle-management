@@ -14,9 +14,22 @@ from .relation import QueryBody
 
 
 class Values(QueryBody):
-    def __init__(self, line=None, pos=None, rows=None):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        rows=None,
+        order_by=None,
+        limit=None,
+        offset=None,
+        for_update=False,
+    ):
         super(Values, self).__init__(line, pos)
         self.rows = rows
+        self.order_by = order_by
+        self.limit = limit
+        self.offset = offset
+        self.for_update = for_update
 
     def accept(self, visitor, context):
         return visitor.visit_values(self, context)

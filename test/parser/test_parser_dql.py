@@ -29,7 +29,6 @@ class MyTestCase(unittest.TestCase):
             "select name,age,count(*),avg(age) from blog join a on a.id = blog.id "
             "where a.b = 1 and blog.c = 2 group by name,age "
             "having count(*)>2 and avg(age)<20 order by a asc,b desc limit 1 OFFSET 3",
-            debug=True,
         )
         assert isinstance(result, Statement)
         assert isinstance(result.query_body.from_, Join)
@@ -170,19 +169,21 @@ select max(id)  as id
 
     def test_union(self):
         result = oceanbase_parser.parse(
-            """SELECT country FROM Websites
-UNION
-SELECT country FROM apps
-ORDER BY country"""
+            "SELECT country FROM Websites UNION SELECT country FROM apps ORDER BY country"
+        )
+        assert isinstance(result.query_body, Union)
+        result = mysql_parser.parse(
+            "SELECT country FROM Websites UNION SELECT country FROM apps ORDER BY country"
         )
         assert isinstance(result.query_body, Union)
 
     def test_union_all(self):
         result = oceanbase_parser.parse(
-            """SELECT country FROM Websites
-UNION ALL
-SELECT country FROM apps
-ORDER BY country"""
+            "SELECT country FROM Websites UNION ALL SELECT country FROM apps ORDER BY country"
+        )
+        assert isinstance(result.query_body, Union)
+        result = mysql_parser.parse(
+            "SELECT country FROM Websites UNION ALL SELECT country FROM apps ORDER BY country"
         )
         assert isinstance(result.query_body, Union)
 
@@ -266,19 +267,17 @@ SELECT          server_release_repo.server_release_repo_id,    server_release_re
         assert isinstance(result, Statement)
 
     def test_union_and_union_all(self):
-        result = oceanbase_parser.parse(
-            """
-        select a from b union select a from b
-        """
-        )
+        result = mysql_parser.parse("select a from b union select a from b")
+        assert isinstance(result.query_body, Union)
+        assert not result.query_body.all
+        result = oceanbase_parser.parse("select a from b union select a from b")
         assert isinstance(result.query_body, Union)
         assert not result.query_body.all
 
-        result = oceanbase_parser.parse(
-            """
-                select a from b union all select a from b
-                """
-        )
+        result = oceanbase_parser.parse("select a from b union all select a from b")
+        assert isinstance(result.query_body, Union)
+        assert result.query_body.all
+        result = mysql_parser.parse("select a from b union all select a from b")
         assert isinstance(result.query_body, Union)
         assert result.query_body.all
 
@@ -437,7 +436,7 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         ( select 球员id from 球员夺冠次数 order by 冠军次数 asc limit 3 ) union ( select 球员id from 球员夺冠次数 order by 亚军次数 desc limit 5 )
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = mysql_parser.parse(sql)
         assert isinstance(result, Statement)
 
     def test_order_by_has_parentheses(self):

@@ -40,7 +40,6 @@ from src.parser.tree.expression import (
     SubqueryExpression,
     WhenClause,
 )
-from src.parser.tree.field_type import UNSPECIFIEDLENGTH, FieldType, MySQLType
 from src.parser.tree.grouping import SimpleGroupBy
 from src.parser.tree.join_criteria import JoinOn, JoinUsing, NaturalJoin
 from src.parser.tree.literal import (
@@ -59,8 +58,9 @@ from src.parser.tree.select_item import SingleColumn
 from src.parser.tree.set_operation import Except, Intersect, Union
 from src.parser.tree.sort_item import SortItem
 from src.parser.tree.statement import Delete, Insert, Query, Update
-from src.parser.tree.table import Table, TableSubquery
+from src.parser.tree.table import Table
 from src.parser.tree.values import Values
+from src.parser.tree.field_type import UNSPECIFIEDLENGTH, FieldType, MySQLType
 
 tokens = tokens
 
@@ -336,77 +336,25 @@ def p_expr_or_default(p):
     p[0] = p[1]
 
 
+# TODO: union limit,offset,order_by
 def p_cursor_specification(p):
-    r"""cursor_specification : query_expression order_by_opt limit_opt for_update_opt"""
-
-    p_limit = p[3]
-    offset = 0
-    limit = 0
-    if p_limit:
-        offset = p_limit[0]
-        limit = p_limit[1]
-    p_for_update = p[4]
-    for_update = False
-    nowait_or_wait = False
-    if p_for_update:
-        for_update = p_for_update[0]
-        nowait_or_wait = p_for_update[1]
-    if isinstance(p[1], QuerySpecification):
-        # When we have a simple query specification
-        # followed by order by limit, fold the order by and limit
-        # clauses into the query specification (analyzer/planner
-        # expects this structure to resolve references with respect
-        # to columns defined in the query specification)
-        query = p[1]
-        p[0] = Query(
-            p.lineno(1),
-            p.lexpos(1),
-            with_=None,
-            query_body=QuerySpecification(
-                query.line,
-                query.pos,
-                query.select,
-                query.from_,
-                query.where,
-                query.group_by,
-                query.having,
-                order_by=query.order_by if query.order_by else p[2],
-                limit=query.limit if query.limit else limit,
-                offset=query.offset if query.offset else offset,
-                for_update=query.for_update if query.for_update else for_update,
-                nowait_or_wait=query.nowait_or_wait
-                if query.nowait_or_wait
-                else nowait_or_wait,
-            ),
-            limit=query.limit if query.limit else limit,
-            offset=query.offset if query.offset else offset,
-        )
-    else:
+    r"""cursor_specification : query_expression
+    | query_spec"""
+    if p.slice[1].type == "query_spec":
+        order_by = p[1].order_by
+        limit, offset = p[1].limit, p[1].offset
+        p[1].order_by = []
         p[0] = Query(
             p.lineno(1),
             p.lexpos(1),
             with_=None,
             query_body=p[1],
-            order_by=p[2],
+            order_by=order_by,
             limit=limit,
             offset=offset,
         )
-
-
-def p_subquery(p):
-    r"""subquery : LPAREN query_expression order_by_opt limit_opt RPAREN"""
-    p_limit = p[4]
-    offset = 0
-    limit = 0
-    if p_limit:
-        offset = p_limit[0]
-        limit = p_limit[1]
-
-    if isinstance(p[2], QuerySpecification):
-        p[2].limit = p[2].limit if p[2].limit else limit
-        p[2].offset = p[2].offset if p[2].offset else offset
-        p[2].order_by = p[2].order_by if p[2].order_by else p[3] or []
-    p[0] = SubqueryExpression(p.lineno(1), p.lexpos(1), query=p[2])
+    else:
+        p[0] = p[1]
 
 
 def p_for_update_opt(p):
@@ -423,21 +371,123 @@ def p_for_update_opt(p):
 
 
 def p_query_expression(p):
-    r"""query_expression : query_expression_body"""
+    r"""query_expression : set_operation_stmt"""
     p[0] = p[1]
 
 
-def p_query_expression_body(p):
-    r"""query_expression_body : nonjoin_query_expression
-    | joined_table"""
+def p_set_operation_stmt(p):
+    r"""set_operation_stmt : set_operation_stmt_wout_order_limit
+    | set_operation_stmt_w_order
+    | set_operation_stmt_w_limit
+    | set_operation_stmt_w_order_limit
+    """
     p[0] = p[1]
+
+
+def p_set_operation_stmt_w_order_by_limit(p):
+    r"""set_operation_stmt_wout_order_limit : set_operation_stmt_subquery
+    |  set_operation_stmt_simple_table
+    """
+    order_by, limit, offset = [], 0, 0
+    if p.slice[1].type == "set_operation_stmt_simple_table":
+        if type(p[1]) == Union:
+            simple_table = p[1].relations[1]
+        elif type(p[1]) == Except:
+            simple_table = p[1].right
+        elif type(p[1]) == Intersect:
+            simple_table = p[1].relations[1]
+        order_by, limit, offset = (
+            simple_table.order_by,
+            simple_table.limit,
+            simple_table.offset,
+        )
+        simple_table.order_by = []
+    p[0] = Query(
+        p.lineno(1),
+        p.lexpos(1),
+        with_=None,
+        query_body=p[1],
+        order_by=order_by,
+        limit=limit,
+        offset=offset,
+    )
+
+
+def p_set_operation_stmt_w_order(p):
+    r"""set_operation_stmt_w_order :  set_operation_stmt_subquery order_by
+    | subquery order_by
+    """
+    p[0] = Query(
+        p.lineno(1),
+        p.lexpos(1),
+        with_=None,
+        query_body=p[1],
+        order_by=p[2],
+        limit=0,
+        offset=0,
+    )
+
+
+def p_set_operation_stmt_w_limit(p):
+    r"""set_operation_stmt_w_limit :  set_operation_stmt_subquery limit_stmt
+    | subquery limit_stmt
+    """
+    offset, limit = 0, 0
+    if p[2]:
+        offset, limit = p[2][0], p[2][1]
+    p[0] = Query(
+        p.lineno(1),
+        p.lexpos(1),
+        with_=None,
+        query_body=p[1],
+        order_by=[],
+        offset=offset,
+        limit=limit,
+    )
+
+
+def p_set_operation_stmt_w_order_limit(p):
+    r"""set_operation_stmt_w_order_limit :  set_operation_stmt_subquery order_by limit_stmt
+    | subquery order_by limit_stmt
+    """
+    offset, limit = 0, 0
+    if p[3]:
+        offset, limit = p[3][0], p[3][1]
+    p[0] = Query(
+        p.lineno(1),
+        p.lexpos(1),
+        with_=None,
+        query_body=p[1],
+        order_by=p[2],
+        offset=offset,
+        limit=limit,
+    )
+
+
+def p_set_operation_stmt_subquery(p):
+    r"""set_operation_stmt_subquery : set_operation_expressions set_operation set_quantifier_opt subquery"""
+    p[0] = _set_operation(
+        p.lineno(1), p.lexpos(1), left=p[1], right=p[4], oper=p[2], distinctOrAll=p[3]
+    )
+
+
+def p_set_operation_stmt_simple_table(p):
+    r"""set_operation_stmt_simple_table : set_operation_expressions set_operation set_quantifier_opt simple_table"""
+    p[0] = _set_operation(
+        p.lineno(1), p.lexpos(1), left=p[1], right=p[4], oper=p[2], distinctOrAll=p[3]
+    )
 
 
 # ORDER BY
 def p_order_by_opt(p):
-    r"""order_by_opt : ORDER BY sort_items
+    r"""order_by_opt : order_by
     | empty"""
-    p[0] = p[3] if p[1] else None
+    p[0] = p[1] if p[1] else []
+
+
+def p_order_by(p):
+    r"""order_by : ORDER BY sort_items"""
+    p[0] = p[3]
 
 
 def p_sort_items(p):
@@ -483,13 +533,18 @@ def p_null_ordering_opt(p):
 
 # LIMIT
 def p_limit_opt(p):
-    r"""limit_opt : LIMIT parameterization
+    r"""limit_opt : limit_stmt
+    | empty"""
+    p[0] = p[1] if p[1] else None
+
+
+def p_limit_stmt(p):
+    r"""limit_stmt : LIMIT parameterization
     | LIMIT parameterization COMMA parameterization
     | LIMIT parameterization OFFSET parameterization
-    | LIMIT ALL
-    | empty"""
+    | LIMIT ALL"""
     if len(p) < 5:
-        p[0] = (0, p[2]) if p[1] else None
+        p[0] = (0, p[2])
     else:
         if p[3] == ',':
             p[0] = (p[2], p[4])
@@ -509,59 +564,61 @@ def p_number(p):
     p[0] = p[1]
 
 
-# non-join query expression
-# QUERY TERM
-def p_nonjoin_query_expression(p):
-    r"""nonjoin_query_expression : nonjoin_query_term
-    | nonjoin_query_expression UNION set_quantifier_opt nonjoin_query_term
-    | nonjoin_query_expression EXCEPT set_quantifier_opt  nonjoin_query_term"""
+def p_set_operation_expressions(p):
+    r"""set_operation_expressions : set_operation_expression
+    | set_operation_expressions set_operation set_quantifier_opt set_operation_expression
+    """
     if len(p) == 2:
         p[0] = p[1]
     else:
-        left = p[1]
-        distinct = p[3] is not None and p[3].upper() == "DISTINCT"
-        all = p[3] is not None and p[3].upper() == "ALL"
-        right = p[4]
-        if p.slice[2].type == "UNION":
-            p[0] = Union(
-                p.lineno(1),
-                p.lexpos(1),
-                relations=[left, right],
-                distinct=distinct,
-                all=all,
-            )
-        else:
-            p[0] = Except(
-                p.lineno(1),
-                p.lexpos(1),
-                left=p[1],
-                right=p[4],
-                distinct=distinct,
-                all=all,
-            )
-
-
-# non-join query term
-def p_nonjoin_query_term(p):
-    r"""nonjoin_query_term : nonjoin_query_primary
-    | nonjoin_query_term INTERSECT set_quantifier_opt nonjoin_query_primary"""
-    if len(p) == 2:
-        p[0] = p[1]
-    else:
-        distinct = p[3] is not None and p[3].upper() == "DISTINCT"
-        p[0] = Intersect(
-            p.lineno(1), p.lexpos(1), relations=[p[1], p[4]], distinct=distinct
+        p[0] = _set_operation(
+            p.lineno(1),
+            p.lexpos(1),
+            left=p[1],
+            right=p[4],
+            oper=p[2],
+            distinctOrAll=p[3],
         )
 
 
-# non-join query primary
-def p_nonjoin_query_primary(p):
-    r"""nonjoin_query_primary : simple_table
-    | LPAREN nonjoin_query_expression RPAREN"""
-    if len(p) == 2:
-        p[0] = p[1]
-    else:
-        p[0] = TableSubquery(p.lineno(1), p.lexpos(1), query=p[2])
+def _set_operation(line, pos, left, right, oper, distinctOrAll):
+    distinct = distinctOrAll is not None and distinctOrAll.upper() == "DISTINCT"
+    all = distinctOrAll is not None and distinctOrAll.upper() == "ALL"
+    oper = oper.upper()
+    if oper == "UNION":
+        set_operation = Union(
+            line, pos, relations=[left, right], distinct=distinct, all=all
+        )
+    elif oper == "EXCEPT":
+        set_operation = Except(
+            line, pos, left=left, right=right, distinct=distinct, all=all
+        )
+    elif oper == "INTERSECT":
+        set_operation = Intersect(
+            line, pos, relations=[left, right], distinct=distinct, all=all
+        )
+    return set_operation
+
+
+def p_set_operation(p):
+    r"""set_operation : UNION
+    | EXCEPT
+    | INTERSECT"""
+    p[0] = p[1]
+
+
+# QUERY TERM
+def p_set_operation_expression(p):
+    r"""set_operation_expression : simple_table
+    | subquery"""
+    p[0] = p[1]
+
+
+def p_subquery(p):
+    r"""subquery : LPAREN simple_table RPAREN
+    | LPAREN set_operation_stmt RPAREN
+    | LPAREN subquery RPAREN"""
+    p[0] = SubqueryExpression(p.lineno(1), p.lexpos(1), query=p[2])
 
 
 def p_simple_table(p):
@@ -571,13 +628,14 @@ def p_simple_table(p):
     p[0] = p[1]
 
 
+# TODO:Add order_by_opt and limit_opt to Table and Values
 def p_explicit_table(p):
-    r"""explicit_table : TABLE qualified_name"""
+    r"""explicit_table : TABLE qualified_name order_by_opt limit_opt for_update_opt"""
     p[0] = Table(p.lineno(1), p.lexpos(1), name=p[2])
 
 
 def p_table_value_constructor(p):
-    r"""table_value_constructor : VALUES values_list"""
+    r"""table_value_constructor : VALUES values_list order_by_opt limit_opt for_update_opt"""
     p[0] = Values(p.lineno(1), p.lexpos(1), rows=p[2])
 
 
@@ -598,14 +656,14 @@ def _item_list(p):
 
 
 def p_query_spec(p):
-    r"""query_spec : SELECT select_items table_expression_opt order_by_opt limit_opt"""
+    r"""query_spec : SELECT select_items table_expression_opt order_by_opt limit_opt for_update_opt"""
     select_items = p[2]
     table_expression_opt = p[3]
     from_relations = table_expression_opt.from_ if table_expression_opt else None
     where = table_expression_opt.where if table_expression_opt else None
     group_by = table_expression_opt.group_by if table_expression_opt else None
     having = table_expression_opt.having if table_expression_opt else None
-    p_for_update = table_expression_opt.for_update if table_expression_opt else None
+    p_for_update = p[6]
     for_update = None
     nowait_or_wait = None
 
@@ -674,6 +732,7 @@ def p_having_opt(p):
 
 def p_set_quantifier_opt(p):
     r"""set_quantifier_opt : ALL
+    | DISTINCT
     | empty"""
     p[0] = p[1]
 
@@ -702,20 +761,25 @@ def p_derived_column(p):
 
 
 def p_table_expression_opt(p):
-    r"""table_expression_opt : FROM relations where_opt group_by_opt having_opt for_update_opt
+    r"""table_expression_opt : FROM relations force_index where_opt group_by_opt having_opt
     | empty"""
     if p[1]:
         p[0] = Node(
             p.lineno(1),
             p.lexpos(1),
             from_=p[2],
-            where=p[3],
-            group_by=p[4],
-            having=p[5],
-            for_update=p[6],
+            where=p[4],
+            group_by=p[6],
+            having=p[6],
         )
     else:
         p[0] = p[1]
+
+
+def p_force_index(p):
+    r"""force_index : FORCE INDEX LPAREN identifier RPAREN
+    | empty"""
+    pass
 
 
 def p_relations(p):
@@ -734,8 +798,12 @@ def p_table_reference(p):
 # table reference
 def p_table_primary(p):
     r"""table_primary : aliased_relation
-    | derived_table"""
-    p[0] = p[1]
+    | derived_table
+    | LPAREN relations RPAREN"""
+    if len(p) == 3:
+        p[0] = p[2]
+    else:
+        p[0] = p[1]
 
 
 # joined table
