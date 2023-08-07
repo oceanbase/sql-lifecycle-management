@@ -3,7 +3,7 @@ from .node import Node
 UNSPECIFIEDLENGTH = -1
 
 
-class MySQLType:
+class SQLType:
     BINARY = 1
     CHAR = 2
     DATE = 3
@@ -54,25 +54,25 @@ class FieldType(Node):
             result = self.type_name
 
         if (
-            self.tp is MySQLType.BINARY
-            or self.tp is MySQLType.CHAR
-            or self.tp is MySQLType.TIME
-            or self.tp is MySQLType.DATETIME
+            self.tp is SQLType.BINARY
+            or self.tp is SQLType.CHAR
+            or self.tp is SQLType.TIME
+            or self.tp is SQLType.DATETIME
         ):
             if "length" in dir(FieldType) and self.length != UNSPECIFIEDLENGTH:
                 result += f" ({self.length})"
 
-        if self.tp is MySQLType.CHAR:
+        if self.tp is SQLType.CHAR:
             if (
                 "charset_and_collation" in dir(FieldType)
                 and self.charset_and_collation != None
             ):
                 result += f" ({self.charset_and_collation})"
 
-        if self.tp is MySQLType.INTEGER:
+        if self.tp is SQLType.INTEGER:
             result = "SIGNED " + result if self.is_signed else "UNSIGNED " + result
 
-        if self.tp is MySQLType.FLOAT or self.tp is MySQLType.DECIMAL:
+        if self.tp is SQLType.FLOAT or self.tp is SQLType.DECIMAL:
             if (
                 "length" in dir(FieldType)
                 and self.length != UNSPECIFIEDLENGTH

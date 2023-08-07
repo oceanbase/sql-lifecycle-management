@@ -13,6 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from __future__ import print_function
 
 import types
+from src.parser.tree.window import (
+    FrameBound,
+    FrameClause,
+    FrameExpr,
+    WindowFrame,
+    WindowFunc,
+    WindowSpec,
+)
 
 from ply import yacc
 from src.optimizer.optimizer_enum import IndexType
@@ -56,11 +64,12 @@ from src.parser.tree.relation import AliasedRelation, Join
 from src.parser.tree.select import Select
 from src.parser.tree.select_item import SingleColumn
 from src.parser.tree.set_operation import Except, Intersect, Union
-from src.parser.tree.sort_item import SortItem
+from src.parser.tree.sort_item import ByItem, PartitionByClause, SortItem
 from src.parser.tree.statement import Delete, Insert, Query, Update
 from src.parser.tree.table import Table
 from src.parser.tree.values import Values
-from src.parser.tree.field_type import UNSPECIFIEDLENGTH, FieldType, MySQLType
+from src.parser.tree.field_type import UNSPECIFIEDLENGTH, FieldType, SQLType
+from src.parser.tree.with_stmt import With, CommonTableExpr, WithHasQuery
 
 tokens = tokens
 
@@ -339,7 +348,8 @@ def p_expr_or_default(p):
 # TODO: union limit,offset,order_by
 def p_cursor_specification(p):
     r"""cursor_specification : query_expression
-    | query_spec"""
+    | query_spec
+    | select_stmt_with_clause"""
     if p.slice[1].type == "query_spec":
         order_by = p[1].order_by
         limit, offset = p[1].limit, p[1].offset
@@ -355,6 +365,52 @@ def p_cursor_specification(p):
         )
     else:
         p[0] = p[1]
+
+
+def p_select_stmt_with_clause(p):
+    r"""select_stmt_with_clause : with_clause simple_table
+    | with_clause subquery
+    """
+    p[0] = WithHasQuery(p.lineno(1), p.lexpos(1), with_list=p[1], query=p[2])
+
+
+def p_with_clause(p):
+    r"""with_clause : WITH with_list"""
+    p[0] = With(p.lineno(1), p.lexpos(1), common_table_expr_list=p[2])
+
+
+def p_with_list(p):
+    r"""with_list : with_list COMMA common_table_expr
+    | common_table_expr
+    """
+    if len(p) == 4 and isinstance(p[1], list):
+        p[1].append(p[3])
+        p[0] = p[1]
+    else:
+        p[0] = [p[1]]
+
+
+def p_common_table_expr(p):
+    r"""common_table_expr : identifier ident_list_opt AS subquery"""
+    p[0] = CommonTableExpr(
+        p.lineno(1), p.lexpos(1), table_name=p[1], column_name_list=p[2], subquery=p[4]
+    )
+
+
+def p_ident_list_opt(p):
+    r"""ident_list_opt : LPAREN ident_list RPAREN
+    | empty"""
+    p[0] = [] if len(p) == 2 else p[2]
+
+
+def p_ident_list(p):
+    r"""ident_list : identifier
+    | ident_list COMMA identifier"""
+    if len(p) == 4 and isinstance(p[1], list):
+        p[1].append(p[3])
+        p[0] = p[1]
+    else:
+        p[0] = [p[1]]
 
 
 def p_for_update_opt(p):
@@ -380,8 +436,15 @@ def p_set_operation_stmt(p):
     | set_operation_stmt_w_order
     | set_operation_stmt_w_limit
     | set_operation_stmt_w_order_limit
+    | with_clause set_operation_stmt_wout_order_limit
+    | with_clause set_operation_stmt_w_order
+    | with_clause set_operation_stmt_w_limit
+    | with_clause set_operation_stmt_w_order_limit
     """
-    p[0] = p[1]
+    if len(p) == 2:
+        p[0] = p[1]
+    else:
+        p[0] = WithHasQuery(p.lineno(1), p.lexpos(1), with_list=p[1], query=p[2])
 
 
 def p_set_operation_stmt_w_order_by_limit(p):
@@ -497,30 +560,21 @@ def p_sort_items(p):
 
 
 def p_sort_item(p):
-    r"""sort_item : value_expression order_opt null_ordering_opt
-    | LPAREN value_expression RPAREN order_opt null_ordering_opt"""
-    if len(p) == 4:
+    r"""sort_item : expression null_ordering_opt
+    | expression order null_ordering_opt"""
+    if len(p) == 3:
         p[0] = SortItem(
-            p.lineno(1),
-            p.lexpos(1),
-            sort_key=p[1],
-            ordering=p[2] or 'asc',
-            null_ordering=p[3],
+            p.lineno(1), p.lexpos(1), sort_key=p[1], ordering='asc', null_ordering=p[2]
         )
     else:
         p[0] = SortItem(
-            p.lineno(1),
-            p.lexpos(1),
-            sort_key=p[2],
-            ordering=p[4] or 'asc',
-            null_ordering=p[5],
+            p.lineno(1), p.lexpos(1), sort_key=p[1], ordering=p[2], null_ordering=p[3]
         )
 
 
-def p_order_opt(p):
-    r"""order_opt : ASC
-    | DESC
-    | empty"""
+def p_order(p):
+    r"""order : ASC
+    | DESC"""
     p[0] = p[1]
 
 
@@ -617,6 +671,7 @@ def p_set_operation_expression(p):
 def p_subquery(p):
     r"""subquery : LPAREN simple_table RPAREN
     | LPAREN set_operation_stmt RPAREN
+    | LPAREN select_stmt_with_clause RPAREN
     | LPAREN subquery RPAREN"""
     p[0] = SubqueryExpression(p.lineno(1), p.lexpos(1), query=p[2])
 
@@ -656,14 +711,14 @@ def _item_list(p):
 
 
 def p_query_spec(p):
-    r"""query_spec : SELECT select_items table_expression_opt order_by_opt limit_opt for_update_opt"""
+    r"""query_spec : SELECT select_items table_expression_opt order_by_opt limit_opt window_clause_opt for_update_opt"""
     select_items = p[2]
     table_expression_opt = p[3]
     from_relations = table_expression_opt.from_ if table_expression_opt else None
     where = table_expression_opt.where if table_expression_opt else None
     group_by = table_expression_opt.group_by if table_expression_opt else None
     having = table_expression_opt.having if table_expression_opt else None
-    p_for_update = p[6]
+    p_for_update = p[7]
     for_update = None
     nowait_or_wait = None
 
@@ -700,6 +755,7 @@ def p_query_spec(p):
         order_by=p[4],
         limit=limit,
         offset=offset,
+        window_spec_list=p[6],
     )
 
 
@@ -1131,13 +1187,222 @@ def p_base_primary_expression(p):
     | date_time
     | LPAREN call_list RPAREN
     | case_specification
-    | cast_specification"""
+    | cast_specification
+    | window_func_call"""
     if p.slice[1].type == "qualified_name":
         p[0] = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
     elif len(p) == 4:
         p[0] = ListExpression(p.lineno(1), p.lexpos(1), values=p[2])
     else:
         p[0] = p[1]
+
+
+def p_window_clause_opt(p):
+    r"""window_clause_opt : WINDOW window_definition_list
+    | empty"""
+    p[0] = p[1] if len(p) == 2 else p[2]
+
+
+def p_window_definition_list(p):
+    r"""window_definition_list : window_definition
+    | window_definition_list COMMA  window_definition"""
+    if len(p) == 4 and isinstance(p[1], list):
+        p[1].append(p[3])
+        p[0] = p[1]
+    else:
+        p[0] = [p[1]]
+
+
+def p_window_definition(p):
+    r"""window_definition : window_name AS window_spec"""
+    p[3].window_name = p[1]
+    p[0] = p[3]
+
+
+def p_window_func_call(p):
+    r"""window_func_call : CUME_DIST LPAREN  RPAREN over_clause
+    | DENSE_RANK LPAREN RPAREN over_clause
+    | FIRST_VALUE LPAREN expression RPAREN null_treat_opt over_clause
+    | LAG LPAREN expression lead_lag_info_opt RPAREN null_treat_opt over_clause
+    | LAST_VALUE LPAREN expression RPAREN null_treat_opt over_clause
+    | LEAD LPAREN expression lead_lag_info_opt RPAREN null_treat_opt over_clause
+    | NTH_VALUE LPAREN expression COMMA base_primary_expression RPAREN null_treat_opt over_clause
+    | NTILE LPAREN base_primary_expression RPAREN over_clause
+    | PERCENT_RANK LPAREN RPAREN over_clause
+    | RANK LPAREN RPAREN over_clause
+    | ROW_NUMBER LPAREN RPAREN over_clause
+    """
+    length = len(p)
+    window_spec = p[-1]
+    args = []
+    ignore_null = None
+
+    if p[1].upper() in {
+        "FIRST_VALUE",
+        "LAST_VALUE",
+        "NTILE",
+        "LAG",
+        "LEAD",
+        "NTH_VALUE",
+    }:
+        args.append(p[3])
+        ignore_null = p[length - 2]
+    elif p[1].upper() == "NTILE":
+        args.append(p[3])
+
+    if p[1].upper() in {"LAG", "LEAD"}:
+        if p[4] != None:
+            args.append(p[4])
+    if p[1].upper() == "NTH_VALUE":
+        args.append(p[5])
+
+    p[0] = WindowFunc(
+        p.lineno(1),
+        p.lexpos(1),
+        func_name=p[1],
+        func_args=args,
+        ignore_null=ignore_null,
+        window_spec=window_spec,
+    )
+
+
+def p_null_treat_opt(p):
+    r"""null_treat_opt : RESPECT NULLS
+    | IGNORE NULLS
+    | empty"""
+    p[0] = p[1]
+
+
+def p_over_clause(p):
+    r"""over_clause : OVER window_name_or_spec"""
+    p[0] = p[2]
+
+
+def p_window_name_or_spec(p):
+    r"""window_name_or_spec : window_name
+    | window_spec"""
+    p[0] = p[1]
+
+
+def p_window_spec(p):
+    r"""window_spec : LPAREN window_name_opt partition_clause_opt order_by_opt frame_clause_opt RPAREN"""
+    p[0] = WindowSpec(
+        p.lineno(1),
+        p.lexpos(1),
+        window_name=p[2],
+        partition_by=p[3],
+        order_by=p[4],
+        frame_clause=p[5],
+    )
+
+
+def p_window_name_opt(p):
+    r"""window_name_opt : window_name
+    | empty"""
+    p[0] = p[1]
+
+
+def p_window_name(p):
+    r"""window_name : identifier"""
+    p[0] = p[1]
+
+
+def p_partition_clause_opt(p):
+    r"""partition_clause_opt : partition_clause
+    | empty"""
+    p[0] = p[1]
+
+
+def p_partition_clause(p):
+    r"""partition_clause : PARTITION BY by_list"""
+    p[0] = PartitionByClause(p.lineno(1), p.lexpos(1), items=p[3])
+
+
+def p_by_list(p):
+    r"""by_list : by_item
+    | by_list COMMA by_item"""
+    if len(p) == 4 and isinstance(p[1], list):
+        p[1].append(p[3])
+        p[0] = p[1]
+    else:
+        p[0] = [p[1]]
+
+
+def p_by_item(p):
+    r"""by_item : expression"""
+    p[0] = ByItem(p.lineno(1), p.lexpos(1), item=p[1])
+
+
+def p_frame_clause_opt(p):
+    r"""frame_clause_opt : frame_units frame_extent
+    | empty"""
+    p[0] = (
+        FrameClause(p.lineno(1), p.lexpos(1), type=p[1], frame_range=p[2])
+        if len(p) == 3
+        else p[1]
+    )
+
+
+def p_frame_units(p):
+    r"""frame_units : ROWS
+    | RANGE
+    """
+    p[0] = p[1]
+
+
+def p_frame_extent(p):
+    r"""frame_extent : frame_start
+    | frame_between"""
+    p[0] = p[1]
+
+
+def p_frame_start(p):
+    r"""frame_start : CURRENT ROW
+    | UNBOUNDED PRECEDING
+    | UNBOUNDED FOLLOWING
+    | frame_expr PRECEDING
+    | frame_expr FOLLOWING
+    """
+    p[0] = FrameBound(p.lineno(1), p.lexpos(1), type=p[2], expr=p[1])
+
+
+def p_frame_end(p):
+    r"""frame_end : frame_start"""
+    p[0] = p[1]
+
+
+def p_frame_between(p):
+    r"""frame_between : BETWEEN frame_start AND frame_end"""
+    p[0] = WindowFrame(p.lineno(1), p.lexpos(1), start=p[2], end=p[4])
+
+
+def p_frame_expr(p):
+    r"""frame_expr : figure
+    | QM
+    | INTERVAL expression time_unit
+    |"""
+    if len(p) == 4:
+        p[0] = FrameExpr(p.lineno(1), p.lexpos(1), value=p[2], unit=p[3])
+    else:
+        p[0] = FrameExpr(p.lineno(1), p.lexpos(1), value=p[1])
+
+
+def p_lead_lag_info_opt(p):
+    r"""lead_lag_info_opt : COMMA figure default_opt
+    | COMMA QM default_opt
+    | empty"""
+    if len(p) == 2:
+        p[0] = p[1]
+    else:
+        p[0] = [p[2]]
+        if p[3] != None:
+            p[0].append(p[3])
+
+
+def p_default_opt(p):
+    r"""default_opt : COMMA expression
+    | empty"""
+    p[0] = p[-1]
 
 
 def p_value(p):
@@ -1256,41 +1521,41 @@ def p_cast_field(p):
     | REAL"""
     field = FieldType(p.lineno(1), p.lexpos(1))
     if p.slice[1].type == "BINARY":
-        field.set_tp(MySQLType.BINARY, "BINARY")
+        field.set_tp(SQLType.BINARY, "BINARY")
         field.set_length(p[2])
     elif p.slice[1].type == "char_type":
-        field.set_tp(MySQLType.CHAR, p[1])
+        field.set_tp(SQLType.CHAR, p[1])
         field.set_length(p[2])
         if p[3] != None:
             field.set_charset_and_collation(f"({','.join(p[3])})")
     elif p.slice[1].type == "DATE":
-        field.set_tp(MySQLType.DATE, "DATE")
+        field.set_tp(SQLType.DATE, "DATE")
     elif p.slice[1].type == "YEAR":
-        field.set_tp(MySQLType.YEAR, "YEAR")
+        field.set_tp(SQLType.YEAR, "YEAR")
     elif p.slice[1].type == 'DATETIME':
-        field.set_tp(MySQLType.DATETIME, "DATETIME")
+        field.set_tp(SQLType.DATETIME, "DATETIME")
         field.set_length(p[2])
     elif p.slice[1].type == 'DECIMAL':
-        field.set_tp(MySQLType.DECIMAL, "DEMCIMAL")
+        field.set_tp(SQLType.DECIMAL, "DEMCIMAL")
         field.set_length(p[2].length)
         field.set_decimal(p[2].decimal)
     elif p.slice[1].type == "TIME":
-        field.set_tp(MySQLType.TIME, "TIME")
+        field.set_tp(SQLType.TIME, "TIME")
         field.set_length(p[2])
     elif p.slice[1].type == "SIGNED":
-        field.set_tp(MySQLType.INTEGER, p[2])
+        field.set_tp(SQLType.INTEGER, p[2])
     elif p.slice[1].type == "UNSIGNED":
-        field.set_tp(MySQLType.INTEGER, p[2])
+        field.set_tp(SQLType.INTEGER, p[2])
     elif p.slice[1].type == "JSON":
-        field.set_tp(MySQLType.JSON, "JSON")
+        field.set_tp(SQLType.JSON, "JSON")
     elif p.slice[1].type == "DOUBLE":
-        field.set_tp(MySQLType.DOUBLE, "DOUBLE")
+        field.set_tp(SQLType.DOUBLE, "DOUBLE")
     elif p.slice[1].type == "FLOAT":
-        field.set_tp(MySQLType.FLOAT, "FLOAT")
+        field.set_tp(SQLType.FLOAT, "FLOAT")
         field.set_length(p[2].length)
         field.set_decimal(p[2].decimal)
     elif p.slice[1].type == "REAL":
-        field.set_tp(MySQLType.REAL, "REAL")
+        field.set_tp(SQLType.REAL, "REAL")
 
 
 def p_field_len_opt(p):
@@ -1860,7 +2125,6 @@ def p_non_reserved(p):
     | POLYGON
     | PROCEDURE
     | PURGE
-    | PARTITION
     | POOL
     | PORT
     | POSITION
@@ -2168,6 +2432,43 @@ def p_non_reserved(p):
     | REMOTE_OSS
     | GLOBAL_ALIAS
     | SESSION_ALIAS"""
+    p[0] = p[1]
+
+
+def p_time_unit(p):
+    r"""time_unit : timestamp_unit
+    | SECOND_MICROSECOND
+    | MINUTE_MICROSECOND
+    | MINUTE_SECOND
+    | HOUR_MICROSECOND
+    | HOUR_SECOND
+    | HOUR_MINUTE
+    | DAY_MICROSECOND
+    | DAY_SECOND
+    | DAY_MINUTE
+    | DAY_HOUR
+    | YEAR_MONTH"""
+    p[0] = p[1]
+
+
+def p_timestamp_unit(p):
+    r"""timestamp_unit : MICROSECOND
+    | SECOND
+    | MINUTE
+    | HOUR
+    | DAY
+    | WEEK
+    | MONTH
+    | QUARTER
+    | YEAR
+    | SQL_TSI_SECOND
+    | SQL_TSI_MINUTE
+    | SQL_TSI_HOUR
+    | SQL_TSI_DAY
+    | SQL_TSI_WEEK
+    | SQL_TSI_MONTH
+    | SQL_TSI_QUARTER
+    | SQL_TSI_YEAR"""
     p[0] = p[1]
 
 

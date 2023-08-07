@@ -57,3 +57,4 @@ expression_parser.out
 expression_parser_table.py
 save/*
 SQL_Lifecycle_Management.egg-info/*
+*/SQL_Lifecycle_Management.egg-info/*

@@ -26,6 +26,7 @@ class QuerySpecification(QueryBody):
         order_by=None,
         limit=None,
         offset=None,
+        window_spec_list=None,
         for_update=False,
         nowait_or_wait=False,
     ):
@@ -38,6 +39,7 @@ class QuerySpecification(QueryBody):
         self.order_by = order_by or []
         self.limit = limit
         self.offset = offset
+        self.window_spec_list = window_spec_list
         self.for_update = for_update
         self.nowait_or_wait = nowait_or_wait
 
