@@ -1506,7 +1506,7 @@ def p_non_reserved(p):
     | ENCRYPTION
     | END
     | ENDS
-    | ENGINE_
+    | ENGINE
     | ENGINES
     | ENUM
     | ENTITY

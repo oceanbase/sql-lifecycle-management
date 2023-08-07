@@ -38,9 +38,9 @@ class MyTestCase(unittest.TestCase):
         result = oceanbase_parser.parse("select distinct name from a.blog")
         query_body = result.query_body
         assert (
-            query_body is not None
-            and query_body.limit == 0
-            and query_body.where is None
+                query_body is not None
+                and query_body.limit == 0
+                and query_body.where is None
         )
 
     def test_question_mark(self):
@@ -489,6 +489,29 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
     def test_operator(self):
         sql = """
         select         count(1)         from train_order_info where  occupy_type in              (                   ?              )                                  and order_serial_no =  ?                                 and connect_type =  ?                                     and merchant_id = ''                                 and order_state in              (                   ?              )                                 and ticket_machine_id in              (                   ?              )                                 and lock_state =  ?                                 and phone_verify_status =  ?                                 and window_no =  ?                                 and passenger_info like concat('%',concat( ?,'%'))                                 and departure_station like concat('%',concat( ?,'%'))                                 and arrival_station like concat('%',concat( ?,'%'))                                 and merchant_id =  ?                                 and createtime >=  ?                                 and createtime <=  ?                                 and gmt_booked >=  ?                                 and gmt_booked <=  ?                                 and gmt_departure >=  ?                                 and gmt_departure <=  ?                                 and train_code =  ?                                 and pay_serial_no =  ?                                 and env =  ?                                  and gmt_distribute >=  ?                                 and gmt_distribute <=  ?                                  and inquire_type in              (                   ?              )                                 and merchant_business_type =  ?                                 and ability_require &  ? =  ?
+        """
+        sql = Utils.remove_sql_text_affects_parser(sql)
+        result = oceanbase_parser.parse(sql)
+        assert isinstance(result, Statement)
+
+    def test_engine_non_reserved(self):
+        sql = """
+        select
+        id,
+        creator,
+        modifier,
+        gmt_create,
+        gmt_modified,
+        api_type,
+        engine,
+        method,
+        uri
+        from
+         antc_gateway_resource 
+         where  api_type = 'http'
+                and gmt_modified >= '2019-07-03 11:51:11.127'
+                and gmt_modified < '2019-07-03 11:56:11.127' 
+        order by gmt_modified desc
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
         result = oceanbase_parser.parse(sql)
