@@ -38,6 +38,7 @@ tokens = (
         'BIT_AND',
         'BIT_XOR',
         'BIT_OPPOSITE',
+        'SINGLE_AT_IDENTIFIER',
         'EXCLA_MARK',
         'BIT_MOVE_LEFT',
         'BIT_MOVE_RIGHT',
@@ -57,8 +58,8 @@ tokens = (
 
 sql_tokens = list(reserved) + list(nonreserved)
 
-t_LPAREN = '\('
-t_RPAREN = '\)'
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
 
 t_ASSIGNMENTEQ = r':='
 t_EQ = r'='
@@ -106,8 +107,9 @@ def t_INTEGER(t):
 
 
 # String literal
+# double ' means single '
 def t_SCONST(t):
-    r'\'([^\']|\'\')*\' '
+    r"""'(\\+'?|[^'\\]|[']{2})*'"""
     t.type = "SCONST"
     return t
 
@@ -121,10 +123,15 @@ def t_IDENTIFIER(t):
 
 
 def t_QUOTED_IDENTIFIER(t):
-    r'"([^"]|"")*"'
-    val = t.value.lower()
-    if val in sql_tokens:
-        t.type = tokens[val]
+    r'"(\\+"?|[^"\\]|["]{2})*"'
+    t.type = "QUOTED_IDENTIFIER"
+    return t
+
+
+# start with single @
+def t_SINGLE_AT_IDENTIFIER(t):
+    r"""@[^@][\w@\u4e00-\u9fa5]+"""
+    t.type = "SINGLE_AT_IDENTIFIER"
     return t
 
 

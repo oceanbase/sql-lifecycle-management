@@ -150,6 +150,12 @@ class AstVisitor(object):
     def visit_function_call(self, node, context):
         return self.visit_expression(node, context)
 
+    def visit_aggregate_func(self, node, context):
+        return self.visit_expression(node, context)
+
+    def visit_sub_string(self, node, context):
+        return self.visit_expression(node, context)
+
     def visit_lambda_expression(self, node, context):
         return self.visit_expression(node, context)
 
@@ -210,7 +216,7 @@ class AstVisitor(object):
     def visit_is_not_null_predicate(self, node, context):
         return self.visit_expression(node, context)
 
-    def visit_is_null_predicate(self, node, context):
+    def visit_is_predicate(self, node, context):
         return self.visit_expression(node, context)
 
     def visit_array_constructor(self, node, context):
@@ -449,6 +455,13 @@ class DefaultTraversalVisitor(AstVisitor):
             self.process(argument, context)
         if node.window:
             self.process(node.window, context)
+        return None
+
+    def visit_aggregate_func(self, node, context):
+        for argument in node.arguments:
+            self.process(argument, context)
+        if node.over_clause:
+            self.process(node.over_clause, context)
         return None
 
     def visit_dereference_expression(self, node, context):

@@ -25,26 +25,36 @@ from src.parser.tree.window import (
 
 from src.parser.tree.with_stmt import CommonTableExpr, With, WithHasQuery
 from src.parser.tree.expression import (
+    AggregateFunc,
     ArithmeticBinaryExpression,
     ArithmeticUnaryExpression,
     AssignmentExpression,
     BetweenPredicate,
+    Binary,
     Cast,
+    CompareSubqueryExpr,
     ComparisonExpression,
-    CurrentTime,
+    Convert,
     ExistsPredicate,
     FunctionCall,
+    GroupConcat,
     InListExpression,
     InPredicate,
-    IsNullPredicate,
+    IsPredicate,
+    JsonTable,
     LikePredicate,
     ListExpression,
     LogicalBinaryExpression,
+    MatchAgainstExpression,
+    MemberOf,
     NotExpression,
     QualifiedNameReference,
     RegexpPredicate,
     SimpleCaseExpression,
+    SoundLike,
+    SubString,
     SubqueryExpression,
+    TrimFunc,
     WhenClause,
 )
 from src.parser.tree.grouping import SimpleGroupBy
@@ -55,6 +65,7 @@ from src.parser.tree.literal import (
     LongLiteral,
     NullLiteral,
     StringLiteral,
+    TimeLiteral,
 )
 from src.parser.tree.node import Node
 from src.parser.tree.qualified_name import QualifiedName
@@ -419,7 +430,8 @@ def p_ident_list(p):
 def p_for_update_opt(p):
     r"""for_update_opt : FOR UPDATE
     | FOR UPDATE NOWAIT
-    | FOR UPDATE WAIT number
+    | FOR UPDATE SKIP LOCKED
+    | FOR UPDATE WAIT figure
     | LOCK IN SHARE MODE
     | empty"""
     if len(p) == 3:
@@ -816,8 +828,22 @@ def p_select_item(p):
 
 
 def p_derived_column(p):
-    r"""derived_column : boolean_factor alias_opt"""
-    p[0] = SingleColumn(p.lineno(1), p.lexpos(1), alias=p[2], expression=p[1])
+    r"""derived_column : expression alias_opt
+    | ASTERISK
+    | identifier PERIOD ASTERISK
+    | identifier PERIOD identifier PERIOD ASTERISK"""
+    if p.slice[len(p) - 1].type == "ASTERISK":
+        parts = [p[1]]
+        if len(p) == 4:
+            parts.append(p[3])
+        if len(p) == 6:
+            parts.append(p[5])
+        expr = QualifiedNameReference(
+            p.lineno(1), p.lexpos(1), name=QualifiedName(parts=parts)
+        )
+        p[0] = SingleColumn(p.lineno(1), p.lexpos(1), alias=None, expression=expr)
+    else:
+        p[0] = SingleColumn(p.lineno(1), p.lexpos(1), alias=p[2], expression=p[1])
 
 
 def p_table_expression_opt(p):
@@ -915,17 +941,14 @@ def p_natural_join(p):
 
 def p_join_type(p):
     r"""join_type : INNER
-    | LEFT outer_opt
-    | RIGHT outer_opt
-    | FULL outer_opt
+    | LEFT
+    | LEFT OUTER
+    | RIGHT
+    | RIGHT OUTER
+    | FULL
+    | FULL OUTER
     | empty"""
     p[0] = p[1]
-
-
-def p_outer_opt(p):
-    r"""outer_opt : OUTER
-    | empty"""
-    # Ignore
 
 
 def p_join_criteria(p):
@@ -975,7 +998,9 @@ def p_alias_opt(p):
 
 def p_alias(p):
     r"""alias : AS identifier
-    | identifier"""
+    | identifier
+    | AS string_lit
+    | string_lit"""
     if len(p) == 3:
         p[0] = (p[1], p[2])
     else:
@@ -989,10 +1014,9 @@ def p_expression(p):
 
 def p_search_condition(p):
     r"""search_condition : boolean_term
-    | search_condition OR search_condition
-    | search_condition logical_and search_condition
-    | search_condition XOR search_condition
-    | NOT search_condition"""
+    | search_condition OR boolean_term
+    | search_condition logical_and boolean_term
+    | search_condition XOR boolean_term"""
     if len(p) == 2:
         p[0] = p[1]
     elif p.slice[2].type == "OR":
@@ -1007,8 +1031,39 @@ def p_search_condition(p):
         p[0] = LogicalBinaryExpression(
             p.lineno(1), p.lexpos(1), type="XOR", left=p[1], right=p[3]
         )
-    elif p.slice[1] == "NOT":
+
+
+def p_boolean_term(p):
+    r"""boolean_term : NOT search_condition
+    | MATCH LPAREN select_items RPAREN AGAINST LPAREN value_expression full_text_search_modifier_opt RPAREN
+    | SINGLE_AT_IDENTIFIER ASSIGNMENTEQ search_condition
+    | boolean_factor"""
+    if len(p) == 2:
+        p[0] = p[1]
+    elif p.slice[2].type == "ASSIGNMENTEQ":
+        p[0] = AssignmentExpression(
+            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+        )
+    elif p.slice[1].type == "NOT":
         p[0] = NotExpression(p.lineno(1), p.lexpos(1), value=p[2])
+    elif p.slice[1].type == "MATCH":
+        p[0] = MatchAgainstExpression(
+            p.lineno(1), p.lexpos(1), column_list=p[2], expr=p[7], search_modifier=p[8]
+        )
+
+
+def p_full_text_search_modifier_opt(p):
+    """full_text_search_modifier_opt : IN NATURAL LANGUAGE MODE
+    | IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION
+    | IN BOOLEAN MODE
+    | WITH QUERY EXPANSION
+    | empty"""
+    if len(p) == 2:
+        p[0] = p[1]
+    else:
+        p[0] = []
+        for i in range(1, len(p)):
+            p[0].append(p[i])
 
 
 def p_logical_and(p):
@@ -1017,17 +1072,27 @@ def p_logical_and(p):
     p[0] = p[1]
 
 
-def p_boolean_term(p):
-    r"""boolean_term : boolean_factor"""
-    p[0] = p[1]
-
-
 def p_boolean_factor(p):
     r"""boolean_factor : boolean_factor comparison_operator predicate
+    | boolean_factor comparison_operator ANY subquery
+    | boolean_factor comparison_operator SOME subquery
+    | boolean_factor comparison_operator ALL subquery
+    | boolean_factor comparison_operator SINGLE_AT_IDENTIFIER ASSIGNMENTEQ predicate
     | predicate"""
     if len(p) == 4:
         p[0] = ComparisonExpression(
             p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+        )
+    elif len(p) == 5:
+        p[0] = CompareSubqueryExpr(
+            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
+        )
+    elif len(p) == 6:
+        assignment = AssignmentExpression(
+            p.lineno(1), p.lexpos(1), type=p[4], left=p[3], right=p[5]
+        )
+        p[0] = ComparisonExpression(
+            p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=assignment
         )
     else:
         p[0] = p[1]
@@ -1038,8 +1103,9 @@ def p_predicate(p):
     | in_predicate
     | like_predicate
     | regexp_predicate
-    | null_predicate
-    | exists_predicate
+    | is_predicate
+    | member_predicate
+    | sounds_predicate
     | value_expression"""
     p[0] = p[1]
 
@@ -1049,6 +1115,11 @@ def p_between_predicate(p):
     p[0] = BetweenPredicate(
         p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], min=p[3], max=p[5]
     )
+
+
+def p_sounds_predicate(p):
+    r"""sounds_predicate : value_expression SOUNDS LIKE factor"""
+    p[0] = SoundLike(p.lineno(1), p.lexpos(1), arguments=[p[1], p[2]])
 
 
 def p_in_predicate(p):
@@ -1072,14 +1143,17 @@ def p_regexp_predicate(p):
     )
 
 
-def p_null_predicate(p):
-    r"""null_predicate : value_expression is_opt NULL"""
-    p[0] = IsNullPredicate(p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1])
+def p_is_predicate(p):
+    r"""is_predicate : value_expression is_opt NULL
+    | value_expression is_opt TRUE
+    | value_expression is_opt UNKNOWN
+    | value_expression is_opt FALSE"""
+    p[0] = IsPredicate(p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], kwd=p[3])
 
 
-def p_exists_predicate(p):
-    r"""exists_predicate : exists_opt subquery"""
-    p[0] = ExistsPredicate(p.lineno(1), p.lexpos(1), is_not=p[1], subquery=p[2])
+def p_memeber_predicate(p):
+    r"""member_predicate : value_expression MEMBER OF LPAREN factor RPAREN"""
+    p[0] = MemberOf(p.lineno(1), p.lexpos(1), args=[p[1], p[5]])
 
 
 def p_between_opt(p):
@@ -1098,7 +1172,7 @@ def p_escape_opt(p):
 def p_string_lit(p):
     r"""string_lit : SCONST
     | QUOTED_IDENTIFIER"""
-    p[0] = StringLiteral(p.lineno(1), p.lexpos(1), value=p[2])
+    p[0] = StringLiteral(p.lineno(1), p.lexpos(1), value=p[1])
 
 
 def p_in_opt(p):
@@ -1140,44 +1214,36 @@ def p_regexp_sym(p):
     pass
 
 
-def p_exists_opt(p):
-    r"""exists_opt : NOT EXISTS
-    | EXISTS"""
-    p[0] = p.slice[1].type == "NOT"
-
-
 def p_value_expression(p):
     r"""value_expression : numeric_value_expression"""
     p[0] = p[1]
 
 
 def p_numeric_value_expression(p):
-    r"""numeric_value_expression : numeric_value_expression arithmetic_opt numeric_value_expression
+    r"""numeric_value_expression : numeric_value_expression PLUS numeric_value_expression
+    | numeric_value_expression MINUS numeric_value_expression
+    | numeric_value_expression ASTERISK numeric_value_expression
+    | numeric_value_expression SLASH numeric_value_expression
+    | numeric_value_expression DIV numeric_value_expression
+    | numeric_value_expression MOD numeric_value_expression
+    | numeric_value_expression PERCENT numeric_value_expression
+    | numeric_value_expression PIPES numeric_value_expression
     | numeric_value_expression bit_opt numeric_value_expression
+    | numeric_value_expression MINUS time_interval
+    | numeric_value_expression PLUS time_interval
+    | time_interval PLUS numeric_value_expression
     | factor"""
     if len(p) == 4:
-        if p.slice[2].type == "arithmetic_opt":
-            p[0] = ArithmeticBinaryExpression(
+        if p.slice[2].type == "bit_opt":
+            p[0] = LogicalBinaryExpression(
                 p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
             )
-        elif p.slice[2].type == "bit_opt":
-            p[0] = LogicalBinaryExpression(
+        else:
+            p[0] = ArithmeticBinaryExpression(
                 p.lineno(1), p.lexpos(1), type=p[2], left=p[1], right=p[3]
             )
     else:
         p[0] = p[1]
-
-
-def p_arithmetic_opt(p):
-    r"""arithmetic_opt : PLUS
-    | MINUS
-    | ASTERISK
-    | SLASH
-    | DIV
-    | MOD
-    | PERCENT
-    | PIPES"""
-    p[0] = p[1]
 
 
 def p_bit_opt(p):
@@ -1206,13 +1272,14 @@ def p_factor(p):
 
 def p_base_primary_expression(p):
     r"""base_primary_expression : value
+    | SINGLE_AT_IDENTIFIER
     | qualified_name
     | subquery
     | function_call
-    | date_time
     | LPAREN call_list RPAREN
+    | exists_func_call
     | case_specification
-    | cast_specification
+    | cast_func_call
     | window_func_call"""
     if p.slice[1].type == "qualified_name":
         p[0] = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
@@ -1220,6 +1287,11 @@ def p_base_primary_expression(p):
         p[0] = ListExpression(p.lineno(1), p.lexpos(1), values=p[2])
     else:
         p[0] = p[1]
+
+
+def p_exists_func_call(p):
+    r"""exists_func_call : EXISTS subquery"""
+    p[0] = ExistsPredicate(p.lineno(1), p.lexpos(1), is_not=False, subquery=p[2])
 
 
 def p_window_clause_opt(p):
@@ -1295,6 +1367,13 @@ def p_null_treat_opt(p):
     r"""null_treat_opt : RESPECT NULLS
     | IGNORE NULLS
     | empty"""
+    p[0] = p[1]
+
+
+def p_over_clause_opt(p):
+    r"""over_clause_opt : over_clause
+    | empty
+    """
     p[0] = p[1]
 
 
@@ -1446,36 +1525,830 @@ def p_value(p):
 
 
 def p_function_call(p):
-    r"""function_call : qualified_name LPAREN call_args RPAREN
-    | qualified_name LPAREN DISTINCT call_args RPAREN
-    | CURRENT_DATE LPAREN RPAREN"""
-    if len(p) == 5:
-        distinct = p[3] is None or (
-            isinstance(p[3], str) and p[3].upper() == "DISTINCT"
-        )
-        p[0] = FunctionCall(
-            p.lineno(1), p.lexpos(1), name=p[1], distinct=distinct, arguments=p[3]
-        )
-    elif len(p) == 4:
-        p[0] = FunctionCall(
-            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[]
-        )
-    else:
-        p[0] = FunctionCall(
-            p.lineno(1), p.lexpos(1), name=p[1], distinct=True, arguments=p[4]
-        )
-
-
-def p_call_args(p):
-    r"""call_args : call_list
-    | empty_call_args"""
+    r"""function_call : time_function_call
+    | operator_func_call
+    | flow_control_func_call
+    | mathematical_func_call
+    | string_comparsion_func_call
+    | string_operator_func_call
+    | xml_func_call
+    | bit_func_call
+    | encry_and_comp_func_call
+    | locking_func_call
+    | json_func_call
+    | information_func_call
+    | replication_func_call
+    | aggreate_func_call
+    | miscellaneous_func_call"""
     p[0] = p[1]
 
 
-def p_empty_call_args(p):
-    r"""empty_call_args : ASTERISK
-    | empty"""
+def p_operator_func_call(p):
+    r"""operator_func_call : ISNULL LPAREN expression RPAREN
+    | LEAST LPAREN expression COMMA call_list RPAREN
+    | INTERVAL LPAREN expression COMMA call_list RPAREN
+    | GREATEST LPAREN expression COMMA call_list RPAREN
+    | COALESCE LPAREN expression COMMA call_list RPAREN
+    """
+    if len(p) == 5:
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[p[3]]
+        )
+    else:
+        arguments = [p[3]]
+        arguments.extend(p[5])
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=arguments
+        )
+
+
+def p_flow_control_func_call(p):
+    r"""flow_control_func_call : IF LPAREN expression COMMA expression COMMA expression RPAREN
+    | IFNULL LPAREN expression COMMA expression RPAREN
+    | NULLIF LPAREN expression COMMA expression RPAREN
+    """
+    if len(p) == 9:
+        p[0] = FunctionCall(
+            p.lineno(1),
+            p.lexpos(1),
+            name=p[1],
+            distinct=False,
+            arguments=[p[3], p[5], p[7]],
+        )
+    else:
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[p[3], p[5]]
+        )
+
+
+# HEX FORMAT in string_operator_func_call
+def p_mathematical_func_call(p):
+    r"""mathematical_func_call : ABS LPAREN expression RPAREN
+    | ACOS LPAREN expression RPAREN
+    | ASIN LPAREN expression RPAREN
+    | ATAN LPAREN expression RPAREN
+    | ATAN LPAREN expression COMMA expression RPAREN
+    | ATAN2 LPAREN expression COMMA expression RPAREN
+    | CELL LPAREN expression RPAREN
+    | CEILING LPAREN expression RPAREN
+    | CONY LPAREN expression COMMA expression COMMA expression RPAREN
+    | COS LPAREN expression RPAREN
+    | COT LPAREN expression RPAREN
+    | CRC32 LPAREN expression RPAREN
+    | DEGREES LPAREN expression RPAREN
+    | EXP LPAREN expression RPAREN
+    | FLOOR LPAREN expression RPAREN
+    | LN LPAREN expression RPAREN
+    | LOG LPAREN expression RPAREN
+    | LOG LPAREN expression COMMA expression RPAREN
+    | LOG2 LPAREN expression RPAREN
+    | LOG10 LPAREN expression COMMA expression RPAREN
+    | MOD LPAREN expression COMMA expression RPAREN
+    | PI LPAREN RPAREN
+    | POW LPAREN expression COMMA expression RPAREN
+    | POWER LPAREN expression COMMA expression RPAREN
+    | RADIANS LPAREN expression RPAREN
+    | RAND LPAREN RPAREN
+    | RAND LPAREN expression RPAREN
+    | ROUND LPAREN expression RPAREN
+    | ROUND LPAREN expression COMMA expression RPAREN
+    | SIGN LPAREN expression RPAREN
+    | SIN LPAREN expression RPAREN
+    | SQRT LPAREN expression RPAREN
+    | TAN LPAREN expression RPAREN
+    | TRUNCATE LPAREN expression COMMA expression RPAREN
+    """
+    if len(p) == 9:
+        p[0] = FunctionCall(
+            p.lineno(1),
+            p.lexpos(1),
+            name=p[1],
+            distinct=False,
+            arguments=[p[3], p[5], p[7]],
+        )
+    elif len(p) == 7:
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[p[3], p[5]]
+        )
+    else:
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[p[3]]
+        )
+
+
+def p_time_function_call(p):
+    r"""time_function_call : curdate_and_synonyms_func
+    | curtime_and_synonyms_func
+    | now_and_synonyms_func
+    | from_unixtime_func
+    | get_format_func
+    | make_time_func
+    | timestamp_add_or_diff_func
+    | timestamp_func
+    | unix_timestamp_func
+    | utc_func
+    | week_or_year_func
+    | sys_date_func
+    | add_or_sub_date_func
+    | date_one_para_func
+    | date_two_para_func"""
+    p[0] = p[1]
+
+
+def p_curdate_and_synonyms_func(p):
+    r"""curdate_and_synonyms_func : CURDATE LPAREN RPAREN
+    | CURRENT_DATE LPAREN RPAREN
+    | CURRENT_DATE"""
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+
+
+def p_curtime_and_synonyms_func(p):
+    r"""curtime_and_synonyms_func : CURTIME LPAREN RPAREN
+    | CURRENT_TIME
+    | CURRENT_TIME LPAREN RPAREN
+    | CURRENT_TIME LPAREN expression RPAREN
+    """
+    if len(p) <= 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+
+
+def p_now_and_synonyms_func(p):
+    r"""now_and_synonyms_func : NOW LPAREN RPAREN
+    | NOW LPAREN expression RPAREN
+    | CURRENT_TIMESTAMP
+    | CURRENT_TIMESTAMP LPAREN RPAREN
+    | CURRENT_TIMESTAMP LPAREN expression RPAREN
+    | LOCALTIME
+    | LOCALTIME LPAREN RPAREN
+    | LOCALTIME LPAREN expression RPAREN
+    | LOCALTIMESTAMP
+    | LOCALTIMESTAMP LPAREN RPAREN
+    | LOCALTIMESTAMP  LPAREN expression RPAREN
+    """
+    if len(p) <= 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+
+
+def p_from_unixtime_func(p):
+    r"""from_unixtime_func : FROM_UNIXTIME LPAREN expression RPAREN
+    | FROM_UNIXTIME LPAREN expression COMMA string_lit RPAREN"""
+    if len(p) <= 7:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_get_format_func(p):
+    r"""get_format_func : GET_FORMAT LPAREN format_selector COMMA expression RPAREN"""
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_make_time_func(p):
+    r"""make_time_func : MAKEDATE LPAREN expression COMMA expression COMMA expression RPAREN"""
+    p[0] = FunctionCall(
+        p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5], p[7]]
+    )
+
+
+def p_timestamp_add_or_diff_func(p):
+    r"""timestamp_add_or_diff_func : TIMESTAMPADD LPAREN time_unit COMMA expression COMMA expression RPAREN
+    | TIMESTAMPDIFF LPAREN time_unit COMMA expression COMMA expression RPAREN
+    """
+    p[0] = FunctionCall(
+        p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5], p[7]]
+    )
+
+
+def p_timestamp_func(p):
+    r"""timestamp_func : TIMESTAMP LPAREN expression RPAREN
+    | TIMESTAMP LPAREN expression COMMA expression RPAREN
+    """
+    if len(p) <= 7:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_unix_timestamp_func(p):
+    r"""unix_timestamp_func : UNIXTIMESTAMP LPAREN expression RPAREN
+    | UNIXTIMESTAMP LPAREN RPAREN"""
+    if len(p) <= 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+
+
+def p_utc_func(p):
+    r"""utc_func : UTC_DATE
+    | UTC_DATE LPAREN RPAREN
+    | UTC_TIME
+    | UTC_TIME LPAREN RPAREN
+    | UTC_TIME LPAREN expression RPAREN
+    | UTC_TIMESTAMP
+    | UTC_TIMESTAMP LPAREN RPAREN
+    | UTC_TIMESTAMP LPAREN expression RPAREN
+    """
+    if len(p) <= 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+
+
+def p_week_or_year_week_func(p):
+    r"""week_or_year_func : WEEK LPAREN expression RPAREN
+    | WEEK LPAREN expression COMMA expression RPAREN
+    | YEARWEEK LPAREN expression RPAREN
+    | YEARWEEK LPAREN expression COMMA expression RPAREN
+    """
+    if len(p) <= 7:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_sys_date_func(p):
+    r"""sys_date_func : SYSDATE
+    | SYSDATE LPAREN RPAREN
+    | SYSDATE LPAREN expression RPAREN"""
+    if len(p) <= 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+
+
+def p_add_or_sub_date_func(p):
+    r"""add_or_sub_date_func : ADDDATE LPAREN expression COMMA time_interval RPAREN
+    | SUBDATE LPAREN expression COMMA time_interval RPAREN
+    | DATE_ADD LPAREN expression COMMA time_interval RPAREN
+    | DATE_SUB LPAREN expression COMMA time_interval RPAREN
+    """
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[5]])
+
+
+def p_date_one_para_func(p):
+    r"""date_one_para_func : DATE LPAREN expression RPAREN
+    | DAY LPAREN expression RPAREN
+    | DAYNAME LPAREN expression RPAREN
+    | DAYOFMONTH LPAREN expression RPAREN
+    | DAYOFWEEK LPAREN expression RPAREN
+    | DAYOFYEAR LPAREN expression RPAREN
+    | HOUR LPAREN expression RPAREN
+    | LAST_DAY LPAREN expression RPAREN
+    | MICROSECOND LPAREN expression RPAREN
+    | MINUTE LPAREN expression RPAREN
+    | MONTH LPAREN expression RPAREN
+    | MONTHNAME LPAREN expression RPAREN
+    | QUARTER LPAREN expression RPAREN
+    | SECOND LPAREN expression RPAREN
+    | SEC_TO_TIME LPAREN expression RPAREN
+    | TIME LPAREN expression RPAREN
+    | FROM_DAYS LPAREN expression RPAREN
+    | TIME_TO_SEC LPAREN expression RPAREN
+    | TO_DAYS LPAREN expression RPAREN
+    | TO_SECONDS LPAREN expression RPAREN
+    | WEEKDAY LPAREN expression RPAREN
+    | WEEKOFYEAR LPAREN expression RPAREN
+    | YEAR LPAREN expression RPAREN"""
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+
+
+def p_date_two_para_func(p):
+    r"""date_two_para_func : DATEDIFF LPAREN expression COMMA expression RPAREN
+    | SUBTIME LPAREN expression COMMA expression RPAREN
+    | ADDTIME LPAREN expression COMMA expression RPAREN
+    | DATE_FORMAT LPAREN expression COMMA expression RPAREN
+    | STR_TO_DATE LPAREN expression COMMA expression RPAREN
+    | MAKEDATE LPAREN expression COMMA expression RPAREN
+    | TIMEDIFF LPAREN expression COMMA expression RPAREN
+    | PERIOD_ADD LPAREN expression COMMA expression RPAREN
+    | PERIOD_DIFF LPAREN expression COMMA expression RPAREN
+    | TIME_FORMAT LPAREN expression COMMA expression RPAREN"""
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_string_operator_func_call(p):
+    r"""string_operator_func_call : ASCII LPAREN expression RPAREN
+    | BIN  LPAREN expression RPAREN
+    | BIT_LENGTH LPAREN expression RPAREN
+    | CHAR LPAREN expression RPAREN
+    | CHAR LPAREN expression USING charset_name RPAREN
+    | CHAR_LENGTH LPAREN expression RPAREN
+    | CHARACTER_LENGTH LPAREN expression RPAREN
+    | CONCAT LPAREN call_list RPAREN
+    | CONCAT_WS LPAREN expression COMMA call_list RPAREN
+    | ELT LPAREN expression COMMA call_list RPAREN
+    | EXPORT_SET LPAREN expression COMMA expression COMMA expression RPAREN
+    | EXPORT_SET LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
+    | EXPORT_SET LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    | FIELD LPAREN call_list RPAREN
+    | FIND_IN_SET LPAREN expression COMMA expression RPAREN
+    | FORMAT LPAREN expression COMMA expression RPAREN
+    | FORMAT LPAREN expression COMMA expression COMMA expression RPAREN
+    | FROM_BASE64 LPAREN expression RPAREN
+    | HEX LPAREN expression RPAREN
+    | INSERT LPAREN expression COMMA expression COMMA expression RPAREN
+    | INSTR LPAREN expression COMMA expression RPAREN
+    | LCASE LPAREN expression RPAREN
+    | LEFT LPAREN expression COMMA expression RPAREN
+    | LENGTH LPAREN expression COMMA expression RPAREN
+    | LOAD_FILE LPAREN expression RPAREN
+    | LOCATE LPAREN expression COMMA expression RPAREN
+    | LOCATE LPAREN expression COMMA expression COMMA expression RPAREN
+    | LOWER LPAREN expression RPAREN
+    | LPAD LPAREN expression COMMA expression COMMA expression RPAREN
+    | LTRIM LPAREN expression RPAREN
+    | MAKE_SET LPAREN expression COMMA expression COMMA call_list RPAREN
+    | MID LPAREN expression COMMA expression COMMA expression RPAREN
+    | OCT LPAREN expression RPAREN
+    | OCTET_LENGTH LPAREN expression RPAREN
+    | ORD LPAREN expression RPAREN
+    | POSITION LPAREN expression IN expression RPAREN
+    | QUOTE LPAREN expression RPAREN
+    | REPEAT LPAREN expression COMMA expression RPAREN
+    | REPLACE LPAREN expression COMMA expression COMMA expression RPAREN
+    | REVERSE LPAREN expression RPAREN
+    | RIGHT LPAREN expression COMMA expression RPAREN
+    | RPAD LPAREN expression COMMA expression COMMA expression RPAREN
+    | RTRIM LPAREN expression RPAREN
+    | SOUNDEX LPAREN expression RPAREN
+    | SPACE LPAREN expression RPAREN
+    | SUBSTRING_INDEX LPAREN expression COMMA expression COMMA expression RPAREN
+    | TO_BASE64 LPAREN expression RPAREN
+    | UCASE LPAREN expression RPAREN
+    | UNHEX LPAREN expression RPAREN
+    | UPPER LPAREN expression RPAREN
+    | substr_and_syn_func_call
+    | weight_string_func_call
+    | trim_func_call
+    """
+    length = len(p)
+    if length == 2:
+        p[0] = p[1]
+    else:
+        arguments = []
+        if p.slice[length - 2].type == "call_list":
+            arguments.extend(p[length - 2])
+            length = length - 2
+        if length > 4:
+            for i in range(3, length, 2):
+                arguments.append(p[i])
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
+
+
+def p_substr_and_syn_func_call(p):
+    r"""substr_and_syn_func_call : SUBSTR LPAREN expression COMMA expression RPAREN
+    | SUBSTR LPAREN expression FROM expression RPAREN
+    | SUBSTR LPAREN expression COMMA expression COMMA expression RPAREN
+    | SUBSTR LPAREN expression FROM expression FOR expression RPAREN
+    | SUBSTRING LPAREN expression COMMA expression RPAREN
+    | SUBSTRING LPAREN expression FROM expression RPAREN
+    | SUBSTRING LPAREN expression COMMA expression COMMA expression RPAREN
+    | SUBSTRING LPAREN expression FROM expression FOR expression RPAREN"""
+    arguments = []
+    for i in range(3, len(p), 2):
+        arguments.append(p[i])
+    p[0] = SubString(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
+
+
+def p_weight_string_func_call(p):
+    r"""weight_string_func_call : WEIGHT_STRING LPAREN expression RPAREN
+    | WEIGHT_STRING LPAREN expression AS binary_or_char RPAREN"""
+
+
+def p_trim_func_call(p):
+    r"""trim_func_call : TRIM LPAREN remstr_position expression FROM expression RPAREN
+    | TRIM LPAREN remstr_position FROM expression RPAREN
+    | TRIM LPAREN FROM expression RPAREN
+    """
+    if len(p) == 8:
+        p[0] = TrimFunc(
+            p.lineno(1), p.lexpos(1), remstr_position=p[3], remstr=p[4], arg=p[6]
+        )
+    elif len(p) == 7:
+        p[0] = TrimFunc(
+            p.lineno(1), p.lexpos(1), remstr_position="BOTH", remstr=p[4], arg=p[6]
+        )
+    else:
+        p[0] = TrimFunc(
+            p.lineno(1), p.lexpos(1), remstr_position="BOTH", remstr=' ', arg=p[6]
+        )
+
+
+def p_binary_or_char(p):
+    r"""binary_or_char : BINARY
+    | BINARY LPAREN expression RPAREN
+    | CHAR
+    | CHAR LPAREN expression RPAREN
+    """
+    pass
+
+
+def p_remstr_position(p):
+    r"""remstr_position : BOTH
+    | LEADING
+    | TRAILING"""
+    p[0] = p[1]
+
+
+def p_string_comparsion_func_call(p):
+    r"""string_comparsion_func_call : STRCMP LPAREN expression COMMA expression RPAREN
+    | REGEXP_INSTR regexp_opt
+    | REGEXP_LIKE LPAREN expression COMMA expression RPAREN
+    | REGEXP_LIKE LPAREN expression COMMA expression COMMA expression RPAREN
+    | REGEXP_REPLACE regexp_opt
+    """
+    if len(p) == 7:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+    elif len(p) == 9:
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5], p[7]]
+        )
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[2]])
+
+
+def p_regexp_opt(p):
+    r"""regexp_opt : LPAREN expression COMMA expression RPAREN
+    | LPAREN expression COMMA expression COMMA expression RPAREN
+    | LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
+    | LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    | LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    """
     p[0] = []
+    for i in range(2, len(p), 2):
+        p[0].append(p[i])
+
+
+def p_xml_func_call(p):
+    r"""xml_func_call : EXTRACTVALUE LPAREN expression COMMA expression RPAREN
+    | UPDATEXML LPAREN expression COMMA expression COMMA expression RPAREN"""
+    if len(p) == 7:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+    elif len(p) == 9:
+        p[0] = FunctionCall(
+            p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5], p[7]]
+        )
+
+
+def p_bit_func_call(p):
+    r"""bit_func_call : BIT_COUNT LPAREN expression RPAREN"""
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+
+
+def p_encry_and_comp_func_call(p):
+    """encry_and_comp_func_call : AES_DECRYPT LPAREN expression COMMA expression aes_func_opt RPAREN
+    | AES_ENCRYPT LPAREN expression COMMA aes_func_opt RPAREN
+    | COMPRESS LPAREN expression RPAREN
+    | MD5 LPAREN expression RPAREN
+    | RANDOM_BYTES LPAREN expression RPAREN
+    | SHA LPAREN expression RPAREN
+    | SHA1 LPAREN expression RPAREN
+    | SHA2 LPAREN expression COMMA expression RPAREN
+    | STATEMENT_DIGEST LPAREN expression RPAREN
+    | STATEMENT_DIGEST_TEXT LPAREN expression RPAREN
+    | UNCOMPRESS LPAREN expression RPAREN
+    | UNCOMPRESSED_LENGTH LPAREN expression RPAREN
+    | VALIDATE_PASSWORD_STRENGTH LPAREN expression RPAREN
+    """
+    if p.slice[1].type == "AES_DECRYPT":
+        arguments = [p[3], p[5]]
+        arguments.extend(p[6])
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
+    elif p.slice[1].type == "AES_ENCRYPT":
+        arguments = [p[3]]
+        arguments.extend(p[6])
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
+    elif len(p) == 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+    elif len(p) == 7:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_aes_func_opt(p):
+    """aes_func_opt : COMMA expression
+    | COMMA expression COMMA expression
+    | COMMA expression COMMA expression COMMA expression
+    | COMMA expression COMMA expression COMMA expression COMMA expression
+    | empty
+    """
+    p[0] = []
+    for i in range(2, len(p), 2):
+        p[0].append(p[i])
+
+
+def p_locking_func_call(p):
+    r"""locking_func_call : GET_LOCK LPAREN expression COMMA expression RPAREN
+    | IS_FREE_LOCK LPAREN expression RPAREN
+    | IS_USED_LOCK LPAREN expression RPAREN
+    | RELEASE_ALL_LOCKS LPAREN RPAREN
+    | RELEASE_LOCK LPAREN expression RPAREN"""
+    if len(p) == 4:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+    elif len(p) == 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_information_func_call(p):
+    """information_func_call : BENCHMARK LPAREN expression COMMA expression RPAREN
+    | CHARSET LPAREN expression RPAREN
+    | COERCIBILITY LPAREN expression RPAREN
+    | COLLATION LPAREN expression RPAREN
+    | CONNECTION_ID LPAREN RPAREN
+    | CURRENT_ROLE LPAREN RPAREN
+    | CURRENT_USER
+    | CURRENT_USER LPAREN RPAREN
+    | DATABASE LPAREN RPAREN
+    | FOUND_ROWS LPAREN RPAREN
+    | ICU_VERSION LPAREN RPAREN
+    | LAST_INSERT_ID LPAREN RPAREN
+    | LAST_INSERT_ID LPAREN expression RPAREN
+    | ROLES_GRAPHML LPAREN RPAREN
+    | ROW_COUNT LPAREN RPAREN
+    | SCHEMA LPAREN RPAREN
+    | SESSION_USER LPAREN RPAREN
+    | SYSTEM_USER LPAREN RPAREN
+    | USER LPAREN RPAREN
+    | VERSION LPAREN RPAREN"""
+    if len(p) == 4:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+    elif len(p) == 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_json_func_call(p):
+    """json_func_call : create_json_func_call
+    | search_json_func_call
+    | modify_json_func_call
+    | json_value_attr_func_call
+    | json_table_func_call
+    | json_schema_func_call
+    | json_untility_func_call"""
+    p[0] = p[1]
+
+
+def p_create_json_func_call(p):
+    r"""create_json_func_call : JSON_ARRAY LPAREN call_list RPAREN
+    | JSON_OBJECT LPAREN call_list RPAREN
+    | JSON_QUOTE LPAREN expression RPAREN
+    """
+    if p.slice[2].type == 'call_list':
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=p[2])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[2]])
+
+
+def p_search_json_func_call(p):
+    r"""search_json_func_call : JSON_CONTAINS LPAREN expression COMMA expression RPAREN
+    | JSON_CONTAINS LPAREN expression COMMA expression COMMA call_list RPAREN
+    | JSON_CONTAINS_PATH LPAREN expression COMMA expression COMMA expression RPAREN
+    | JSON_CONTAINS_PATH LPAREN expression COMMA expression COMMA expression COMMA call_list RPAREN
+    | JSON_EXTRACT LPAREN expression COMMA expression RPAREN
+    | JSON_EXTRACT LPAREN expression COMMA expression COMMA call_list RPAREN
+    | JSON_KEYS LPAREN expression RPAREN
+    | JSON_KEYS LPAREN expression COMMA expression RPAREN
+    | JSON_OVERLAPS LPAREN expression COMMA expression RPAREN
+    | JSON_SEARCH LPAREN expression COMMA expression COMMA expression RPAREN
+    | JSON_SEARCH LPAREN expression COMMA expression COMMA expression COMMA call_list RPAREN
+    | JSON_VALUE LPAREN expression COMMA expression RPAREN
+    """
+    length = len(p)
+    arguments = []
+    if p.slice(length - 2).type == "call_list":
+        arguments.extend(p[length - 2])
+        length -= 2
+    for i in range(3, length, 2):
+        arguments.append(p[i])
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), args=arguments)
+
+
+def p_modify_json_func_call(p):
+    r"""modify_json_func_call : JSON_ARRAY_APPEND LPAREN expression COMMA expression COMMA expression RPAREN
+    | JSON_ARRAY_APPEND LPAREN expression COMMA expression COMMA expression COMMA call_list RPAREN
+    | JSON_ARRAY_INSERT LPAREN expression COMMA expression COMMA expression RPAREN
+    | JSON_ARRAY_INSERT LPAREN expression COMMA expression COMMA expression COMMA call_list RPAREN
+    | JSON_INSERT LPAREN expression COMMA expression COMMA expression RPAREN
+    | JSON_INSERT LPAREN expression COMMA expression COMMA expression COMMA call_list RPAREN
+    | JSON_MERGE LPAREN expression COMMA expression RPAREN
+    | JSON_MERGE LPAREN expression COMMA expression COMMA call_list RPAREN
+    | JSON_MERGE_PATCH LPAREN expression COMMA expression RPAREN
+    | JSON_MERGE_PATCH LPAREN expression COMMA expression COMMA call_list RPAREN
+    | JSON_MERGE_PRESERVE LPAREN expression COMMA expression RPAREN
+    | JSON_MERGE_PRESERVE LPAREN expression COMMA expression COMMA call_list RPAREN
+    | JSON_REMOVE LPAREN expression COMMA expression RPAREN
+    | JSON_REMOVE LPAREN expression COMMA expression COMMA call_list RPAREN
+    | JSON_REPLACE LPAREN expression COMMA expression COMMA expression RPAREN
+    | JSON_REPLACE LPAREN expression COMMA expression COMMA expression COMMA call_list RPAREN
+    | JSON_SET LPAREN expression COMMA expression COMMA expression RPAREN
+    | JSON_SET LPAREN expression COMMA expression COMMA expression COMMA call_list RPAREN
+    | JSON_UNQUOTE LPAREN expression RPAREN
+    """
+    length = len(p)
+    arguments = []
+    if p.slice(length - 2).type == "call_list":
+        arguments.extend(p[length - 2])
+        length -= 2
+    for i in range(3, length, 2):
+        arguments.append(p[i])
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), args=arguments)
+
+
+def p_json_value_attr_func_call(p):
+    r"""json_value_attr_func_call : JSON_DEPTH LPAREN expression RPAREN
+    | JSON_LENGTH LPAREN expression RPAREN
+    | JSON_LENGTH LPAREN expression COMMA expression RPAREN
+    | JSON_TYPE LPAREN expression RPAREN
+    | JSON_VAILD LPAREN expression RPAREN"""
+    if len(p) == 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+    else:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_json_table_func_call(p):
+    r"""json_table_func_call : JSON_TABLE LPAREN expression COMMA expression COLUMNS LPAREN select_items RPAREN alias_opt RPAREN"""
+    p[0] = JsonTable(
+        p.lineno(1), p.lexpos(1), expr=p[3], path=p[5], column_list=p[8], alias=p[10]
+    )
+
+
+def p_json_schema_func_call(p):
+    r"""json_schema_func_call : JSON_SCHEMA_VALID LPAREN expression COMMA expression RPAREN
+    | JSON_SCHEMA_VALIDATION_REPORT LPAREN expression COMMA expression RPAREN"""
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
+
+
+def p_json_untility_func_call(p):
+    r"""json_untility_func_call : JSON_PERTTY LPAREN expression RPAREN
+    | JSON_STORAGE_FREE LPAREN expression RPAREN
+    | JSON_STORAGE_SIZE LPAREN expression RPAREN"""
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+
+
+def p_replication_func_call(p):
+    r"""replication_func_call : GROUP_REPLICATION_SET_AS_PRIMARY LPAREN expression RPAREN
+    | GROUP_REPLICATION_SWITCH_TO_MULTI_PRIMARY_MODE LPAREN RPAREN
+    | GROUP_REPLICATION_SWITCH_TO_SINGLE_PRIMARY_MODE LPAREN expression RPAREN
+    | GROUP_REPLICATION_GET_WRITE_CONCURRENCY LPAREN RPAREN
+    | GROUP_REPLICATION_SET_WRITE_CONCURRENCY LPAREN expression RPAREN
+    | GROUP_REPLICATION_GET_COMMUNICATION_PROTOCOL LPAREN RPAREN
+    | GROUP_REPLICATION_SET_COMMUNICATION_PROTOCOL LPAREN expression RPAREN
+    | GROUP_REPLICATION_DISABLE_MEMBER_ACTION LPAREN expression COMMA expression RPAREN
+    | GROUP_REPLICATION_ENABLE_MEMBER_ACTION LPAREN expression COMMA expression RPAREN
+    | GROUP_REPLICATION_RESET_MEMBER_ACTIONS LPAREN RPAREN
+    | GTID_SUBSET LPAREN expression COMMA expression RPAREN
+    | GTID_SUBTRACT LPAREN expression COMMA expression RPAREN
+    | WAIT_FOR_EXECUTED_GTID_SET LPAREN expression RPAREN
+    | WAIT_FOR_EXECUTED_GTID_SET LPAREN expression COMMA expression RPAREN
+    | WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS LPAREN expression RPAREN
+    | WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS LPAREN expression COMMA expression RPAREN
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_ADD_MANAGED LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_ADD_SOURCE LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_DELETE_MANAGED LPAREN expression COMMA expression COMMA expression RPAREN
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_DELETE_SOURCE LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_RESET LPAREN RPAREN
+    | MASTER_POS_WAIT LPAREN expression COMMA expression RPAREN
+    | MASTER_POS_WAIT LPAREN expression COMMA expression COMMA expression RPAREN
+    | MASTER_POS_WAIT LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
+    | SOURCE_POS_WAIT LPAREN expression COMMA expression RPAREN
+    | SOURCE_POS_WAIT LPAREN expression COMMA expression COMMA expression RPAREN
+    | SOURCE_POS_WAIT LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
+    """
+    arguments = []
+    for i in range(3, len(p), 2):
+        arguments.append(p[i])
+
+
+def p_aggregate_func_call(p):
+    r"""aggreate_func_call : aggreate_func_without_distinct
+    | aggreate_func_wiht_distinct
+    | group_concat_func_call
+    """
+    p[0] = p[1]
+
+
+def p_aggreate_func_without_distinct(p):
+    r"""aggreate_func_without_distinct : BIT_AND LPAREN expression RPAREN over_clause_opt
+    | BIT_OR LPAREN expression RPAREN over_clause_opt
+    | BIT_XOR LPAREN expression RPAREN over_clause_opt
+    | COUNT LPAREN expression RPAREN over_clause_opt
+    | COUNT LPAREN ASTERISK RPAREN over_clause_opt
+    | JSON_ARRAYAGG LPAREN expression COMMA expression RPAREN over_clause_opt
+    | STD LPAREN expression RPAREN over_clause_opt
+    | STDDEV LPAREN expression RPAREN over_clause_opt
+    | STDDEV_POP LPAREN expression RPAREN over_clause_opt
+    | STDDEV_SAMP LPAREN expression RPAREN over_clause_opt
+    | VAR_POP LPAREN expression RPAREN over_clause_opt
+    | VAR_SAMP LPAREN expression RPAREN over_clause_opt
+    | VAR_VARIANCE LPAREN expression RPAREN over_clause_opt
+    """
+    if len(p) == 6:
+        p[0] = AggregateFunc(
+            p.lineno(1),
+            p.lexpos(1),
+            name=p[1],
+            arguments=[p[3]],
+            over_clause=p[len(p) - 1],
+        )
+    else:
+        p[0] = AggregateFunc(
+            p.lineno(1),
+            p.lexpos(1),
+            name=p[1],
+            arguments=[p[3], p[5]],
+            over_clause=p[len(p) - 1],
+        )
+
+
+def p_aggreate_func_with_distinct(p):
+    r"""aggreate_func_wiht_distinct : AVG LPAREN distinct_opt expression RPAREN over_clause_opt
+    | COUNT LPAREN DISTINCT call_list RPAREN over_clause_opt
+    | JSON_ARRAYAGG LPAREN distinct_opt expression RPAREN over_clause_opt
+    | MAX LPAREN distinct_opt expression RPAREN over_clause_opt
+    | SUM LPAREN distinct_opt expression RPAREN over_clause_opt
+    | MIN LPAREN distinct_opt expression RPAREN over_clause_opt"""
+    arguments = p[4] if p.slice[4].type == "call_list" else [p[4]]
+    p[0] = AggregateFunc(
+        p.lineno(1),
+        p.lexpos(1),
+        name=p[1],
+        distinct=p[3],
+        arguments=arguments,
+        over_clause=p[6],
+    )
+
+
+def p_group_concat_func_call(p):
+    """group_concat_func_call : GROUP_CONCAT LPAREN distinct_opt call_list order_by_opt separator_opt RPAREN over_clause_opt"""
+    p[0] = GroupConcat(
+        p.lineno(1),
+        p.lexpos(1),
+        distinct=p[3],
+        args=p[4],
+        order_by=p[5],
+        separator=p[6],
+        over_clause=p[8],
+    )
+
+
+# FORMAT in string_operator_func_call
+def p_miscellaneous_func_call(p):
+    """miscellaneous_func_call : ANY_VALUE LPAREN expression RPAREN
+    | BIN_TO_UUID	LPAREN expression RPAREN
+    | BIN_TO_UUID	LPAREN expression COMMA expression RPAREN
+    | DEFAULT	LPAREN expression RPAREN
+    | GROUPING	LPAREN  call_list RPAREN
+    | INET_ATON	LPAREN expression RPAREN
+    | INET_NTOA	LPAREN expression RPAREN
+    | INET6_ATON	LPAREN expression RPAREN
+    | INET6_NTOA	LPAREN expression RPAREN
+    | IS_IPV4	LPAREN expression RPAREN
+    | IS_IPV4_COMPAT	LPAREN expression RPAREN
+    | IS_IPV4_MAPPED	LPAREN expression RPAREN
+    | IS_IPV6	LPAREN expression RPAREN
+    | IS_UUID	LPAREN expression RPAREN
+    | NAME_CONST	LPAREN expression COMMA expression RPAREN
+    | SLEEP	LPAREN expression RPAREN
+    | UUID	LPAREN RPAREN
+    | UUID_SHORT	LPAREN RPAREN
+    | UUID_TO_BIN	LPAREN expression RPAREN
+    | UUID_TO_BIN	LPAREN expression COMMA expression RPAREN"""
+    if p.slice[1].type == "GROUPING":
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=p[3])
+    elif len(p) == 4:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
+    elif len(p) == 5:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
+    elif len(p) == 7:
+        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[7]])
+
+
+def p_format_selector(p):
+    r"""format_selector : DATE
+    | DATETIME
+    | TIME
+    | TIMESTAMP"""
+    p[0] = p[1]
+
+
+def p_distinct_opt(p):
+    r"""distinct_opt : DISTINCT
+    | empty"""
+    p[0] = p[1]
+
+
+def p_separator_opt(p):
+    r"""separator_opt : SEPARATOR expression
+    | empty
+    """
+    p[0] = p[1]
 
 
 def p_case_specification(p):
@@ -1496,9 +2369,33 @@ def p_expression_opt(p):
     p[0] = p[1]
 
 
-def p_cast_specification(p):
-    r"""cast_specification : CAST LPAREN expression AS cast_field RPAREN"""
-    p[0] = Cast(p.lineno(1), p.lexpos(1), expression=p[3], data_type=p[5], safe=False)
+def p_cast_func_call(p):
+    r"""cast_func_call : BINARY expression %prec NEG
+    | _BINARY string_lit %prec NEG
+    | CAST LPAREN expression AS cast_field RPAREN
+    | CAST LPAREN expression AS cast_field ARRAY RPAREN
+    | CONVERT LPAREN expression COMMA cast_field RPAREN
+    | CONVERT LPAREN expression USING charset_name RPAREN"""
+    if p.slice[1].type == 'CAST':
+        if len(p) == 6:
+            p[0] = Cast(
+                p.lineno(1), p.lexpos(1), expression=p[3], data_type=p[5], array=False
+            )
+        else:
+            p[0] = Cast(
+                p.lineno(1), p.lexpos(1), expression=p[3], data_type=p[5], array=True
+            )
+    elif p.slice[1].type == 'BINARY' or p.slice[1].type == '_BINARY':
+        p[0] = Binary(p.lineno(1), p.lexpos(1), expr=p[2])
+    elif p.slice[1].type == 'CONVERT':
+        if p.slice[4].type == 'USING':
+            p[0] = Convert(
+                p.lineno(1), p.lexpos(1), expr=p[3], using=True, charset_name=p[5]
+            )
+        else:
+            p[0] = Convert(
+                p.lineno(1), p.lexpos(1), expr=p[3], using=False, data_type=p[5]
+            )
 
 
 def p_when_clauses(p):
@@ -1509,17 +2406,21 @@ def p_when_clauses(p):
     elif isinstance(p[1], list):
         p[1].append(p[2])
         p[0] = p[1]
-    else:
-        p[0] = None
+
+
+def p_charset_name(p):
+    r"""charset_name : string_lit
+    | BINARY"""
+    p[0] = p[1]
 
 
 def p_when_clause(p):
-    r"""when_clause : WHEN search_condition THEN value_expression"""
+    r"""when_clause : WHEN expression THEN expression"""
     p[0] = WhenClause(p.lineno(1), p.lexpos(1), operand=p[2], result=p[4])
 
 
 def p_else_clause(p):
-    r"""else_opt : ELSE value_expression
+    r"""else_opt : ELSE expression
     | empty"""
     p[0] = p[2] if p[1] else None
 
@@ -1562,8 +2463,8 @@ def p_cast_field(p):
         field.set_length(p[2])
     elif p.slice[1].type == 'DECIMAL':
         field.set_tp(SQLType.DECIMAL, "DEMCIMAL")
-        field.set_length(p[2].length)
-        field.set_decimal(p[2].decimal)
+        field.set_length(p[2]["length"])
+        field.set_decimal(p[2]["decimal"])
     elif p.slice[1].type == "TIME":
         field.set_tp(SQLType.TIME, "TIME")
         field.set_length(p[2])
@@ -1577,8 +2478,8 @@ def p_cast_field(p):
         field.set_tp(SQLType.DOUBLE, "DOUBLE")
     elif p.slice[1].type == "FLOAT":
         field.set_tp(SQLType.FLOAT, "FLOAT")
-        field.set_length(p[2].length)
-        field.set_decimal(p[2].decimal)
+        field.set_length(p[2]["length"])
+        field.set_decimal(p[2]["decimal"])
     elif p.slice[1].type == "REAL":
         field.set_tp(SQLType.REAL, "REAL")
 
@@ -1640,16 +2541,6 @@ def p_base_data_type(p):
     p[0] = p[1]
 
 
-def p_date_time(p):
-    r"""date_time : CURRENT_DATE
-    | CURRENT_TIME      number_param_opt
-    | CURRENT_TIMESTAMP number_param_opt
-    | LOCALTIME         number_param_opt
-    | LOCALTIMESTAMP    number_param_opt"""
-    precision = p[2] if len(p) == 3 else None
-    p[0] = CurrentTime(p.lineno(1), p.lexpos(1), type=p[1], precision=precision)
-
-
 def p_comparison_operator(p):
     r"""comparison_operator : EQ
     | NE
@@ -1664,13 +2555,6 @@ def p_boolean_value(p):
     r"""boolean_value : TRUE
     | FALSE"""
     p[0] = BooleanLiteral(p.lineno(1), p.lexpos(1), value=p[1])
-
-
-def p_number_param_opt(p):
-    """number_param_opt : LPAREN number RPAREN
-    | LPAREN RPAREN
-    | empty"""
-    p[0] = int(p[2]) if len(p) == 4 else None
 
 
 def p_qualified_name(p):
@@ -1690,15 +2574,257 @@ def p_identifier(p):
     r"""identifier : IDENTIFIER
     | quoted_identifier
     | non_reserved
-    | not_keyword
-    | DIGIT_IDENTIFIER
-    | ASTERISK"""
+    | not_keyword_token
+    | DIGIT_IDENTIFIER"""
     p[0] = p[1]
 
 
 # resvered word in mysql but can be used as token
 def p_non_reserved(p):
-    r"""non_reserved : ACCOUNT
+    r"""non_reserved : ABS
+    | ACOS
+    | AES_DECRYPT
+    | AES_ENCRYPT
+    | ANY_VALUE
+    | ASIN
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_ADD_MANAGED
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_ADD_SOURCE
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_DELETE_MANAGED
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_DELETE_SOURCE
+    | ASYNCHRONOUS_CONNECTION_FAILOVER_RESET
+    | ATAN
+    | BENCHMARK
+    | BIN
+    | BIN_TO_UUID
+    | BIT_COUNT
+    | BIT_LENGTH
+    | CALL
+    | CAST
+    | CELIING
+    | CELL
+    | CHARACTER_LENGTH
+    | CHAR_LENGTH
+    | COERCIBILITY
+    | COLUMN
+    | COMPRESS
+    | CONCAT_WS
+    | CONNECTION_ID
+    | CONY
+    | COS
+    | COT
+    | COUNT
+    | CRC32
+    | DAYNAME
+    | DAYOFMONTH
+    | DAYOFWEEK
+    | DAYOFYEAR
+    | DEGREES
+    | ELT
+    | EXP
+    | EXPORT_SET
+    | EXTRACTVALUE
+    | EXTRACTVALUEEXP
+    | FIELD
+    | FIND_IN_SET
+    | FLOOR
+    | FOUND_ROWS
+    | FROM_BASE64
+    | FROM_DAYS
+    | FROM_UNIXTIME
+    | GET_LOCK
+    | GREATEST
+    | GROUPING
+    | GROUP_REPLICATION_DISABLE_MEMBER_ACTION
+    | GROUP_REPLICATION_ENABLE_MEMBER_ACTION
+    | GROUP_REPLICATION_GET_COMMUNICATION_PROTOCOL
+    | GROUP_REPLICATION_GET_WRITE_CONCURRENCY
+    | GROUP_REPLICATION_RESET_MEMBER_ACTIONS
+    | GROUP_REPLICATION_SET_AS_PRIMARY
+    | GROUP_REPLICATION_SET_COMMUNICATION_PROTOCOL
+    | GROUP_REPLICATION_SET_WRITE_CONCURRENCY
+    | GROUP_REPLICATION_SWITCH_TO_MULTI_PRIMARY_MODE
+    | GROUP_REPLICATION_SWITCH_TO_SINGLE_PRIMARY_MODE
+    | GTID_SUBSET
+    | GTID_SUBTRACT
+    | HEX
+    | ICU_VERSION
+    | IF
+    | IFNULL
+    | INET6_ATON
+    | INET6_NTOA
+    | INET_ATON
+    | INET_NTOA
+    | INSTR
+    | INTO
+    | IS
+    | ISNULL
+    | IS_FREE_LOCK
+    | IS_IPV4
+    | IS_IPV4_COMPAT
+    | IS_IPV4_MAPPED
+    | IS_IPV6
+    | IS_USED_LOCK
+    | IS_UUID
+    | ITERATE
+    | JSON_ARRAY
+    | JSON_ARRAYAGG
+    | JSON_ARRAY_APPEND
+    | JSON_ARRAY_INSERT
+    | JSON_CONTAINS
+    | JSON_CONTAINS_PATH
+    | JSON_DEPTH
+    | JSON_EXTRACT
+    | JSON_INSERT
+    | JSON_KEYS
+    | JSON_LENGTH
+    | JSON_MERGE
+    | JSON_MERGE_PATCH
+    | JSON_MERGE_PRESERVE
+    | JSON_OBJECT
+    | JSON_OVERLAPS
+    | JSON_PERTTY
+    | JSON_QUOTE
+    | JSON_REMOVE
+    | JSON_REPLACE
+    | JSON_SCHEMA_VALID
+    | JSON_SCHEMA_VALIDATION_REPORT
+    | JSON_SEARCH
+    | JSON_SET
+    | JSON_STORAGE_FREE
+    | JSON_STORAGE_SIZE
+    | JSON_TABLE
+    | JSON_TYPE
+    | JSON_UNQUOTE
+    | JSON_VAILD
+    | JSON_VALUE
+    | LAST_DAY
+    | LAST_INSERT_ID
+    | LATERAL
+    | LCASE
+    | LEAST
+    | LENGTH
+    | LN
+    | LOAD_FILE
+    | LOCATE
+    | LOG
+    | LOG10
+    | LOG2
+    | LOWER
+    | LPAD
+    | LTRIM
+    | MAKEDATE
+    | MAKE_SET
+    | MASTER_POS_WAIT
+    | MD5
+    | MID
+    | MONTHNAME
+    | NAME_CONST
+    | NULLIF
+    | OCT
+    | OCTET_LENGTH
+    | OF
+    | OR
+    | ORD
+    | PARAMETER
+    | PERIOD_ADD
+    | PERIOD_DIFF
+    | PI
+    | POW
+    | POWER
+    | QUOTE
+    | RANDOM_BYTES
+    | RANK
+    | READS
+    | REDOFILE
+    | RELEASE_ALL_LOCKS
+    | RELEASE_LOCK
+    | REPLACE
+    | REPLICATE
+    | RESET
+    | RETURN
+    | RETURNS
+    | ROLES_GRAPHML
+    | RPAD
+    | RTRIM
+    | SCHEMA
+    | SEC_TO_TIME
+    | SESSION_USER
+    | SHA
+    | SHA1
+    | SHA2
+    | SKIP
+    | SLEEP
+    | SONAME
+    | SOUNDEX
+    | SOUNDS
+    | SOURCE_POS_WAIT
+    | SPACE
+    | SPATIAL
+    | SPECIFIC
+    | SQL_AFTER_GTIDS
+    | SQL_AFTER_MTS_GAPS
+    | SQL_BEFORE_GTIDS
+    | SQL_CALC_FOUND_ROWS
+    | SQL_SMALL_RESULT
+    | SQL_THREAD
+    | STACKED
+    | STATEMENT_DIGEST
+    | STATEMENT_DIGEST_TEXT
+    | STOP
+    | STORED
+    | STRAIGHT_JOIN
+    | STRCMP
+    | STR_TO_DATE
+    | SUBCLASS_ORIGIN
+    | SUBSTR
+    | SUBSTRING_INDEX
+    | SUSPEND
+    | SYSTEM_USER
+    | TIMEDIFF
+    | TIME_FORMAT
+    | TIME_TO_SEC
+    | TO_BASE64
+    | TO_DAYS
+    | TO_SECONDS
+    | TYPES
+    | UCASE
+    | UNCOMPRESS
+    | UNCOMPRESSED_LENGTH
+    | UNDO
+    | UNDO_BUFFER_SIZE
+    | UNHEX
+    | UNINSTALL
+    | UNIXTIMESTAMP
+    | UNLOCK
+    | UPDATEXML
+    | UPPER
+    | USE
+    | UUID
+    | UUID_SHORT
+    | UUID_TO_BIN
+    | VALIDATE_PASSWORD_STRENGTH
+    | VALUES
+    | VAR_VARIANCE
+    | VERSION
+    | WAIT_FOR_EXECUTED_GTID_SET
+    | WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS
+    | WEEKDAY
+    | WEEKOFYEAR
+    | WITH
+    | WORK
+    | WRAPPER
+    | WRITE
+    | XA
+    | XID
+    | XML
+    | XOR
+    | YEARWEEK
+    | ZEROFILL"""
+    p[0] = p[1]
+
+
+def p_not_keyword_token(p):
+    r"""not_keyword_token : ACCOUNT
     | ACTION
     | ADVISE
     | AFTER
@@ -1707,18 +2833,19 @@ def p_non_reserved(p):
     | ALGORITHM
     | ALWAYS
     | ANY
+    | ASCII
+    | AUTO_INCREMENT
     | AVG
     | AVG_ROW_LENGTH
-    | AUTO_INCREMENT
     | BACKUP
     | BEGIN
+    | BINLOG
     | BIT
     | BOOL
     | BOOLEAN
     | BTREE
     | BYTE
     | CACHE
-    | CALL
     | CAPTURE
     | CASCADED
     | CAUSAL
@@ -1727,9 +2854,8 @@ def p_non_reserved(p):
     | CLIENT
     | COALESCE
     | COLLATION
-    | COLUMN
-    | COLUMN_FORMAT
     | COLUMNS
+    | COLUMN_FORMAT
     | COMMENT
     | COMMIT
     | COMMITTED
@@ -1767,11 +2893,13 @@ def p_non_reserved(p):
     | EVENT
     | EVENTS
     | EXECUTE
+    | EXPANSION
     | EXTENDED
     | FIELDS
     | FILE
     | FIRST
     | FLUSH
+    | FOLLOWING
     | FORMAT
     | FOUND
     | FULL
@@ -1789,21 +2917,16 @@ def p_non_reserved(p):
     | INDEXES
     | INSERT_METHOD
     | INSTANCE
-    | INVOKER
     | INVISIBLE
+    | INVOKER
     | IO
     | IPC
-    | IS
     | ISOLATION
     | ISSUER
-    | IF
-    | INTO
-    | ITERATE
     | JSON
     | KEY_BLOCK_SIZE
     | LANGUAGE
     | LAST
-    | LATERAL
     | LESS
     | LEVEL
     | LIST
@@ -1814,12 +2937,13 @@ def p_non_reserved(p):
     | MASTER
     | MAX_ROWS
     | MB
+    | MEMBER
     | MEMORY
     | MERGE
     | MICROSECOND
-    | MIN_ROWS
     | MINUTE
     | MINVALUE
+    | MIN_ROWS
     | MODE
     | MODIFY
     | MONTH
@@ -1827,23 +2951,20 @@ def p_non_reserved(p):
     | NATIONAL
     | NEVER
     | NEXT
-    | NOWAIT
     | NODEGROUP
     | NONE
+    | NOWAIT
     | NULLS
     | NVARCHAR
-    | OF
     | OFF
     | OFFSET
-    | OR
-    | ON_DUPLICATE
     | ONLINE
     | ONLY
+    | ON_DUPLICATE
     | OPEN
     | OPTIONAL
     | PACK_KEYS
     | PAGE
-    | PARAMETER
     | PARSER
     | PARTIAL
     | PARTITIONING
@@ -1866,31 +2987,26 @@ def p_non_reserved(p):
     | QUARTER
     | QUERY
     | QUICK
-    | READS
     | REBUILD
     | RECOVER
-    | REDOFILE
     | REDUNDANT
     | RELOAD
     | REMOVE
     | REORGANIZE
     | REPAIR
-    | REPLACE
-    | REPLICATE
     | REPLICATION
-    | RESET
     | RESOURCE
     | RESPECT
-    | REVERSE
     | RESTORE
     | RESUME
-    | RETURN
-    | RETURNS
+    | REVERSE
     | ROLLBACK
+    | ROW_COUNT
     | ROW_FORMAT
     | RTREE
     | SAVEPOINT
     | SECOND
+    | SEPARATOR
     | SERIALIZABLE
     | SESSION
     | SHARE
@@ -1901,18 +3017,10 @@ def p_non_reserved(p):
     | SLOW
     | SNAPSHOT
     | SOME
-    | SONAME
-    | SOUNDS
     | SOURCE
-    | SPATIAL
-    | SPECIFIC
-    | SQL_CALC_FOUND_ROWS
-    | SQL_AFTER_GTIDS
     | SQL_BUFFER_RESULT
     | SQL_CACHE
     | SQL_NO_CACHE
-    | SQL_SMALL_RESULT
-    | SQL_THREAD
     | SQL_TSI_DAY
     | SQL_TSI_HOUR
     | SQL_TSI_MINUTE
@@ -1921,20 +3029,14 @@ def p_non_reserved(p):
     | SQL_TSI_SECOND
     | SQL_TSI_WEEK
     | SQL_TSI_YEAR
-    | STACKED
     | START
     | STATS_AUTO_RECALC
     | STATS_PERSISTENT
     | STATS_SAMPLE_PAGES
     | STATUS
-    | STOP
     | STORAGE
     | SUBJECT
-    | STORED
-    | STRAIGHT_JOIN
-    | SUBCLASS_ORIGIN
     | SUPER
-    | SUSPEND
     | TABLES
     | TABLESPACE
     | TABLE_CHECKSUM
@@ -1946,74 +3048,27 @@ def p_non_reserved(p):
     | TRIGGERS
     | TRUNCATE
     | TYPE
-    | TYPES
     | UNBOUNDED
-    | FOLLOWING
     | UNCOMMITTED
     | UNDEFINED
-    | UNDO
-    | UNDO_BUFFER_SIZE
-    | UNINSTALL
     | UNKNOWN
-    | UNLOCK
-    | USE
     | USER
     | VALIDATION
     | VALUE
-    | VALUES
     | VARIABLES
     | WAIT
     | WARNINGS
     | WEEK
     | WEIGHT_STRING
-    | WITH
     | WITHOUT
-    | WORK
-    | WRAPPER
-    | WRITE
     | X509
-    | XA
-    | XID
-    | XML
-    | XOR
-    | YEAR
-    | ZEROFILL
-    """
+    | YEAR"""
     p[0] = p[1]
 
 
-def p_not_keyword(p):
-    r"""not_keyword : ADDDATE
-    | BRIEF
-    | CAST
-    | COPY
-    | CONCAT
-    | CURTIME
-    | CURDATE
-    | DATE_ADD
-    | DATE_SUB
-    | EXTRACT
-    | GET_FORMAT
-    | GROUP_CONCAT
-    | MIN
-    | MAX
-    | NOW
-    | POSITION
-    | SUBDATE
-    | SUBSTRING
-    | SUM
-    | STD
-    | STDDEV
-    | STDDEV_POP
-    | STDDEV_SAMP
-    | VARIANCE
-    | VAR_POP
-    | VAR_SAMP
-    | TIMESTAMPADD
-    | TIMESTAMPDIFF
-    | TOP
-    | TRIM"""
-    p[0] = p[1]
+def p_time_interval(p):
+    r"""time_interval : INTERVAL expression time_unit"""
+    p[0] = TimeLiteral(p.lineno(1), p.lexpos(1), value=p[2], unit=p[3])
 
 
 def p_time_unit(p):
@@ -2123,9 +3178,11 @@ def p_error(p):
     raise SyntaxError("The current version does not support this SQL")
 
 
-parser = yacc.yacc(tabmodule="parser_table", debugfile="parser.out")
-expression_parser = yacc.yacc(
-    tabmodule="expression_parser_table",
-    start="command",
-    debugfile="expression_parser.out",
+parser = yacc.yacc(
+    tabmodule="parser_table", start="command", debugfile="parser.out", optimize=True
 )
+# expression_parser = yacc.yacc(
+#     tabmodule="expression_parser_table",
+#     start="command",
+#     debugfile="expression_parser.out",
+# )

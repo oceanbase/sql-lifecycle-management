@@ -76,9 +76,10 @@ class StringLiteral(Literal):
 
 
 class TimeLiteral(Literal):
-    def __init__(self, line=None, pos=None, value=None):
+    def __init__(self, line=None, pos=None, value=None, unit=None):
         super(TimeLiteral, self).__init__(line, pos)
         self.value = value
+        self.unit = unit
 
     def accept(self, visitor, context):
         return visitor.visit_time_literal(self, context)

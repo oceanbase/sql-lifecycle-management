@@ -98,8 +98,8 @@ class Formatter(AstVisitor):
 
     def visit_function_call(self, node, unmangle_names):
         ret = ""
-        arguments = self._join_expressions(node.arguments, unmangle_names)
-        if not node.arguments and "count" == node.name.parts[0].lower():
+        arguments = self._join_expressions(node.args, unmangle_names)
+        if "count" == node.name.lower() and len(arguments) != 0 and arguments[0] == '*':
             arguments = "*"
         if node.distinct:
             arguments = "DISTINCT " + arguments
@@ -107,12 +107,45 @@ class Formatter(AstVisitor):
         if unmangle_names and str(node.name).startswith(FIELD_REFERENCE_PREFIX):
             raise NotImplementedError("Mangled names not supported right now")
         else:
-            ret += _format_qualified_name(node.name) + '(' + arguments + ')'
+            ret += node.name + '(' + arguments + ')'
 
         if node.window:
             ret += " OVER " + self.visit_window(node.window, unmangle_names)
 
         return ret
+
+    def visit_aggregate_func(self, node, unmangle_names):
+        ret = ""
+        arguments = self._join_expressions(node.arguments, unmangle_names)
+        if (
+            "count" == node.name.lower()
+            and len(node.arguments) != 0
+            and node.arguments[0] == '*'
+        ):
+            arguments = "*"
+        if node.distinct:
+            arguments = "DISTINCT " + arguments
+
+        if unmangle_names and str(node.name).startswith(FIELD_REFERENCE_PREFIX):
+            raise NotImplementedError("Mangled names not supported right now")
+        else:
+            ret += node.name + '(' + arguments + ')'
+
+        if node.over_clause:
+            ret += " OVER " + self.visit_window(node.window, unmangle_names)
+
+        return ret
+
+    def visit_sub_string(self, node, unmangle_names):
+        if len(node.arguments) == 1:
+            arguments = node.arguments[0]
+        elif len(node.arguments) == 2:
+            arguments = f"{node.arguments[0]} FROM {node.arguments[1]}"
+        else:
+            arguments = (
+                f"{node.arguments[0]} FROM {node.arguments[1]} FOR  {node.arguments[2]}"
+            )
+        return f"{node.name}({arguments})"
 
     def visit_logical_binary_expression(self, node, unmangle_names):
         return self._format_binary_expression(
@@ -146,11 +179,9 @@ class Formatter(AstVisitor):
             ]
         )
 
-    def visit_is_null_predicate(self, node, unmangle_names):
-        predicate_name = "IS NULL" if not node.is_not else "IS NOT NULL"
-        return (
-            "(" + self.process(node.value, unmangle_names) + " " + predicate_name + ")"
-        )
+    def visit_is_predicate(self, node, unmangle_names):
+        predicate_name = "IS" if not node.is_not else "IS NOT"
+        return f"( {self.process(node.value, unmangle_names)} {predicate_name} {node.kwd.upper()} )"
 
     def visit_none_if_expression(self, node, unmangle_names):
         return "NULLIF(%s, %s)" % (

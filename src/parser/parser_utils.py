@@ -11,8 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
 from src.parser.tree.grouping import GroupingSets, SimpleGroupBy
-from src.parser.tree.literal import LongLiteral, StringLiteral
-from src.parser.tree.qualified_name import QualifiedName
+from src.parser.tree.literal import StringLiteral
 from src.parser.tree.select_item import SingleColumn
 from src.parser.tree.visitor import DefaultTraversalVisitor
 from src.parser.tree.expression import (
@@ -178,30 +177,22 @@ class ParserUtils(object):
                                         else:
                                             _column_name = name.parts[0]
 
-                                        if expression.name.parts[0] == 'max':
+                                        if expression.name == 'max':
                                             self.min_max_list.append(_column_name)
 
                                         self.projection_column_list.append(_column_name)
 
-                                    if isinstance(argument, LongLiteral):
+                                    if argument == "*":
                                         name = expression.name
-                                        if isinstance(name, QualifiedName):
-                                            if (
-                                                len(name.parts) == 1
-                                                and name.parts[0] == 'count'
-                                            ):
-                                                self.projection_column_list.append(
-                                                    'count(*)'
-                                                )
+                                        if name == 'count':
+                                            self.projection_column_list.append(
+                                                'count(*)'
+                                            )
 
                             else:
                                 name = expression.name
-                                if isinstance(name, QualifiedName):
-                                    if (
-                                        len(name.parts) == 1
-                                        and name.parts[0] == 'count'
-                                    ):
-                                        self.projection_column_list.append('count(*)')
+                                if name == 'count':
+                                    self.projection_column_list.append('count(*)')
                     self.process(item, context)
 
             def visit_sort_item(self, node, context):

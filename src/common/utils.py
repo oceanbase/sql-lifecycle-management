@@ -30,9 +30,7 @@ class Utils(object):
     def remove_sql_text_affects_parser(sql):
         sql = sql.lower().strip()
         sql = Utils.remove_hint_and_annotate(sql)
-        sql = Utils.replace_interval_day(sql)
         sql = Utils.remove_force_index(sql)
-        sql = Utils.remove_cast(sql)
         sql = Utils.remove_now_in_insert(sql)
         sql = Utils.remove_semicolon(sql)
         return sql

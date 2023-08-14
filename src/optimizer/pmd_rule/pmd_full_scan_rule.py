@@ -117,9 +117,8 @@ class PMDFullScanRule(AbstractRewriteRule):
                 return None
 
             def visit_exists_predicate(self, node, context):
-                if not node.is_not:
-                    self.match = False
-                    node.subquery = None
+                self.match = False
+                node.subquery = None
 
             def visit_between_predicate(self, node, context):
                 if not node.is_not:
@@ -129,6 +128,11 @@ class PMDFullScanRule(AbstractRewriteRule):
                 self.process(node.min, context)
                 self.process(node.max, context)
 
+                return None
+
+            def visit_not_expression(self, node, context):
+                node.value = None
+                self.match = True
                 return None
 
         remove_visitor = Remove_Visitor()

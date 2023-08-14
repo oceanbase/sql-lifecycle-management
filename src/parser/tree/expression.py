@@ -52,14 +52,15 @@ class SubscriptExpression(Expression):
         return visitor.visit_subscript_expression(self, context)
 
 
-class IsNullPredicate(Expression):
-    def __init__(self, line=None, pos=None, is_not=False, value=None):
-        super(IsNullPredicate, self).__init__(line, pos)
+class IsPredicate(Expression):
+    def __init__(self, line=None, pos=None, is_not=False, value=None, kwd=None):
+        super(IsPredicate, self).__init__(line, pos)
         self.is_not = is_not
         self.value = value
+        self.kwd = kwd
 
     def accept(self, visitor, context):
-        return visitor.visit_is_null_predicate(self, context)
+        return visitor.visit_is_predicate(self, context)
 
 
 class IfExpression(Expression):
@@ -124,6 +125,28 @@ class ComparisonExpression(Expression):
         return visitor.visit_comparison_expression(self, context)
 
 
+class CompareSubqueryExpr(ComparisonExpression):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        type=None,
+        left=None,
+        right=None,
+        all_or_some_or_any=None,
+    ):
+        super(CompareSubqueryExpr, self).__init__(
+            line, pos, type=type, left=left, right=right
+        )
+        self.type = type
+        self.left = left
+        self.right = right
+        self.all_or_some_or_any = all_or_some_or_any
+
+    def accept(self, visitor, context):
+        return visitor.visit_compare_subquery_expression(self, context)
+
+
 class AssignmentExpression(Expression):
     def __init__(self, line=None, pos=None, type=None, left=None, right=None):
         super(AssignmentExpression, self).__init__(line, pos)
@@ -156,11 +179,13 @@ class LambdaExpression(Expression):
 
 
 class Cast(Expression):
-    def __init__(self, line=None, pos=None, expression=None, data_type=None, safe=None):
+    def __init__(
+        self, line=None, pos=None, expression=None, data_type=None, array=None
+    ):
         super(Cast, self).__init__(line, pos)
         self.expression = expression
         self.data_type = data_type
-        self.safe = safe
+        self.array = array
 
     def accept(self, visitor, context):
         return visitor.visit_cast(self, context)
@@ -189,6 +214,136 @@ class FunctionCall(Expression):
         return visitor.visit_function_call(self, context)
 
 
+class SoundLike(FunctionCall):
+    def __init__(self, line=None, pos=None, arguments=None):
+        super(SoundLike, self).__init__(line, pos, arguments=arguments)
+        self.arguments = arguments
+
+    def accept(self, visitor, context):
+        return visitor.visit_sound_like(self, context)
+
+
+class SubString(FunctionCall):
+    def __init__(self, line=None, pos=None, name=None, arguments=None):
+        super().__init__(line, pos, name, arguments)
+        self.name = name
+        self.arguments = arguments
+
+    def accept(self, visitor, context):
+        return visitor.visit_sub_string(self, context)
+
+
+class TrimFunc(FunctionCall):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        name=None,
+        remstr_position=None,
+        remstr=None,
+        arg=None,
+    ):
+        super().__init__(line, pos, name)
+        self.name = name
+        self.remstr_position = remstr_position
+        self.remstr = remstr
+        self.arg = arg
+
+
+class Binary(FunctionCall):
+    def __init__(self, line=None, pos=None, expr=None):
+        super(Binary, self).__init__(line, pos)
+        self.expr = expr
+
+    def accept(self, visitor, context):
+        return visitor.visit_binary(self, context)
+
+
+class Convert(FunctionCall):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        expr=None,
+        data_type=None,
+        using=None,
+        charset_name=None,
+    ):
+        super(Convert, self).__init__(line, pos)
+        self.expr = expr
+        self.data_type = data_type
+        self.using = using
+        self.charset_name = charset_name
+
+    def accept(self, visitor, context):
+        return visitor.visit_convert(self, context)
+
+
+class MemberOf(FunctionCall):
+    def __init__(self, line=None, pos=None, args=None):
+        super(Convert, self).__init__(line, pos)
+        self.args = args
+
+    def accept(self, visitor, context):
+        return visitor.visit_memberof(self, context)
+
+
+class JsonTable(FunctionCall):
+    def __init__(
+        self, line=None, pos=None, expr=None, path=None, column_list=None, alias=None
+    ):
+        super(JsonTable, self).__init__(line, pos)
+        self.expr = expr
+        self.path = path
+        self.column_list = column_list
+        self.alias = alias
+
+    def accept(self, visitor, context):
+        return visitor.visit_json_table(self, context)
+
+
+class AggregateFunc(FunctionCall):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        name=None,
+        distinct=None,
+        arguments=None,
+        over_clause=None,
+    ):
+        super(AggregateFunc, self).__init__(line, pos)
+        self.name = name
+        self.distinct = distinct
+        self.arguments = arguments
+        self.over_clause = over_clause
+
+    def accept(self, visitor, context):
+        return visitor.visit_aggregate_func(self, context)
+
+
+class GroupConcat(AggregateFunc):
+    def __init__(
+        self,
+        line=None,
+        pos=None,
+        distinct=None,
+        args=None,
+        order_by=None,
+        separator=None,
+        over_clause=None,
+    ):
+        super(GroupConcat, self).__init__(line, pos)
+        self.distinct = distinct
+        self.args = args
+        self.order_by = order_by
+        self.separator = separator
+        self.over_clause = over_clause
+
+    def accept(self, visitor, context):
+        return visitor.visit_group_concat(self, context)
+
+
 class DereferenceExpression(Expression):
     def __init__(self, line=None, pos=None, base=None, field_name=None):
         super(DereferenceExpression, self).__init__(line, pos)
@@ -197,9 +352,6 @@ class DereferenceExpression(Expression):
 
     def accept(self, visitor, context):
         return visitor.visit_dereference_expression(self, context)
-
-    # def try_parse_parts(self, base, field_name):
-    #     pass
 
 
 class LogicalBinaryExpression(Expression):
@@ -387,3 +539,16 @@ class ArrayConstructor(Expression):
 
     def accept(self, visitor, context):
         return visitor.visit_array_constructor(self, context)
+
+
+class MatchAgainstExpression(Expression):
+    def __init__(
+        self, line=None, pos=None, column_list=None, expr=None, search_modifier=None
+    ):
+        super(MatchAgainstExpression, self).__init__(line, pos)
+        self.column_list = column_list
+        self.expr = expr
+        self.search_modifier = search_modifier
+
+    def accept(self, visitor, context):
+        return visitor.visit_match_against_expression(self, context)
