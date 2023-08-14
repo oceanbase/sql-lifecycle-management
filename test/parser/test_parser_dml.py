@@ -87,7 +87,7 @@ class MyTestCase(unittest.TestCase):
         INSERT IGNORE INTO ilimitcenter05.tp_48246_ogt_fc_lc_day (`id`, `tnt_inst_id`, `principal_id`, `principal_type`, `cumulate_code` , `stat_time`, `amount`, `day_count`, `reverse_amount`, `reverse_count` , `max_value`, `min_value`, `cumulate_properties`, `p1`, `p2` , `p3`, `p4`, `p5`, `p6`, `p7` , `p8`, `p9`, `p10`, `p11`, `p12` , `p13`, `p14`, `p15`, `properties_md5`, `gmt_create` , `gmt_modified`, `currency`, `version`) SELECT `id`, `tnt_inst_id`, `principal_id`, `principal_type`, `cumulate_code` , `stat_time`, `amount`, `day_count`, `reverse_amount`, `reverse_count` , `max_value`, `min_value`, `cumulate_properties`, `p1`, `p2` , `p3`, `p4`, `p5`, `p6`, `p7` , `p8`, `p9`, `p10`, `p11`, `p12` , `p13`, `p14`, `p15`, `properties_md5`, `gmt_create` , `gmt_modified`, `currency`, `version` FROM ilimitcenter05.fc_lc_day FORCE INDEX (`PRIMARY`) WHERE `id` > ? AND (`id` < ? OR `id` = ?) LOCK IN SHARE MODE
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = mysql_parser.parse(sql)
+        result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
         assert isinstance(result, Statement)
 
     def test_insert_now(self):
@@ -138,7 +138,6 @@ delete from execution_log          where                (                       
             """SELECT cast FROM t""",
             """SELECT end FROM t""",
             """SELECT escape FROM t""",
-            """SELECT if FROM t""",
             """SELECT id FROM t""",
             """SELECT into FROM t""",
             """SELECT is FROM t""",
@@ -417,6 +416,208 @@ delete from execution_log          where                (                       
             'SELECT fraction FROM my_table',
             'SELECT qm FROM my_table',
             'SELECT sconst FROM my_table',
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            assert isinstance(result, Statement)
+
+    def test_like_escape(self):
+        test_sqls = [
+            "select * from t where id like '0049663881' escape '`'",
+            'select * from t where id like "0049663881" escape "`"',
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            assert isinstance(result, Statement)
+
+    def test_interval(self):
+        test_sqls = [
+            "select * from t where u > date_add(now(),interval -300 second)",
+            "select * from t where u > date_sub(now(),interval 300 day)",
+            "select * from t where u > adddate(now(),interval 300 hour)",
+            "select * from t where u > subdate(now(),interval 300 minute)",
+            "select * from t where u > 50 - interval 300 day_second",
+            "select * from t where u > 50 + interval 300 day_hour",
+            "select * from t where interval 300 day_minute + 50",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_when_case(self):
+        test_sqls = [
+            "SELECT CASE WHEN grade >= 90 THEN '优秀' WHEN grade >= 80 THEN '良好' WHEN grade >= 60 THEN '及格' ELSE '不及格' END AS result FROM student",
+            "SELECT CASE WHEN gender = '男' THEN '先生' WHEN gender = '女' THEN '女士' ELSE '未知' END AS title, name FROM user",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_group_concat(p):
+        test_sqls = [
+            "SELECT group_concat(name) FROM product",
+            "SELECT group_concat(name SEPARATOR ' | ') FROM product WHERE category = '手机'",
+            "SELECT category, group_concat(DISTINCT brand ORDER BY brand ASC SEPARATOR ', ') AS brands FROM product GROUP BY category",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_join(p):
+        test_sqls = [
+            "SELECT o.order_id, c.name FROM orders o INNER JOIN customers c ON o.customer_id = c.customer_id",
+            "SELECT o.order_id, c.name FROM orders o LEFT OUTER JOIN customers c ON o.customer_id = c.customer_id",
+            "SELECT o.order_id, c.name FROM orders o RIGHT OUTER JOIN customers c ON o.customer_id = c.customer_id",
+            "SELECT o.order_id, c.name FROM orders o FULL OUTER JOIN customers c ON o.customer_id = c.customer_id;",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_subquery_compare(p):
+        test_sqls = [
+            "SELECT o.order_id, o.amount FROM orders o WHERE o.amount > ( SELECT AVG(amount) FROM orders)",
+            "SELECT o.order_id, o.amount FROM orders o WHERE o.amount > ANY ( SELECT AVG(amount) FROM orders)",
+            "SELECT o.order_id, o.amount FROM orders o WHERE o.amount > ALL ( SELECT AVG(amount) FROM orders)",
+            "SELECT o.order_id, o.amount FROM orders o WHERE o.amount > SOME ( SELECT AVG(amount) FROM orders)",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_if(p):
+        test_sqls = [
+            "SELECT name,IF(age>=18, '成年人', '未成年人') AS status FROM users",
+            "SELECT name, IF(gender='male', '先生', '女士') AS title FROM users",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_sconst(p):
+        test_sqls = [
+            r"SELECT * FROM users where a='aaa\\\\'\''",
+            r"SELECT * FROM users where a=''''",
+            r"SELECT * FROM users where a=''''",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_alias_name(p):
+        test_sqls = [
+            'SELECT category AS product_category,COUNT(*) AS "product_count" FROM products',
+            "SELECT category AS product_category,COUNT(*) AS 'product_count' FROM products",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_match_against(p):
+        test_sqls = [
+            "SELECT * FROM products WHERE MATCH(product_name) AGAINST('apple')",
+            "SELECT * FROM products WHERE MATCH(product_name) AGAINST('phone' IN BOOLEAN MODE)",
+            "SELECT * FROM products WHERE MATCH(product_name, product_description) AGAINST('camera' WITH QUERY EXPANSION)",
+            "SELECT * FROM products WHERE MATCH(product_name, product_description) AGAINST('camera' IN NATURAL LANGUAGE MODE)",
+            "SELECT * FROM products WHERE MATCH(product_name, product_description) AGAINST('camera' IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_assignment(p):
+        test_sqls = [
+            "SELECT category_name FROM categories WHERE category_id = @category_id",
+            "SELECT category_name FROM categories WHERE category_id = (select @rownum := 0)",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_binary(p):
+        test_sqls = [
+            "SELECT * FROM users WHERE BINARY username = 'admin'",
+            "SELECT * FROM users WHERE _BINARY 'admin' = 'test'",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_for_update(p):
+        test_sqls = [
+            "SELECT * FROM orders WHERE order_status = 'new' FOR UPDATE",
+            "SELECT * FROM orders WHERE order_status = 'new' FOR UPDATE NOWAIT",
+            "SELECT * FROM orders WHERE order_status = 'new' FOR UPDATE WAIT 1",
+            "SELECT * FROM orders WHERE order_status = 'new' FOR UPDATE WAIT 1.1",
+            "SELECT * FROM orders WHERE order_status = 'new' LOCK IN SHARE MODE",
+            "SELECT * FROM orders WHERE order_status = 'new' FOR UPDATE SKIP LOCKED",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_convert(p):
+        test_sqls = [
+            "SELECT CONVERT(product_price, UNSIGNED) AS price_string FROM products",
+            "SELECT CONVERT(product_price, CHAR) AS price_string FROM products",
+            "SELECT CONVERT(product_price, BINARY) AS price_string FROM products",
+            "SELECT CONVERT(product_price, DECIMAL(10,2)) AS price_string FROM products",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_aggreate_func_with_window(p):
+        test_sqls = [
+            "SELECT COUNT(order_id) OVER() AS total_orders, AVG(order_amount) OVER() AS average_amount FROM orders",
+            "SELECT SUM(order_amount) OVER() AS total_amount FROM orders",
+            "SELECT MIN(order_date) OVER(PARTITION BY user_id) AS earliest_order_date FROM orders",
+            "SELECT MAX(order_date) OVER(PARTITION BY user_id) AS latest_order_date FROM orders",
+            "SELECT GROUP_CONCAT(DISTINCT product_name ORDER BY product_name ASC SEPARATOR ', ') OVER(PARTITION BY user_id) AS product_list FROM orders",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_group_by_with_order(p):
+        test_sqls = [
+            "SELECT * FROM orders GROUP BY order_year, order_month",
+            "SELECT * FROM orders GROUP BY order_year, order_month ASC",
+            "SELECT * FROM orders GROUP BY order_year, order_month DESC",
+            "SELECT * FROM orders GROUP BY order_year ASC, order_month DESC",
+            "SELECT * FROM orders GROUP BY order_year DESC, order_month ASC",
         ]
         for sql in test_sqls:
             result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)

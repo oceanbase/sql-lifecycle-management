@@ -27,9 +27,10 @@ class SortItem(Node):
 
 
 class ByItem(Node):
-    def __init__(self, line=None, pos=None, item=None):
+    def __init__(self, line=None, pos=None, item=None, order=None):
         super(ByItem, self).__init__(line, pos)
         self.item = item
+        self.order = order
 
     def accept(self, visitor, context):
         return visitor.visit_by_item(self, context)

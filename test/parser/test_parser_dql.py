@@ -340,9 +340,17 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
 
     def test_interval(self):
         sql = """
-        SELECT biz_id, operator, MAX(gmt_create) AS gmt_create FROM log WHERE type = ? AND gmt_create > date_sub(now(), INTERVAL ? DAY) GROUP BY biz_id
+        SELECT biz_id,
+        OPERATOR,
+               MAX(gmt_create) AS gmt_create
+        FROM log
+        WHERE TYPE = ?
+          AND gmt_create > date_sub(now(), INTERVAL ? DAY)
+        GROUP BY biz_id
         """
-        result = oceanbase_parser.parse(Utils.remove_sql_text_affects_parser(sql))
+        result = oceanbase_parser.parse(
+            Utils.remove_sql_text_affects_parser(sql), debug=True
+        )
         assert isinstance(result, Statement)
 
     def test_force_index(self):
@@ -419,8 +427,7 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         where 
             t1 > (CURRENT_DATE() - INTERVAL 30 day)+'0' 
         """
-        sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, debug=True)
         assert isinstance(result, Statement)
 
     def test_double_type(self):
@@ -459,7 +466,7 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         select date_format(date_format(date_add(biz_date, interval -1 day), '%y%m%d'), '%y%m%d') from t
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, debug=True)
         assert isinstance(result, Statement)
 
     def test_as(self):
@@ -467,7 +474,7 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         select t2.biz_date as biz_date, f1.calculate_field / t2.calculate_field1 as d_remain_rate from ( select t1.biz_date as biz_date , count(DISTINCT if(t1.biz_date_is_visit = '1', t1.user_id, null)) as calculate_field1 from ( select * from pets_user_miaowa_galileo_visit_user_di ) t1 where t1.appname in ('AppPetWXSS', 'HelloPet') and t1.biz_date between date_format(date_sub(date_format(date_sub(curdate(), interval 1 day), '%Y%m%d'), interval 1 day), '%Y%m%d') and date_format(date_sub(curdate(), interval 1 day), '%Y%m%d') group by t1.biz_date ) t2 left join ( select date_format(date_format(date_add(t1.biz_date, interval -1 day), '%Y%m%d'), '%Y%m%d') as biz_date , count(DISTINCT if(datediff(t1.biz_date, t1.last_visit_date) = 1 and t1.biz_date_is_visit = '1', t1.user_id, null)) as calculate_field from ( select * from pets_user_miaowa_galileo_visit_user_di ) t1 where t1.appname in ('AppPetWXSS', 'HelloPet') and t1.biz_date between date_format(date_sub(date_format(date_sub(curdate(), interval 1 day), '%Y%m%d'), interval 1 day), '%Y%m%d') and date_format(date_sub(curdate(), interval 1 day), '%Y%m%d') group by date_format(date_format(date_add(t1.biz_date, interval -1 day), '%Y%m%d'), '%Y%m%d') ) f1 on t2.biz_date = f1.biz_date order by biz_date asc limit 0, 1000
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, debug=True)
         assert isinstance(result, Statement)
 
     def test_single_quote_escape(self):

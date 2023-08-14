@@ -10,7 +10,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-from src.parser.tree.qualified_name import QualifiedName
 from src.parser.tree.statement import Statement
 from src.parser.tree.visitor import DefaultTraversalVisitor
 from .pmd_enum import PMDLevel
@@ -37,10 +36,18 @@ class PMDCountRule(AbstractRewriteRule):
 
             def visit_function_call(self, node, context):
                 name = node.name
-                if isinstance(name, QualifiedName) and name.parts[0].lower() == 'count':
+                if name.lower() == 'count':
                     self.match = True
                     # count(*)
                     if not node.arguments:
+                        self.match = False
+
+            def visit_aggregate_func(self, node, context):
+                name = node.name
+                if name.lower() == 'count':
+                    self.match = True
+                    # count(*)
+                    if len(node.arguments) != 0 and node.arguments[0] == "*":
                         self.match = False
 
         visitor = Visitor()

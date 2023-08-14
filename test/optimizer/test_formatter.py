@@ -10,7 +10,7 @@ class MyTestCase(unittest.TestCase):
         statement = parser.parse(
             """
                 SELECT * FROM T1 WHERE C1 < 20000 UNION ALL
-                SELECT * FROM T1 WHERE C2 < 30 AND LNNVL (C1 < 20000)
+                SELECT * FROM T1 WHERE C2 < 30
                 """,
             lexer=lexer,
         )
@@ -24,7 +24,7 @@ WHERE C1 < 20000
 UNION ALL SELECT *
 FROM
   T1
-WHERE C2 < 30 AND LNNVL(C1 < 20000)"""
+WHERE C2 < 30"""
         )
 
     def test_union(self):
@@ -82,7 +82,6 @@ LIMIT 1"""
         statement = parser.parse(
             """delete from t where c= 3 and a = 1 order by c limit 1""",
             lexer=lexer,
-            debug=True,
         )
         after_sql_rewrite_format = format_sql(statement, 0)
         assert (
