@@ -136,6 +136,12 @@ class Formatter(AstVisitor):
 
         return ret
 
+    def visit_by_item(self, node, unmangle_names):
+        argument = self.process(node.item, unmangle_names)
+        if node.order != None:
+            argument += " " + node.order.upper()
+        return argument
+
     def visit_sub_string(self, node, unmangle_names):
         if len(node.arguments) == 1:
             arguments = node.arguments[0]

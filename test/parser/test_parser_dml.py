@@ -611,6 +611,20 @@ delete from execution_log          where                (                       
             result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
             assert isinstance(result, Statement)
 
+    def test_group_by_with_order(p):
+        test_sqls = [
+            "SELECT * FROM orders GROUP BY order_year, order_month",
+            "SELECT * FROM orders GROUP BY order_year, order_month ASC",
+            "SELECT * FROM orders GROUP BY order_year, order_month DESC",
+            "SELECT * FROM orders GROUP BY order_year ASC, order_month DESC",
+            "SELECT * FROM orders GROUP BY order_year DESC, order_month ASC",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
 
 if __name__ == "__main__":
     unittest.main()

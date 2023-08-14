@@ -785,15 +785,9 @@ def p_where_opt(p):
 
 
 def p_group_by_opt(p):
-    r"""group_by_opt : GROUP BY grouping_expressions
+    r"""group_by_opt : GROUP BY by_list
     | empty"""
     p[0] = SimpleGroupBy(p.lineno(1), p.lexpos(1), columns=p[3]) if p[1] else None
-
-
-def p_grouping_expressions(p):
-    r"""grouping_expressions : value_expression
-    | grouping_expressions COMMA value_expression"""
-    _item_list(p)
 
 
 def p_having_opt(p):
@@ -1433,8 +1427,12 @@ def p_by_list(p):
 
 
 def p_by_item(p):
-    r"""by_item : expression"""
-    p[0] = ByItem(p.lineno(1), p.lexpos(1), item=p[1])
+    r"""by_item : expression
+    | expression order"""
+    if len(p) == 2:
+        p[0] = ByItem(p.lineno(1), p.lexpos(1), item=p[1])
+    else:
+        p[0] = ByItem(p.lineno(1), p.lexpos(1), item=p[1], order=p[2])
 
 
 def p_frame_clause_opt(p):
@@ -3181,8 +3179,3 @@ def p_error(p):
 parser = yacc.yacc(
     tabmodule="parser_table", start="command", debugfile="parser.out", optimize=True
 )
-# expression_parser = yacc.yacc(
-#     tabmodule="expression_parser_table",
-#     start="command",
-#     debugfile="expression_parser.out",
-# )

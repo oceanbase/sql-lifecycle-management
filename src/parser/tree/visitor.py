@@ -153,6 +153,9 @@ class AstVisitor(object):
     def visit_aggregate_func(self, node, context):
         return self.visit_expression(node, context)
 
+    def visit_by_item(self, node, context):
+        return self.visit_expression(node, context)
+
     def visit_sub_string(self, node, context):
         return self.visit_expression(node, context)
 
@@ -462,6 +465,10 @@ class DefaultTraversalVisitor(AstVisitor):
             self.process(argument, context)
         if node.over_clause:
             self.process(node.over_clause, context)
+        return None
+
+    def visit_by_item(self, node, context):
+        self.process(node.item, context)
         return None
 
     def visit_dereference_expression(self, node, context):
