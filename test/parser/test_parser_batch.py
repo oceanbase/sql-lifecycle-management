@@ -25,7 +25,7 @@ class MyTestCase(unittest.TestCase):
     def test_simple_sql(self):
         """Batch run case file to test sql parse"""
         f_path = os.getcwd()
-        file_name = f_path + '/mysql_testcase/sql_test_case_1.txt'
+        file_name = f_path + '/test/parser/mysql_testcase/sql_test_case_1.txt'
         read_encoding = get_encoding(file_name)
         try:
             with open(file_name, 'r', encoding=read_encoding) as f:
