@@ -19,7 +19,7 @@ from src.common.logger import Logger
 from src.consume.file_parse_common import get_encoding
 from src.consume.mysql_logparser_base import MysqlSlowLogParse
 from src.optimizer.formatter import format_sql
-from src.parser.mysql_parser import parser
+from src.parser.mysql_parser.parser import parser
 from src.parser.parser_utils import ParserUtils
 
 log_file = os.path.basename(sys.argv[0]).split(".")[0] + '.log'

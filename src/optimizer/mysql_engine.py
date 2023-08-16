@@ -11,7 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
 from src.optimizer.engine import Engine
-from src.parser.mysql_parser import parser
+from src.parser.mysql_parser.parser import parser
 from .rewrite_rule import mysql_rules, common_rules
 
 

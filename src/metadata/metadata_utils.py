@@ -16,7 +16,7 @@ from typing import List
 
 from src.metadata.catalog import Catalog, Statistics, Selectivity, Table, Index, Column
 from src.optimizer.optimizer_enum import IndexType, OptType
-from src.parser.mysql_parser import parser
+from src.parser.mysql_parser.parser import parser
 
 
 class MetaDataUtils(object):

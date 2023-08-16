@@ -18,7 +18,7 @@ from src.common.enum import OptimizationTypeEunm
 from src.common.utils import Utils
 from src.metadata.metadata_utils import MetaDataUtils
 from src.optimizer.optimizer import Optimizer as opt
-from src.parser.mysql_parser import parser
+from src.parser.mysql_parser.parser import parser
 from src.parser.parser_utils import ParserUtils
 
 NOTHING_TO_DO = 'Current table index is so good , nothing to do'
