@@ -88,10 +88,34 @@ class TimeLiteral(Literal):
         return "TIME '%s'" % self.value
 
 
+class DateLiteral(Literal):
+    def __init__(self, line=None, pos=None, value=None, unit=None):
+        super(DateLiteral, self).__init__(line, pos)
+        self.value = value
+        self.unit = unit
+
+    def accept(self, visitor, context):
+        return visitor.visit_date_literal(self, context)
+
+
+def convert_to_decimal(text):
+    if text.startswith("0x") or text.startswith("0X"):
+        return int(text, 16)
+    elif text.startswith("0b") or text.startswith("0B"):
+        return int(text, 2)
+    elif (text.startswith("x'") or text.startswith("X'")) and text.endswith("'"):
+        return int(text[2:-1], 16)
+    elif (text.startswith("b'") or text.startswith("B'")) and text.endswith("'"):
+        return int(text[2:-1], 2)
+    else:
+        return int(text)
+
+
 class LongLiteral(Literal):
     def __init__(self, line=None, pos=None, value=None):
         super(LongLiteral, self).__init__(line, pos)
-        self.value = int(value)
+        self.value = convert_to_decimal(value)
+        self.orgin = value
 
     def accept(self, visitor, context):
         return visitor.visit_long_literal(self, context)

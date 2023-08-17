@@ -36,6 +36,7 @@ from src.parser.tree.expression import (
     ComparisonExpression,
     Convert,
     ExistsPredicate,
+    Extract,
     FunctionCall,
     GroupConcat,
     InListExpression,
@@ -61,6 +62,7 @@ from src.parser.tree.grouping import SimpleGroupBy
 from src.parser.tree.join_criteria import JoinOn, JoinUsing, NaturalJoin
 from src.parser.tree.literal import (
     BooleanLiteral,
+    DateLiteral,
     DoubleLiteral,
     LongLiteral,
     NullLiteral,
@@ -72,7 +74,7 @@ from src.parser.tree.qualified_name import QualifiedName
 from src.parser.tree.query_specification import QuerySpecification
 from src.parser.tree.relation import AliasedRelation, Join
 from src.parser.tree.select import Select
-from src.parser.tree.select_item import SingleColumn
+from src.parser.tree.select_item import Partition, SingleColumn
 from src.parser.tree.set_operation import Except, Intersect, Union
 from src.parser.tree.sort_item import ByItem, PartitionByClause, SortItem
 from src.parser.tree.statement import Delete, Insert, Query, Update
@@ -86,6 +88,7 @@ from src.parser.mysql_parser.lexer import tokens
 
 tokens = tokens
 
+# fmt: off
 precedence = (
     ('right', 'ASSIGNMENTEQ'),
     ('left', 'PIPES', 'OR'),
@@ -93,7 +96,7 @@ precedence = (
     ('left', 'AND', 'ANDAND'),
     ('right', 'NOT'),
     ('left', 'BETWEEN', 'CASE', 'WHEN', 'THEN', 'ELSE'),
-    ('left', 'EQ', 'NE', 'LT', 'LE', 'GT', 'GE', 'IS', 'LIKE', 'RLIKE', 'REGEXP', 'IN'),
+    ('left', 'EQ', 'NULL_SAFE_EQ','NE', 'LT', 'LE', 'GT', 'GE', 'IS', 'LIKE', 'RLIKE', 'REGEXP', 'IN'),
     ('left', 'BIT_OR'),
     ('left', 'BIT_AND'),
     ('left', 'BIT_MOVE_LEFT', 'BIT_MOVE_RIGHT'),
@@ -589,6 +592,13 @@ def p_sort_item(p):
         )
 
 
+def p_date_lit(p):
+    r"""date_lit : DATE  string_lit
+    | TIME  string_lit
+    | TIMESTAMP  string_lit"""
+    p[0] = DateLiteral(p.lineno(1), p.lexpos(1), value=p[2], unit=p[1])
+
+
 def p_order(p):
     r"""order : ASC
     | DESC"""
@@ -841,9 +851,20 @@ def p_derived_column(p):
 
 
 def p_table_expression_opt(p):
-    r"""table_expression_opt : FROM relations force_index where_opt group_by_opt having_opt
+    r"""table_expression_opt : FROM relations partition index_hint_opt where_opt group_by_opt having_opt
+    | FROM relations index_hint_opt where_opt group_by_opt having_opt
     | empty"""
-    if p[1]:
+    if len(p) == 8:
+        p[0] = Node(
+            p.lineno(1),
+            p.lexpos(1),
+            from_=p[2],
+            partition=p[3],
+            where=p[5],
+            group_by=p[6],
+            having=p[7],
+        )
+    elif len(p) == 7:
         p[0] = Node(
             p.lineno(1), p.lexpos(1), from_=p[2], where=p[4], group_by=p[5], having=p[6]
         )
@@ -851,9 +872,54 @@ def p_table_expression_opt(p):
         p[0] = p[1]
 
 
-def p_force_index(p):
-    r"""force_index : FORCE INDEX LPAREN identifier RPAREN
+def p_partition(p):
+    r"""partition : PARTITION LPAREN identifiers RPAREN"""
+    p[0] = Partition(p.lineno(1), p.lexpos(1), partition_list=p[3])
+
+
+def p_index_hint_opt(p):
+    r"""index_hint_opt : index_hint_list
     | empty"""
+    pass
+
+
+def p_index_hint_list(p):
+    r"""index_hint_list : index_hint_list index_hint
+    | index_hint"""
+    pass
+
+
+def p_index_hint(p):
+    r"""index_hint : use_index
+    | force_or_ignore_index"""
+    pass
+
+
+def p_use_index(p):
+    r"""use_index : USE index_or_key LPAREN identifiers RPAREN
+    | USE index_or_key index_hint_for LPAREN identifiers RPAREN"""
+    pass
+
+
+def p_force_or_ignore_index(p):
+    r"""force_or_ignore_index : FORCE index_or_key LPAREN identifier RPAREN
+    | FORCE index_or_key index_hint_for LPAREN identifier RPAREN
+    | IGNORE index_or_key LPAREN identifier RPAREN
+    | IGNORE index_or_key index_hint_for LPAREN identifier RPAREN
+    """
+    pass
+
+
+def p_index_hint_for(p):
+    r"""index_hint_for : FOR JOIN
+    | FOR ORDER BY
+    | FOR GROUP BY"""
+    pass
+
+
+def p_index_or_key(p):
+    r"""index_or_key : INDEX
+    | KEY"""
     pass
 
 
@@ -866,7 +932,8 @@ def p_relations(p):
 # query expression
 def p_table_reference(p):
     r"""table_reference : table_primary
-    | joined_table"""
+    | joined_table
+    | DUAL"""
     p[0] = p[1]
 
 
@@ -890,14 +957,14 @@ def p_joined_table(p):
 
 
 def p_cross_join(p):
-    r"""cross_join : table_reference CROSS JOIN table_primary"""
+    r"""cross_join : table_reference CROSS JOIN table_reference join_criteria"""
     p[0] = Join(
         p.lineno(1),
         p.lexpos(1),
         join_type="CROSS",
         left=p[1],
         right=p[4],
-        criteria=None,
+        criteria=p[5],
     )
 
 
@@ -919,7 +986,7 @@ def p_qualified_join(p):
 
 
 def p_natural_join(p):
-    r"""natural_join : table_reference NATURAL join_type JOIN table_primary"""
+    r"""natural_join : table_reference NATURAL join_type JOIN table_reference join_criteria"""
     right = p[5]
     criteria = NaturalJoin()
     join_type = "INNER"
@@ -947,7 +1014,7 @@ def p_join_type(p):
 
 def p_join_criteria(p):
     r"""join_criteria : ON search_condition
-    | USING LPAREN join_columns RPAREN
+    | USING LPAREN identifiers RPAREN
     | empty"""
     if p.slice[1].type == "ON":
         p[0] = JoinOn(expression=p[2])
@@ -958,8 +1025,8 @@ def p_join_criteria(p):
 
 
 def p_identifiers(p):
-    r"""join_columns : identifier
-    | join_columns COMMA identifier"""
+    r"""identifiers : identifier
+    | identifiers COMMA identifier"""
     _item_list(p)
 
 
@@ -1009,11 +1076,12 @@ def p_expression(p):
 def p_search_condition(p):
     r"""search_condition : boolean_term
     | search_condition OR boolean_term
+    | search_condition PIPES boolean_term
     | search_condition logical_and boolean_term
     | search_condition XOR boolean_term"""
     if len(p) == 2:
         p[0] = p[1]
-    elif p.slice[2].type == "OR":
+    elif p.slice[2].type == "OR" or p.slice[2].type == "PIPES":
         p[0] = LogicalBinaryExpression(
             p.lineno(1), p.lexpos(1), type="OR", left=p[1], right=p[3]
         )
@@ -1165,8 +1233,13 @@ def p_escape_opt(p):
 
 def p_string_lit(p):
     r"""string_lit : SCONST
-    | QUOTED_IDENTIFIER"""
-    p[0] = StringLiteral(p.lineno(1), p.lexpos(1), value=p[1])
+    | QUOTED_IDENTIFIER
+    | string_lit SCONST
+    | string_lit QUOTED_IDENTIFIER"""
+    if len(p) == 2:
+        p[0] = StringLiteral(p.lineno(1), p.lexpos(1), value=p[1][1:-1])
+    else:
+        p[0] = StringLiteral(p.lineno(1), p.lexpos(1), value=p[1].value + p[2][1:-1])
 
 
 def p_in_opt(p):
@@ -1255,7 +1328,8 @@ def p_factor(p):
     | MINUS factor %prec NEG
     | PLUS factor %prec NEG
     | EXCLA_MARK factor
-    | base_primary_expression"""
+    | base_primary_expression
+    | base_primary_expression COLLATE identifier"""
     if len(p) == 3:
         p[0] = ArithmeticUnaryExpression(
             p.lineno(1), p.lexpos(1), value=p[2], sign=p[1]
@@ -1268,6 +1342,7 @@ def p_base_primary_expression(p):
     r"""base_primary_expression : value
     | SINGLE_AT_IDENTIFIER
     | qualified_name
+    | date_lit
     | subquery
     | function_call
     | LPAREN call_list RPAREN
@@ -1509,15 +1584,12 @@ def p_default_opt(p):
 
 def p_value(p):
     r"""value : NULL
-    | SCONST
     | figure
     | boolean_value
-    | QUOTED_IDENTIFIER
+    | string_lit
     | QM"""
     if p.slice[1].type == "NULL":
         p[0] = NullLiteral(p.lineno(1), p.lexpos(1))
-    elif p.slice[1].type == "SCONST" or p.slice[1].type == "QUOTED_IDENTIFIER":
-        p[0] = StringLiteral(p.lineno(1), p.lexpos(1), p[1][1:-1])
     else:
         p[0] = p[1]
 
@@ -1546,6 +1618,7 @@ def p_operator_func_call(p):
     | LEAST LPAREN expression COMMA call_list RPAREN
     | INTERVAL LPAREN expression COMMA call_list RPAREN
     | GREATEST LPAREN expression COMMA call_list RPAREN
+    | COALESCE LPAREN expression RPAREN
     | COALESCE LPAREN expression COMMA call_list RPAREN
     """
     if len(p) == 5:
@@ -1647,6 +1720,7 @@ def p_time_function_call(p):
     | utc_func
     | week_or_year_func
     | sys_date_func
+    | extract_func
     | add_or_sub_date_func
     | date_one_para_func
     | date_two_para_func"""
@@ -1732,8 +1806,8 @@ def p_timestamp_func(p):
 
 
 def p_unix_timestamp_func(p):
-    r"""unix_timestamp_func : UNIXTIMESTAMP LPAREN expression RPAREN
-    | UNIXTIMESTAMP LPAREN RPAREN"""
+    r"""unix_timestamp_func : UNIX_TIMESTAMP LPAREN expression RPAREN
+    | UNIX_TIMESTAMP LPAREN RPAREN"""
     if len(p) <= 5:
         p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[])
     else:
@@ -1785,6 +1859,11 @@ def p_add_or_sub_date_func(p):
     | DATE_SUB LPAREN expression COMMA time_interval RPAREN
     """
     p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[5]])
+
+
+def p_extract_func(p):
+    r"""extract_func : EXTRACT LPAREN time_unit FROM expression RPAREN"""
+    p[0] = Extract(p.lineno(1), p.lexpos(1), field=p[3], expression=p[5])
 
 
 def p_date_one_para_func(p):
@@ -1852,7 +1931,7 @@ def p_string_operator_func_call(p):
     | INSTR LPAREN expression COMMA expression RPAREN
     | LCASE LPAREN expression RPAREN
     | LEFT LPAREN expression COMMA expression RPAREN
-    | LENGTH LPAREN expression COMMA expression RPAREN
+    | LENGTH LPAREN expression RPAREN
     | LOAD_FILE LPAREN expression RPAREN
     | LOCATE LPAREN expression COMMA expression RPAREN
     | LOCATE LPAREN expression COMMA expression COMMA expression RPAREN
@@ -1919,8 +1998,9 @@ def p_weight_string_func_call(p):
 
 def p_trim_func_call(p):
     r"""trim_func_call : TRIM LPAREN remstr_position expression FROM expression RPAREN
-    | TRIM LPAREN remstr_position FROM expression RPAREN
+    | TRIM LPAREN expression FROM expression RPAREN
     | TRIM LPAREN FROM expression RPAREN
+    | TRIM LPAREN expression RPAREN
     """
     if len(p) == 8:
         p[0] = TrimFunc(
@@ -1928,11 +2008,15 @@ def p_trim_func_call(p):
         )
     elif len(p) == 7:
         p[0] = TrimFunc(
-            p.lineno(1), p.lexpos(1), remstr_position="BOTH", remstr=p[4], arg=p[6]
+            p.lineno(1), p.lexpos(1), remstr_position="BOTH", remstr=p[4], arg=p[5]
+        )
+    elif len(p) == 6:
+        p[0] = TrimFunc(
+            p.lineno(1), p.lexpos(1), remstr_position="BOTH", remstr=' ', arg=p[4]
         )
     else:
         p[0] = TrimFunc(
-            p.lineno(1), p.lexpos(1), remstr_position="BOTH", remstr=' ', arg=p[6]
+            p.lineno(1), p.lexpos(1), remstr_position="BOTH", remstr=' ', arg=p[3]
         )
 
 
@@ -2226,7 +2310,7 @@ def p_replication_func_call(p):
 
 def p_aggregate_func_call(p):
     r"""aggreate_func_call : aggreate_func_without_distinct
-    | aggreate_func_wiht_distinct
+    | aggreate_func_with_distinct
     | group_concat_func_call
     """
     p[0] = p[1]
@@ -2266,7 +2350,7 @@ def p_aggreate_func_without_distinct(p):
 
 
 def p_aggreate_func_with_distinct(p):
-    r"""aggreate_func_wiht_distinct : AVG LPAREN distinct_opt expression RPAREN over_clause_opt
+    r"""aggreate_func_with_distinct : AVG LPAREN distinct_opt expression RPAREN over_clause_opt
     | COUNT LPAREN DISTINCT call_list RPAREN over_clause_opt
     | JSON_ARRAYAGG LPAREN distinct_opt expression RPAREN over_clause_opt
     | MAX LPAREN distinct_opt expression RPAREN over_clause_opt
@@ -2355,16 +2439,20 @@ def p_case_specification(p):
 
 
 def p_simple_case(p):
-    r"""simple_case : CASE expression_opt when_clauses else_opt END"""
-    p[0] = SimpleCaseExpression(
-        p.lineno(1), p.lexpos(1), operand=p[2], when_clauses=p[3], default_value=p[4]
-    )
-
-
-def p_expression_opt(p):
-    r"""expression_opt : expression
-    | empty"""
-    p[0] = p[1]
+    r"""simple_case : CASE expression when_clauses else_opt END
+    | CASE when_clauses else_opt END"""
+    if len(p) == 6:
+        p[0] = SimpleCaseExpression(
+            p.lineno(1),
+            p.lexpos(1),
+            operand=p[2],
+            when_clauses=p[3],
+            default_value=p[4],
+        )
+    else:
+        p[0] = SimpleCaseExpression(
+            p.lineno(1), p.lexpos(1), when_clauses=p[2], default_value=p[3]
+        )
 
 
 def p_cast_func_call(p):
@@ -2408,7 +2496,8 @@ def p_when_clauses(p):
 
 def p_charset_name(p):
     r"""charset_name : string_lit
-    | BINARY"""
+    | BINARY
+    | identifier"""
     p[0] = p[1]
 
 
@@ -2545,7 +2634,8 @@ def p_comparison_operator(p):
     | LT
     | LE
     | GT
-    | GE"""
+    | GE
+    | NULL_SAFE_EQ"""
     p[0] = p[1]
 
 
@@ -2600,10 +2690,12 @@ def p_non_reserved(p):
     | CAST
     | CELIING
     | CELL
+    | CEILING
     | CHARACTER_LENGTH
     | CHAR_LENGTH
     | COERCIBILITY
     | COLUMN
+    | COPY
     | COMPRESS
     | CONCAT_WS
     | CONNECTION_ID
@@ -2727,6 +2819,7 @@ def p_non_reserved(p):
     | PERIOD_ADD
     | PERIOD_DIFF
     | PI
+    | POSITION
     | POW
     | POWER
     | QUOTE
@@ -2742,6 +2835,7 @@ def p_non_reserved(p):
     | RETURN
     | RETURNS
     | ROLES_GRAPHML
+    | ROUND
     | RPAD
     | RTRIM
     | SCHEMA
@@ -2781,6 +2875,7 @@ def p_non_reserved(p):
     | TIMEDIFF
     | TIME_FORMAT
     | TIME_TO_SEC
+    | TOP
     | TO_BASE64
     | TO_DAYS
     | TO_SECONDS
@@ -2791,12 +2886,12 @@ def p_non_reserved(p):
     | UNDO
     | UNDO_BUFFER_SIZE
     | UNHEX
+    | UNIQUE
     | UNINSTALL
-    | UNIXTIMESTAMP
+    | UNIX_TIMESTAMP
     | UNLOCK
     | UPDATEXML
     | UPPER
-    | USE
     | UUID
     | UUID_SHORT
     | UUID_TO_BIN
@@ -2933,6 +3028,7 @@ def p_not_keyword_token(p):
     | LOCKED
     | LOGS
     | MASTER
+    | MAX
     | MAX_ROWS
     | MB
     | MEMBER
@@ -2951,6 +3047,7 @@ def p_not_keyword_token(p):
     | NEXT
     | NODEGROUP
     | NONE
+    | NOW
     | NOWAIT
     | NULLS
     | NVARCHAR
@@ -2999,8 +3096,10 @@ def p_not_keyword_token(p):
     | RESUME
     | REVERSE
     | ROLLBACK
+    | ROWS
     | ROW_COUNT
     | ROW_FORMAT
+    | ROW_NUMBER
     | RTREE
     | SAVEPOINT
     | SECOND
@@ -3009,6 +3108,7 @@ def p_not_keyword_token(p):
     | SESSION
     | SHARE
     | SHUTDOWN
+    | SIGN
     | SIGNED
     | SIMPLE
     | SLAVE
@@ -3035,6 +3135,7 @@ def p_not_keyword_token(p):
     | STORAGE
     | SUBJECT
     | SUPER
+    | SUM
     | TABLES
     | TABLESPACE
     | TABLE_CHECKSUM
@@ -3065,8 +3166,12 @@ def p_not_keyword_token(p):
 
 
 def p_time_interval(p):
-    r"""time_interval : INTERVAL expression time_unit"""
-    p[0] = TimeLiteral(p.lineno(1), p.lexpos(1), value=p[2], unit=p[3])
+    r"""time_interval : INTERVAL expression time_unit
+    | QM"""
+    if len(p) == 4:
+        p[0] = TimeLiteral(p.lineno(1), p.lexpos(1), value=p[2], unit=p[3])
+    else:
+        p[0] = p[1]
 
 
 def p_time_unit(p):
