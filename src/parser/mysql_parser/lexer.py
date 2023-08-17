@@ -38,6 +38,7 @@ tokens = (
         'LE',
         'EQ',
         'NE',
+        'NULL_SAFE_EQ',
         'BIT_OR',
         'BIT_AND',
         'BIT_XOR',
@@ -48,7 +49,7 @@ tokens = (
         'PIPES',
         'SLASH',
         'ASTERISK',
-        'PERCENT' 'NON_RESERVED',
+        'PERCENT',
         'NUMBER',
         'FRACTION',
         'QM',
@@ -72,6 +73,7 @@ t_LT = r'<'
 t_LE = r'<='
 t_GT = r'>'
 t_GE = r'>='
+t_NULL_SAFE_EQ = r'<=>'
 t_PERIOD = r'\.'
 t_COMMA = r','
 t_PLUS = r'\+'
@@ -109,14 +111,14 @@ def t_DOUBLE(t):
 
 
 def t_NUMBER(t):
-    r'\d+'
+    r"""(0[xX][0-9a-fA-F]+)|([xX]'[0-9a-fA-F]+')|(0[bB][01]+)|([bB]'[0-1]+')|(\d+)"""
     t.type = "NUMBER"
     return t
 
 
 # String literal
 def t_SCONST(t):
-    r"""'(\\+'?|[^'\\]|[']{2})*'"""
+    r"""'(\\['\\]|[^']|[']{2})*'"""
     t.type = "SCONST"
     return t
 
@@ -131,13 +133,13 @@ def t_IDENTIFIER(t):
 
 # start with single @
 def t_SINGLE_AT_IDENTIFIER(t):
-    r"""@[^@][\w@\u4e00-\u9fa5]+"""
+    r"""@[^@][\w@\u4e00-\u9fa5]*"""
     t.type = "SINGLE_AT_IDENTIFIER"
     return t
 
 
 def t_QUOTED_IDENTIFIER(t):
-    r'"(\\+"?|[^"\\]|["]{2})*"'
+    r'"(\\["\\]|[^"]|["]{2})*"'
     t.type = "QUOTED_IDENTIFIER"
     return t
 

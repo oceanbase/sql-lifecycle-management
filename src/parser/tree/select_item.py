@@ -41,3 +41,12 @@ class SingleColumn(SelectItem):
 
     def __str__(self):
         return str(self.expression) + (" " + self.alias) if self.alias else ""
+
+
+class Partition(Node):
+    def __init__(self, line=None, pos=None, partition_list=Node):
+        super(Partition, self).__init__(line, pos)
+        self.partition_list = partition_list
+
+    def accept(self, visitor, context):
+        return visitor.visit_single_column(self, context)
