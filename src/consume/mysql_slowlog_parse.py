@@ -19,7 +19,8 @@ from src.common.logger import Logger
 from src.consume.file_parse_common import get_encoding
 from src.consume.mysql_logparser_base import MysqlSlowLogParse
 from src.optimizer.formatter import format_sql
-from src.parser.mysql_parser.parser import parser
+from src.parser.mysql_parser.parser import parser as mysql_parser
+from src.parser.mysql_parser.lexer import lexer as mysql_lexer
 from src.parser.parser_utils import ParserUtils
 
 log_file = os.path.basename(sys.argv[0]).split(".")[0] + '.log'
@@ -62,7 +63,7 @@ class SlowQueryParser(object):
         ):
             try:
                 statement_node = ParserUtils.parameterized_query(
-                    parser.parse(statement)
+                    mysql_parser.parse(statement, lexer=mysql_lexer)
                 )
                 statement = format_sql(statement_node, 0)
             except Exception as e:

@@ -18,7 +18,8 @@ from src.common.enum import OptimizationTypeEunm
 from src.common.utils import Utils
 from src.metadata.metadata_utils import MetaDataUtils
 from src.optimizer.optimizer import Optimizer as opt
-from src.parser.mysql_parser.parser import parser
+from src.parser.mysql_parser.parser import parser as mysql_parser
+from src.parser.mysql_parser.lexer import lexer as mysql_lexer
 from src.parser.parser_utils import ParserUtils
 
 NOTHING_TO_DO = 'Current table index is so good , nothing to do'
@@ -191,7 +192,9 @@ class Parse(BaseAPI):
                description: parse result
         """
         sql_text = Utils.remove_sql_text_affects_parser(self.sql_text)
-        visitor = ParserUtils.format_statement(parser.parse(sql_text))
+        visitor = ParserUtils.format_statement(
+            mysql_parser.parse(sql_text, lexer=mysql_lexer)
+        )
         table_list = visitor.table_list
         column_list = []
         temp_table_list = []
