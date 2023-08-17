@@ -11,7 +11,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
 from src.optimizer.optimizer import Optimizer
-from src.parser.mysql_parser.parser import parser
+from src.parser.mysql_parser.parser import parser as mysql_parser
+from src.parser.mysql_parser.lexer import lexer as mysql_lexer
 from src.parser.parser_utils import ParserUtils
 from src.common.utils import Utils
 
@@ -29,7 +30,9 @@ class ApiUtils(object):
             after_sql_rewrite,
         ) = optimizer.optimize(sql_text, catalog_object)
 
-        visitor = ParserUtils.format_statement(parser.parse(sql_text))
+        visitor = ParserUtils.format_statement(
+            mysql_parser.parse(sql_text, lexer=mysql_lexer)
+        )
         table_list = []
         for _table in visitor.table_list:
             table_list.append(_table['table_name'])
