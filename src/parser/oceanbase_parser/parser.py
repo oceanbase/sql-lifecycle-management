@@ -794,6 +794,7 @@ def p_where_opt(p):
 
 def p_group_by_opt(p):
     r"""group_by_opt : GROUP BY by_list
+    | GROUP BY by_list WITH ROLLUP
     | empty"""
     p[0] = SimpleGroupBy(p.lineno(1), p.lexpos(1), columns=p[3]) if p[1] else None
 
@@ -853,23 +854,13 @@ def p_derived_column(p):
 
 
 def p_table_expression_opt(p):
-    r"""table_expression_opt : FROM relations partition index_hint_opt where_opt group_by_opt having_opt
-    | FROM relations index_hint_opt where_opt group_by_opt having_opt
+    r"""table_expression_opt : FROM relations partition where_opt group_by_opt having_opt
+    | FROM relations where_opt group_by_opt having_opt
     | empty"""
-    if len(p) == 8:
-        p[0] = Node(
-            p.lineno(1),
-            p.lexpos(1),
-            from_=p[2],
-            partition=p[3],
-            where=p[5],
-            group_by=p[6],
-            having=p[7],
-        )
-    elif len(p) == 7:
-        p[0] = Node(
-            p.lineno(1), p.lexpos(1), from_=p[2], where=p[4], group_by=p[5], having=p[6]
-        )
+    if len(p) == 7:
+        p[0] = Node(p.lineno(1),p.lexpos(1),from_=p[2],partition=p[3],where=p[4],group_by=p[5],having=p[6])
+    elif len(p) == 6:
+        p[0] = Node(p.lineno(1), p.lexpos(1), from_=p[2], where=p[3], group_by=p[4], having=p[5])
     else:
         p[0] = p[1]
 
@@ -877,52 +868,6 @@ def p_table_expression_opt(p):
 def p_partition(p):
     r"""partition : PARTITION LPAREN identifiers RPAREN"""
     p[0] = Partition(p.lineno(1), p.lexpos(1), partition_list=p[3])
-
-
-def p_index_hint_opt(p):
-    r"""index_hint_opt : index_hint_list
-    | empty"""
-    pass
-
-
-def p_index_hint_list(p):
-    r"""index_hint_list : index_hint_list index_hint
-    | index_hint"""
-    pass
-
-
-def p_index_hint(p):
-    r"""index_hint : use_index
-    | force_or_ignore_index"""
-    pass
-
-
-def p_use_index(p):
-    r"""use_index : USE index_or_key LPAREN identifiers RPAREN
-    | USE index_or_key index_hint_for LPAREN identifiers RPAREN"""
-    pass
-
-
-def p_force_or_ignore_index(p):
-    r"""force_or_ignore_index : FORCE index_or_key LPAREN identifier RPAREN
-    | FORCE index_or_key index_hint_for LPAREN identifier RPAREN
-    | IGNORE index_or_key LPAREN identifier RPAREN
-    | IGNORE index_or_key index_hint_for LPAREN identifier RPAREN
-    """
-    pass
-
-
-def p_index_hint_for(p):
-    r"""index_hint_for : FOR JOIN
-    | FOR ORDER BY
-    | FOR GROUP BY"""
-    pass
-
-
-def p_index_or_key(p):
-    r"""index_or_key : INDEX
-    | KEY"""
-    pass
 
 
 def p_relations(p):
@@ -1032,13 +977,62 @@ def p_identifiers(p):
 
 # Potentially Aliased table_reference
 def p_aliased_relation(p):
-    r"""aliased_relation : qualified_name alias_opt"""
+    r"""aliased_relation : qualified_name alias_opt index_hint_opt"""
     rel = Table(p.lineno(1), p.lexpos(1), name=p[1])
     if p[2]:
         p[0] = AliasedRelation(p.lineno(1), p.lexpos(1), relation=rel, alias=p[2])
     else:
         p[0] = rel
 
+def p_index_hint_opt(p):
+    r"""index_hint_opt : index_hint_list
+    | empty"""
+    pass
+
+
+def p_index_hint_list(p):
+    r"""index_hint_list : index_hint_list index_hint
+    | index_hint"""
+    pass
+
+
+def p_index_hint(p):
+    r"""index_hint : use_index
+    | force_or_ignore_index"""
+    pass
+
+
+def p_use_index(p):
+    r"""use_index : USE index_or_key LPAREN index_name RPAREN
+    | USE index_or_key index_hint_for LPAREN index_name RPAREN"""
+    pass
+
+
+def p_force_or_ignore_index(p):
+    r"""force_or_ignore_index : FORCE index_or_key LPAREN index_name RPAREN
+    | FORCE index_or_key index_hint_for LPAREN index_name RPAREN
+    | IGNORE index_or_key LPAREN index_name RPAREN
+    | IGNORE index_or_key index_hint_for LPAREN index_name RPAREN
+    """
+    pass
+
+
+def p_index_hint_for(p):
+    r"""index_hint_for : FOR JOIN
+    | FOR ORDER BY
+    | FOR GROUP BY"""
+    pass
+
+
+def p_index_or_key(p):
+    r"""index_or_key : INDEX
+    | KEY"""
+    pass
+
+def p_index_name(p):
+    r"""index_name : PRIMARY
+    | identifier"""
+    pass
 
 def p_derived_table(p):
     r"""derived_table : subquery alias_opt"""
@@ -1098,7 +1092,7 @@ def p_search_condition(p):
 def p_boolean_term(p):
     r"""boolean_term : NOT search_condition
     | MATCH LPAREN select_items RPAREN AGAINST LPAREN value_expression full_text_search_modifier_opt RPAREN
-    | SINGLE_AT_IDENTIFIER ASSIGNMENTEQ search_condition
+    | user_define_variable ASSIGNMENTEQ search_condition
     | boolean_factor"""
     if len(p) == 2:
         p[0] = p[1]
@@ -1139,7 +1133,7 @@ def p_boolean_factor(p):
     | boolean_factor comparison_operator ANY subquery
     | boolean_factor comparison_operator SOME subquery
     | boolean_factor comparison_operator ALL subquery
-    | boolean_factor comparison_operator SINGLE_AT_IDENTIFIER ASSIGNMENTEQ predicate
+    | boolean_factor comparison_operator user_define_variable ASSIGNMENTEQ predicate
     | predicate"""
     if len(p) == 4:
         p[0] = ComparisonExpression(
@@ -1183,13 +1177,13 @@ def p_sounds_predicate(p):
     r"""sounds_predicate : value_expression SOUNDS LIKE factor"""
     p[0] = SoundLike(p.lineno(1), p.lexpos(1), arguments=[p[1], p[2]])
 
-
 def p_in_predicate(p):
-    r"""in_predicate : value_expression in_opt in_value"""
-    p[0] = InPredicate(
-        p.lineno(1), p.lexpos(1), is_not=p[2], value=p[1], value_list=p[3]
-    )
-
+    r"""in_predicate : value_expression IN in_value
+    | value_expression NOT IN in_value"""
+    if len(p)==5:
+        p[0] = InPredicate(p.lineno(1), p.lexpos(1), is_not=True, value=p[1], value_list=p[4])
+    else:
+        p[0] = InPredicate(p.lineno(1), p.lexpos(1), is_not=False, value=p[1], value_list=p[3])
 
 def p_like_predicate(p):
     r"""like_predicate : value_expression like_opt value_expression escape_opt"""
@@ -1241,11 +1235,6 @@ def p_string_lit(p):
     else:
         p[0] = StringLiteral(p.lineno(1), p.lexpos(1), value=p[1].value + p[2][1:-1])
 
-
-def p_in_opt(p):
-    r"""in_opt : NOT IN
-    | IN"""
-    p[0] = p.slice[1].type == "NOT"
 
 
 def p_in_value(p):
@@ -1340,7 +1329,7 @@ def p_factor(p):
 
 def p_base_primary_expression(p):
     r"""base_primary_expression : value
-    | SINGLE_AT_IDENTIFIER
+    | user_define_variable 
     | qualified_name
     | date_lit
     | subquery
@@ -1351,6 +1340,7 @@ def p_base_primary_expression(p):
     | cast_func_call
     | window_func_call
     | oceanbase_func_call"""
+
     if p.slice[1].type == "qualified_name":
         p[0] = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
     elif len(p) == 4:
@@ -1358,19 +1348,43 @@ def p_base_primary_expression(p):
     else:
         p[0] = p[1]
 
+def p_user_define_variable(p):
+    r"""user_define_variable : SINGLE_AT_IDENTIFIER
+    |  SINGLE_AT_IDENTIFIER PERIOD variables
+    """
+    if len(p) == 4:
+        parts=[p[1]]
+        parts.extend(p[3].parts)
+        p[0]=QualifiedName(parts=parts)
+    else:
+        p[0] = QualifiedName(parts=[p[1]])
+
+def p_variables(p):
+    r"""variables : variables PERIOD identifier
+    | identifier"""
+    if len(p) == 4:
+        p[1].parts.append(p[3])
+        p[0]=p[1]
+    else:
+        p[0] = QualifiedName(parts=[p[1]])
 
 def p_oceanbase_func_call(p):
     r"""oceanbase_func_call : HOST_IP LPAREN RPAREN
     | USEC_TO_TIME LPAREN expression RPAREN
+    | TIME_TO_USEC LPAREN expression RPAREN
+    | NVL LPAREN expression COMMA expression RPAREN
+    | ORA_DECODE LPAREN expression COMMA call_list RPAREN
     """
-    if len(p) == 4:
-        p[0] = FunctionCall(
-            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[]
-        )
-    else:
-        p[0] = FunctionCall(
-            p.lineno(1), p.lexpos(1), name=p[1], distinct=False, arguments=[p[3]]
-        )
+    arguments,call_list= [],[]
+    length=len(p)
+    if p.slice[length - 2].type == "call_list":
+        call_list=p[length-2]
+        length = length - 2
+    if length > 4:
+        for i in range(3, length, 2):
+            arguments.append(p[i])
+        arguments.extend(call_list)
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
 
 
 def p_exists_func_call(p):
@@ -1672,7 +1686,7 @@ def p_mathematical_func_call(p):
     | ATAN LPAREN expression RPAREN
     | ATAN LPAREN expression COMMA expression RPAREN
     | ATAN2 LPAREN expression COMMA expression RPAREN
-    | CELL LPAREN expression RPAREN
+    | CEIL LPAREN expression RPAREN
     | CEILING LPAREN expression RPAREN
     | CONY LPAREN expression COMMA expression COMMA expression RPAREN
     | COS LPAREN expression RPAREN
@@ -1870,7 +1884,7 @@ def p_add_or_sub_date_func(p):
     | DATE_ADD LPAREN expression COMMA time_interval RPAREN
     | DATE_SUB LPAREN expression COMMA time_interval RPAREN
     """
-    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[5]])
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3],p[5]])
 
 
 def p_extract_func(p):
@@ -1955,7 +1969,7 @@ def p_string_operator_func_call(p):
     | OCT LPAREN expression RPAREN
     | OCTET_LENGTH LPAREN expression RPAREN
     | ORD LPAREN expression RPAREN
-    | POSITION LPAREN expression IN expression RPAREN
+    | POSITION LPAREN value_expression IN expression RPAREN
     | QUOTE LPAREN expression RPAREN
     | REPEAT LPAREN expression COMMA expression RPAREN
     | REPLACE LPAREN expression COMMA expression COMMA expression RPAREN
@@ -1979,12 +1993,14 @@ def p_string_operator_func_call(p):
         p[0] = p[1]
     else:
         arguments = []
+        call_list=[]
         if p.slice[length - 2].type == "call_list":
-            arguments.extend(p[length - 2])
+            call_list=p[length-2]
             length = length - 2
         if length > 4:
             for i in range(3, length, 2):
                 arguments.append(p[i])
+            arguments.extend(call_list)
         p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
 
 
@@ -2214,12 +2230,13 @@ def p_search_json_func_call(p):
     | JSON_VALUE LPAREN expression COMMA expression RPAREN
     """
     length = len(p)
-    arguments = []
+    arguments, call_list = [],[]
     if p.slice(length - 2).type == "call_list":
-        arguments.extend(p[length - 2])
+        call_list=p[length - 2]
         length -= 2
     for i in range(3, length, 2):
         arguments.append(p[i])
+    arguments.extend(call_list)
     p[0] = FunctionCall(p.lineno(1), p.lexpos(1), args=arguments)
 
 
@@ -2246,11 +2263,13 @@ def p_modify_json_func_call(p):
     """
     length = len(p)
     arguments = []
+    call_list=[]
     if p.slice(length - 2).type == "call_list":
-        arguments.extend(p[length - 2])
+        call_list=p[length - 2]
         length -= 2
     for i in range(3, length, 2):
         arguments.append(p[i])
+    arguments.extend(call_list)
     p[0] = FunctionCall(p.lineno(1), p.lexpos(1), args=arguments)
 
 
@@ -2539,6 +2558,7 @@ def p_cast_field(p):
     | YEAR
     | DATETIME field_len_opt
     | DECIMAL float_opt
+    | DEC float_opt
     | TIME field_len_opt
     | SIGNED integer_opt
     | UNSIGNED integer_opt
@@ -2562,7 +2582,7 @@ def p_cast_field(p):
     elif p.slice[1].type == 'DATETIME':
         field.set_tp(SQLType.DATETIME, "DATETIME")
         field.set_length(p[2])
-    elif p.slice[1].type == 'DECIMAL':
+    elif p.slice[1].type == 'DECIMAL' or p.slice[1].type == 'DEC':
         field.set_tp(SQLType.DECIMAL, "DEMCIMAL")
         field.set_length(p[2]["length"])
         field.set_decimal(p[2]["decimal"])
@@ -2589,7 +2609,8 @@ def p_field_len_opt(p):
     r"""field_len_opt : LPAREN NUMBER RPAREN
     | empty"""
     if len(p) == 4:
-        p[0] = p[2].value & 0xFFFFFFFF  # convert to unsigned int
+        field_len=LongLiteral(p.lineno(1), p.lexpos(1),p[2])
+        p[0] =field_len.value& 0xFFFFFFFF  # convert to unsigned int
     p[0] = UNSPECIFIEDLENGTH
 
 
@@ -2754,7 +2775,7 @@ def p_non_reserved(p):
     | CAST
     | CASCADED
     | CATALOG_NAME
-    | CELL
+    | CEIL
     | CEILING
     | CHAIN
     | CHANGED
@@ -3034,8 +3055,10 @@ def p_non_reserved(p):
     | KVCACHE
     | LANGUAGE
     | LAST
+    | LAG
     | LAST_DAY
     | LAST_INSERT_ID
+    | LAST_VALUE
     | LCASE
     | LEADER
     | LEAK
@@ -3164,6 +3187,7 @@ def p_non_reserved(p):
     | NULLS
     | NULLIF
     | NVARCHAR
+    | NVL
     | OAD_FILE
     | OCCUR
     | OCT
@@ -3181,9 +3205,11 @@ def p_non_reserved(p):
     | OPEN
     | OPTIONS
     | OR
+    | ORA_DECODE
     | ORD
     | ORIG_DEFAULT
     | OUTLINE
+    | OVER
     | OWER
     | OWNER
     | PACE
@@ -3295,6 +3321,7 @@ def p_non_reserved(p):
     | ROTATE
     | ROUTINE
     | ROUND
+    | ROW
     | ROWS
     | ROW_COUNT
     | ROW_FORMAT
@@ -3574,7 +3601,8 @@ def p_quoted_identifier(p):
 
 def p_figure(p):
     r"""figure : FRACTION
-    | NUMBER"""
+    | NUMBER
+    | HEX_NUMBER"""
     if p.slice[1].type == "FRACTION":
         p[0] = DoubleLiteral(p.lineno(1), p.lexpos(1), p[1])
     else:
