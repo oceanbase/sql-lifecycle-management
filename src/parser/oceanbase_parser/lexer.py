@@ -10,6 +10,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
+import re
 from ply import lex
 
 from src.parser.oceanbase_parser.reserved import reserved, nonreserved
@@ -52,6 +53,7 @@ tokens = (
         'IGNORE',
         'FRACTION',
         'NUMBER',
+        'HEX_NUMBER',
     ]
     + list(reserved)
     + list(nonreserved)
@@ -94,17 +96,11 @@ t_EXCLA_MARK = r'!'
 
 
 def t_DOUBLE(t):
-    r"""(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\d*(?:\.\d+)(?:[eE][+-]?\d+)?)"""
+    r"[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?|[-+]?[0-9]+([eE][-+]?[0-9]+)"
     if 'e' in t.value or 'E' in t.value or '.' in t.value:
         t.type = "FRACTION"
     else:
         t.type = "NUMBER"
-    return t
-
-
-def t_INTEGER(t):
-    r"""(0[xX][0-9a-fA-F]+)|([xX]'[0-9a-fA-F]+')|(0[bB][01]+)|([bB]'[0-1]+')|(\d+)"""
-    t.type = "NUMBER"
     return t
 
 
@@ -116,11 +112,23 @@ def t_SCONST(t):
     return t
 
 
+def t_NUMBER_START_WITH_XB(t):
+    r"""[xX]'[0-9A-Fa-f]*'|[bB]'[0-1]*'"""
+    t.type = "NUMBER"
+    return t
+
+
 def t_IDENTIFIER(t):
-    r"""[a-zA-Z\u4e00-\u9fa5_][a-zA-Z\u4e00-\u9fa50-9_@:]*"""
-    val = t.value.lower()
-    if val.upper() in sql_tokens:
-        t.type = val.upper()
+    r"""[a-zA-Z\u4e00-\u9fa50-9_][a-zA-Z\u4e00-\u9fa50-9_@:]*"""
+    if re.match(
+        r'(^0[xX][0-9a-fA-F]+$)|(^[xX]\'[0-9a-fA-F]+\'$)|(^0[bB][01]+$)|(^[bB]\'[01]+\'$)|(^\d+$)',
+        t.value,
+    ):
+        t.type = "NUMBER"
+    else:
+        val = t.value.lower()
+        if val.upper() in sql_tokens:
+            t.type = val.upper()
     return t
 
 
@@ -153,6 +161,11 @@ def t_newline(t):
 def t_error(t):
     print("Illegal character '%s'" % t.value[0])
     t.lexer.skip(1)
+
+
+def t_COMMENT(t):
+    r'(\/\*\*\/)|(/\*.+\*/)'
+    pass
 
 
 lexer = lex.lex()

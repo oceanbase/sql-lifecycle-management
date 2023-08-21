@@ -104,9 +104,11 @@ def convert_to_decimal(text):
     elif text.startswith("0b") or text.startswith("0B"):
         return int(text, 2)
     elif (text.startswith("x'") or text.startswith("X'")) and text.endswith("'"):
-        return int(text[2:-1], 16)
+        number = text[2:-1]
+        return int(number, 16) if len(number) != 0 else 0
     elif (text.startswith("b'") or text.startswith("B'")) and text.endswith("'"):
-        return int(text[2:-1], 2)
+        number = text[2:-1]
+        return int(number, 2) if len(number) != 0 else 0
     else:
         return int(text)
 

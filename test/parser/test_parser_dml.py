@@ -153,6 +153,11 @@ delete from execution_log          where                (                       
             """SELECT sign FROM t""",
             """SELECT ceiliing FROM t""",
             """SELECT rows FROM t""",
+            """SELECT row FROM t""",
+            """SELECT last_value FROM t""",
+            """SELECT position FROM t""",
+            """SELECT lag FROM t""",
+            """SELECT over FROM t""",
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
@@ -204,6 +209,9 @@ delete from execution_log          where                (                       
             "SELECT CAST((8+1) AS SIGNED)",
             "SELECT CAST(9 AS TIME)",
             "SELECT CAST(1 BETWEEN 1 AND 2 AS SIGNED)",
+            "SELECT CAST(9 AS DECIMAL(15,3))",
+            "SELECT CAST(9 AS DEC(15,3))",
+            "SELECT CAST(9 AS BINARY(15))",
         ]
         for sql in test_sqls:
             result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
@@ -574,6 +582,7 @@ delete from execution_log          where                (                       
         test_sqls = [
             "SELECT category_name FROM categories WHERE category_id = @category_id",
             "SELECT category_name FROM categories WHERE category_id = (select @rownum := 0)",
+            "SELECT category_name FROM categories WHERE category_id = (select @rownum.test := 0)",
         ]
         for sql in test_sqls:
             result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
@@ -761,6 +770,10 @@ delete from execution_log          where                (                       
             "SELECT X'1Ffab1'",
             "SELECT b'111'",
             "SELECT B'101'",
+            "SELECT b''",
+            "SELECT B''",
+            "SELECT x''",
+            "SELECT X''",
         ]
         for sql in test_sqls:
             result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
@@ -775,6 +788,7 @@ delete from execution_log          where                (                       
             "SELECT * FROM t1 USE INDEX (i1,i2) FORCE INDEX (i2)",
             "SELECT * FROM t USE INDEX (index1) IGNORE INDEX FOR ORDER BY (index1) IGNORE INDEX FOR GROUP BY (index1)",
             "SELECT * FROM t1 USE INDEX FOR JOIN (i1) FORCE INDEX FOR JOIN (i2)",
+            "SELECT * FROM t1 USE INDEX FOR JOIN (i1) FORCE INDEX FOR JOIN (PRIMARY)",
         ]
         for sql in test_sqls:
             result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
@@ -845,8 +859,67 @@ delete from execution_log          where                (                       
             "SELECT UNIQUE(a) FROM t",
             "SELECT UNIQUE a FROM t",
             "SELECT HOST_IP()",
+            "SELECT ORA_DECODE(sign(a),-1,0)",
+            "SELECT NVL(a,b)",
         ]
         for sql in test_sqls:
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_with_rollup(p):
+        test_sqls = [
+            "SELECT * FROM t1 GROUP BY name WITH ROLLUP",
+            "SELECT * FROM t1 GROUP BY name, size WITH ROLLUP",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_ceil_func(p):
+        test_sqls = [
+            "SELECT CEIL(1.002)",
+            "SELECT * FROM t WHERE a=CEIL(0x122)",
+            "SELECT * FROM t WHERE a=CEIL(0b101)",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_comment(p):
+        test_sqls = [
+            "SELECT /*1*/CEIL(1.002)",
+            "SELECT * /*\*1.5*/ FROM t WHERE a=CEIL(0x122)",
+            "SELECT * /**/FROM t WHERE a=CEIL(0b101)",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_identitifer_name(p):
+        test_sqls = [
+            "SELECT * FROM t WHERE 0xAG=1 ",
+            "SELECT * FROM t WHERE 1FA=0",
+            "SELECT * FROM t WHERE _FA=0",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_position_func(p):
+        test_sqls = [
+            "SELECT * FROM t WHERE a=POSITION('tacode' in 'tacodea')",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
             result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
             assert isinstance(result, Statement)
 

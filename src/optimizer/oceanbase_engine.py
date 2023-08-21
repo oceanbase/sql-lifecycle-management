@@ -27,7 +27,7 @@ class OceanBaseEngine(Engine):
         return singleton
 
     def parse(self, sql, tracking=False):
-        return oceanbase_parser.parse(sql, tracking, lexer=oceanbase_lexer)
+        return oceanbase_parser.parse(sql, lexer=oceanbase_lexer, tracking=tracking)
 
     def rewrite(self, statement, catalog=None):
         rule_explanation_list = []

@@ -27,7 +27,7 @@ class MySQLEngine(Engine):
         return singleton
 
     def parse(self, sql, tracking=False):
-        return mysql_parser.parse(sql, tracking, lexer=mysql_lexer)
+        return mysql_parser.parse(sql, lexer=mysql_lexer, tracking=tracking)
 
     def rewrite(self, statement, catalog=None):
         common_rules.extend(mysql_rules)
