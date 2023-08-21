@@ -1031,7 +1031,7 @@ def p_index_or_key(p):
 
 def p_index_name(p):
     r"""index_name : PRIMARY
-    | identifier"""
+    | identifiers"""
     pass
 
 def p_derived_table(p):
