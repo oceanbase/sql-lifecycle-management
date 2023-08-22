@@ -3134,6 +3134,7 @@ def p_non_reserved(p):
     | MAX_DISK_SIZE
     | MAX_IOPS
     | MAX_MEMORY
+    | MAX_PT
     | MAX_QUERIES_PER_HOUR
     | MAX_ROWS
     | MAX_SESSION_NUM
