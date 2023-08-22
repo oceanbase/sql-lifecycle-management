@@ -3129,6 +3129,7 @@ def p_non_reserved(p):
     | MAX_DISK_SIZE
     | MAX_IOPS
     | MAX_MEMORY
+    | MAX_PT
     | MAX_QUERIES_PER_HOUR
     | MAX_ROWS
     | MAX_SESSION_NUM
@@ -3665,4 +3666,4 @@ def p_error(p):
     raise SyntaxError("The current version does not support this SQL")
 
 
-parser = yacc.yacc(tabmodule="parser_table", start="command", debugfile="parser.out")
+parser = yacc.yacc(tabmodule="parser_table", start="command", debugfile="parser.out",optimize=True)
