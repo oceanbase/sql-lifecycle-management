@@ -17,6 +17,10 @@ import unittest
 from src.common.utils import Utils
 from src.parser.mysql_parser.parser import parser as mysql_parser
 from src.parser.oceanbase_parser.parser import parser as oceanbase_parser
+from src.parser.oceanbase_parser.lexer import lexer as oceanbase_lexer
+from src.parser.mysql_parser.lexer import lexer as mysql_lexer
+from src.parser.odps_parser.parser import parser as odps_parser
+from src.parser.odps_parser.lexer import lexer as odps_lexer
 from src.parser.tree.expression import LikePredicate, ExistsPredicate
 from src.parser.tree.relation import Join
 from src.parser.tree.set_operation import Union
@@ -29,12 +33,15 @@ class MyTestCase(unittest.TestCase):
             "select name,age,count(*),avg(age) from blog join a on a.id = blog.id "
             "where a.b = 1 and blog.c = 2 group by name,age "
             "having count(*)>2 and avg(age)<20 order by a asc,b desc limit 1 OFFSET 3",
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
         assert isinstance(result.query_body.from_, Join)
 
     def test_no_filter(self):
-        result = oceanbase_parser.parse("select distinct name from a.blog")
+        result = oceanbase_parser.parse(
+            "select distinct name from a.blog", lexer=oceanbase_lexer
+        )
         query_body = result.query_body
         assert (
             query_body is not None
@@ -43,11 +50,15 @@ class MyTestCase(unittest.TestCase):
         )
 
     def test_question_mark(self):
-        result = oceanbase_parser.parse("select n from b where a = ?")
+        result = oceanbase_parser.parse(
+            "select n from b where a = ?", lexer=oceanbase_lexer
+        )
         assert isinstance(result, Statement)
 
     def test_like(self):
-        result = oceanbase_parser.parse("SELECT name from blog where a like 'a' ")
+        result = oceanbase_parser.parse(
+            "SELECT name from blog where a like 'a' ", lexer=oceanbase_lexer
+        )
         query_body = result.query_body
         assert isinstance(query_body.where, LikePredicate)
 
@@ -61,7 +72,8 @@ class MyTestCase(unittest.TestCase):
                                     WHERE
                                         d = ?
                                     )
-                                        """
+                                        """,
+            lexer=oceanbase_lexer,
         )
         query_body = result.query_body
         assert isinstance(query_body.where, ExistsPredicate)
@@ -125,7 +137,8 @@ class MyTestCase(unittest.TestCase):
                                 tars_sqldiag_all.cluster,
                                 tars_sqldiag_all.tenant_name,
                                 tars_sqldiag_all.sql_id,
-                                tars_sqldiag_all.diag_type """
+                                tars_sqldiag_all.diag_type """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
@@ -147,7 +160,7 @@ select max(id)  as id
   from obevent
  where event_id in (?,?)
  group by event_id) as obe2 on obe.id= obe2.id"""
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_subquery(self):
@@ -156,34 +169,40 @@ select max(id)  as id
      FROM CUSTOMERS 
      WHERE ID IN (SELECT ID 
                   FROM CUSTOMERS
-                  WHERE SALARY > 4500)"""
+                  WHERE SALARY > 4500)""",
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
     def test_distinct(self):
         result = oceanbase_parser.parse(
             """select max(id)  as id, COUNT(distinct uuid) as cnt
-  from obevent"""
+  from obevent""",
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
     def test_union(self):
         result = oceanbase_parser.parse(
-            "SELECT country FROM Websites UNION SELECT country FROM apps ORDER BY country"
+            "SELECT country FROM Websites UNION SELECT country FROM apps ORDER BY country",
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result.query_body, Union)
         result = mysql_parser.parse(
-            "SELECT country FROM Websites UNION SELECT country FROM apps ORDER BY country"
+            "SELECT country FROM Websites UNION SELECT country FROM apps ORDER BY country",
+            lexer=mysql_lexer,
         )
         assert isinstance(result.query_body, Union)
 
     def test_union_all(self):
         result = oceanbase_parser.parse(
-            "SELECT country FROM Websites UNION ALL SELECT country FROM apps ORDER BY country"
+            "SELECT country FROM Websites UNION ALL SELECT country FROM apps ORDER BY country",
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result.query_body, Union)
         result = mysql_parser.parse(
-            "SELECT country FROM Websites UNION ALL SELECT country FROM apps ORDER BY country"
+            "SELECT country FROM Websites UNION ALL SELECT country FROM apps ORDER BY country",
+            lexer=mysql_lexer,
         )
         assert isinstance(result.query_body, Union)
 
@@ -191,7 +210,8 @@ select max(id)  as id
         result = oceanbase_parser.parse(
             """
         SELECT  role.ID, role.NM,         role.CODE,role.ORG_ID,role.domain_id,role.ADMINS,role.SCD_ADMINS,role.PRN_ID,role.PATH,role.TYPE_CODE,         role.DSC,role.ST,role.EXPR_TM,role.CRT_ID,role.CRT_NM,role.property,         role.MOD_ID, role.MOD_NM,role.GMT_CREATE,role.GMT_MODIFIED,role.TNT_INST_ID,role.MNG_MODE,role.APPLY_MODE, role.risk_memo         FROM OS_ROLE role         WHERE         role.TNT_INST_ID='ALIPW3CN'         AND     (role.TYPE_CODE = 'ROLE' or role.TYPE_CODE is null )             AND    role.st !='DELETE'      AND    (role.apply_mode in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    or (role.type_code = 'ROLE' AND 'PUBLIC' in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    AND role.apply_mode IS NULL))                         and                 role.isolation_key = 'TENANT_ALIPW3CN'                         order by role.id desc limit 0, 10
-        """
+        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
@@ -199,7 +219,8 @@ select max(id)  as id
         result = oceanbase_parser.parse(
             """
         SELECT      count(DISTINCT ID) as total   FROM OS_ROLE WHERE TNT_INST_ID = 'ALIPW3CN'   AND    (NM like CONCAT('%', 'CMR-LEADS', '%') or CODE like CONCAT('%','CMR-LEADS','%'))                AND    (TYPE_CODE = 'ROLE' or TYPE_CODE is null )             AND    st !='DELETE'      AND    (apply_mode in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    or (type_code = 'ROLE' AND 'PUBLIC' in    (     'PUBLIC'    ,     'PUBLIC_COMMON'    )    AND apply_mode IS NULL))                         and                 isolation_key = 'TENANT_ALIPW3CN'
-        """
+        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
@@ -222,7 +243,8 @@ ORDER BY
   p.CreationDate
 LIMIT
   100
-                        """
+                        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
@@ -230,15 +252,15 @@ LIMIT
         result = oceanbase_parser.parse(
             """
                   SELECT oprn.* , b   FROM OS_OPRN oprn    WHERE oprn.TNT_INST_ID = 'ALIPW3CN'                   AND      oprn.OPT_CODE like CONCAT('%', 'GT_MESSAGE_RECORD_QUERY', '%')                                                                and                     oprn.isolation_key = 'TENANT_ALIPW3CN'                     order by oprn.id desc    limit 0, 5      
-                """
+                """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
     def test_sql_5(self):
         result = oceanbase_parser.parse(
-            """
-                         select * from sqless_base where a = 'sqless_1' or b = 'sqless_2'     
-                        """
+            """select * from sqless_base where a = 'sqless_1' or b = 'sqless_2'""",
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
@@ -255,29 +277,39 @@ LIMIT
          and           client_package.state = 'success'                                                                                                                             
          order by client_package.id desc
          limit 0,10     
-                        """
+                        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
     def test_sql_7(self):
         result = oceanbase_parser.parse(
             """
-SELECT          server_release_repo.server_release_repo_id,    server_release_repo.instance_id,    server_release_repo.repos_name,    server_release_repo.branch_url,    server_release_repo.revision_enter,    server_release_repo.deleted,    server_release_repo.weight,    server_release_repo.integrate,    server_release_repo.create_tag_flag,    server_release_repo.merge_record_id,    case server_release_repo.merge_record_id       when 0 then 0       when -1 then 1       when -2 then 15       else merge_record.merge_result       END as merge_result,   server_release_repo.completed,    server_release_repo.create_time,    server_release_repo.update_time      FROM server_release_repo left join merge_record on server_release_repo.merge_record_id = merge_record.id     WHERE      1 = 1                and            integrate = 0              and            completed = 1             and            deleted = 0          and       merge_record_id != -1                        """
+SELECT          server_release_repo.server_release_repo_id,    server_release_repo.instance_id,    server_release_repo.repos_name,    server_release_repo.branch_url,    server_release_repo.revision_enter,    server_release_repo.deleted,    server_release_repo.weight,    server_release_repo.integrate,    server_release_repo.create_tag_flag,    server_release_repo.merge_record_id,    case server_release_repo.merge_record_id       when 0 then 0       when -1 then 1       when -2 then 15       else merge_record.merge_result       END as merge_result,   server_release_repo.completed,    server_release_repo.create_time,    server_release_repo.update_time      FROM server_release_repo left join merge_record on server_release_repo.merge_record_id = merge_record.id     WHERE      1 = 1                and            integrate = 0              and            completed = 1             and            deleted = 0          and       merge_record_id != -1                        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
     def test_union_and_union_all(self):
-        result = mysql_parser.parse("select a from b union select a from b")
+        result = mysql_parser.parse(
+            "select a from b union select a from b", lexer=mysql_lexer
+        )
         assert isinstance(result.query_body, Union)
         assert not result.query_body.all
-        result = oceanbase_parser.parse("select a from b union select a from b")
+        result = oceanbase_parser.parse(
+            "select a from b union select a from b", lexer=oceanbase_lexer
+        )
         assert isinstance(result.query_body, Union)
         assert not result.query_body.all
 
-        result = oceanbase_parser.parse("select a from b union all select a from b")
+        result = oceanbase_parser.parse(
+            "select a from b union all select a from b", lexer=oceanbase_lexer
+        )
         assert isinstance(result.query_body, Union)
         assert result.query_body.all
-        result = mysql_parser.parse("select a from b union all select a from b")
+        result = mysql_parser.parse(
+            "select a from b union all select a from b", lexer=mysql_lexer
+        )
         assert isinstance(result.query_body, Union)
         assert result.query_body.all
 
@@ -285,14 +317,16 @@ SELECT          server_release_repo.server_release_repo_id,    server_release_re
         result = oceanbase_parser.parse(
             """
         SELECT * FROM `antinvoice93`.einv_base_info WHERE einv_source = ? ORDER BY gmt_create DESC LIMIT ?
-        """
+        """,
+            lexer=oceanbase_lexer,
         )
         assert result.query_body.limit == '?'
 
         result = oceanbase_parser.parse(
             """
         SELECT * FROM `antinvoice93`.einv_base_info WHERE einv_source = ? ORDER BY gmt_create DESC LIMIT 1,?
-        """
+        """,
+            lexer=oceanbase_lexer,
         )
         assert result.query_body.limit == '?'
 
@@ -300,7 +334,8 @@ SELECT          server_release_repo.server_release_repo_id,    server_release_re
         result = oceanbase_parser.parse(
             """
         SELECT COUNT(*) FROM ( SELECT * FROM customs_script_match_history LIMIT ? ) a
-        """
+        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
@@ -308,7 +343,8 @@ SELECT          server_release_repo.server_release_repo_id,    server_release_re
         result = oceanbase_parser.parse(
             """
 SELECT device_id, msg_id, short_msg_key, third_msg_id, mission_id , mission_coe, app_id, payload, template_code, business , ruleset_id, strategy, principal_id, tag, priority , expire_time, gmt_create, status, uriextinfo, sub_templates , immediate_product_version, biz_id, immediate_language_type FROM pushcore_msg WHERE device_id = ? AND principal_id = ? AND status = ? AND expire_time > current_timestamp()
-        """
+        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
 
@@ -316,7 +352,8 @@ SELECT device_id, msg_id, short_msg_key, third_msg_id, mission_id , mission_coe,
         result = oceanbase_parser.parse(
             """
 SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, complete_status, notice_push_status, result_push_status, reward_status , join_cost, reward, odps_reward, step_number, gmt_complete , gmt_send_reward, match_type, join_stat_bill_id, complete_stat_bill_id, ext_info FROM sports_user_match_record WHERE match_record_id IN (?) FOR UPDATE
-        """
+        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
         assert result.query_body.for_update is True
@@ -324,7 +361,8 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         result = oceanbase_parser.parse(
             """
         SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, complete_status, notice_push_status, result_push_status, reward_status , join_cost, reward, odps_reward, step_number, gmt_complete , gmt_send_reward, match_type, join_stat_bill_id, complete_stat_bill_id, ext_info FROM sports_user_match_record WHERE match_record_id IN (?) FOR UPDATE NOWAIT
-                """
+                """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
         assert result.query_body.for_update is True
@@ -332,7 +370,8 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         result = oceanbase_parser.parse(
             """
                 SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, complete_status, notice_push_status, result_push_status, reward_status , join_cost, reward, odps_reward, step_number, gmt_complete , gmt_send_reward, match_type, join_stat_bill_id, complete_stat_bill_id, ext_info FROM sports_user_match_record WHERE match_record_id IN (?) FOR UPDATE WAIT 6
-                        """
+                        """,
+            lexer=oceanbase_lexer,
         )
         assert isinstance(result, Statement)
         assert result.query_body.for_update is True
@@ -349,7 +388,7 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         GROUP BY biz_id
         """
         result = oceanbase_parser.parse(
-            Utils.remove_sql_text_affects_parser(sql), debug=True
+            Utils.remove_sql_text_affects_parser(sql), debug=True, lexer=oceanbase_lexer
         )
         assert isinstance(result, Statement)
 
@@ -368,14 +407,14 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         ORDER BY inst_apply_order_id LIMIT ?, ? ) T2 WHERE t1.order_id = t2.order_id
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_interval2(self):
         sql = """
         SELECT h.site, h.ip, h.sm_name, h.pre_group, h.nodegroup , host_name, mount, used_pct, size, used , free, m.node FROM ( SELECT host_name, mount, MAX(used_pct) AS used_pct, MAX(size) AS size, MAX(used) AS used , MIN(free) AS free, MAX(check_time) AS check_time FROM host_disk_used h FORCE INDEX (idx_ct_up_m) WHERE check_time > now() - INTERVAL ? HOUR AND mount IN (?) AND host_name NOT LIKE ? AND host_name NOT LIKE ? AND host_name NOT LIKE ? AND host_name NOT LIKE ? AND host_name NOT LIKE ? AND host_name NOT LIKE ? AND host_name NOT LIKE ? AND host_name NOT LIKE ? AND host_name NOT LIKE ? GROUP BY host_name, mount ORDER BY MAX(used) ) i, mt_armory_host h, ( SELECT ip, GROUP_CONCAT(node) AS node FROM mt_mysql_meta WHERE ip IS NOT NULL AND gmt_alive > now() - INTERVAL ? HOUR GROUP BY ip ) m WHERE i.host_name = h.hostname AND h.pre_group = ? AND m.ip = h.ip ORDER BY used"""
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_regexp(self):
@@ -383,7 +422,7 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         SELECT * FROM file_moving_serial WHERE serial_no REGEXP ?
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_distinct_2(self):
@@ -391,31 +430,31 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
             /* trace_id=0b7cad2e168016361004041132631,rpc_id=0.5c88b07f.9.1 */                      SELECT /*+ index(midas_record_value idx_tenant_time) */                 DISTINCT(trace_id)             FROM                 midas_record_value where tenant='fascore' and is_expired=0  order by gmt_modified asc limit 500        
             """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_quoted(self):
         sql = "SELECT Original_artist FROM table_15383430_1 WHERE Theme = 'year'"
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
         sql = '''SELECT Original_artist FROM table_15383430_1 WHERE Theme = "year"'''
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = mysql_parser.parse(sql)
+        result = mysql_parser.parse(sql, lexer=mysql_lexer)
         assert isinstance(result, Statement)
 
     def test_chinese_character(self):
         sql = "SELECT `净值` FROM FundTable WHERE `销售状态` = \"正常申购\""
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
         sql = "SELECT 净值 FROM FundTable WHERE 销售状态 = \"正常申购\""
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
         sql = '''SELECT 赎回状态a FROM FundTable WHERE 重b仓 like \"北部湾港%\"'''
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_current_date(self):
@@ -427,7 +466,7 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         where 
             t1 > (CURRENT_DATE() - INTERVAL 30 day)+'0' 
         """
-        result = oceanbase_parser.parse(sql, debug=True)
+        result = oceanbase_parser.parse(sql, debug=True, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_double_type(self):
@@ -435,7 +474,7 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         SELECT Winner FROM table_11621915_1 WHERE Purse > 964017.2297960471 AND Date_ds = "may 28"
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_union_has_order_limit(self):
@@ -443,14 +482,14 @@ SELECT id, gmt_create, gmt_modified, match_id, match_record_id , user_id, comple
         ( select 球员id from 球员夺冠次数 order by 冠军次数 asc limit 3 ) union ( select 球员id from 球员夺冠次数 order by 亚军次数 desc limit 5 )
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = mysql_parser.parse(sql)
+        result = mysql_parser.parse(sql, lexer=mysql_lexer)
         assert isinstance(result, Statement)
 
     def test_order_by_has_parentheses(self):
         sql = """
 SELECT channel_code , contact_number FROM customer_contact_channels WHERE active_to_date - active_from_date = (SELECT active_to_date - active_from_date FROM customer_contact_channels ORDER BY (active_to_date - active_from_date) DESC LIMIT 1)        """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_boolean_expression(self):
@@ -458,7 +497,7 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         SELECT T1.list_followers, T2.user_subscriber = 1 FROM lists AS T1 INNER JOIN lists_users AS T2 ON T1.user_id = T2.user_id AND T2.list_id = T2.list_id WHERE T2.user_id = 4208563 ORDER BY T1.list_followers DESC LIMIT 1
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_date_add(self):
@@ -466,7 +505,7 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         select date_format(date_format(date_add(biz_date, interval -1 day), '%y%m%d'), '%y%m%d') from t
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql, debug=True)
+        result = oceanbase_parser.parse(sql, debug=True, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_as(self):
@@ -474,7 +513,7 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         select t2.biz_date as biz_date, f1.calculate_field / t2.calculate_field1 as d_remain_rate from ( select t1.biz_date as biz_date , count(DISTINCT if(t1.biz_date_is_visit = '1', t1.user_id, null)) as calculate_field1 from ( select * from pets_user_miaowa_galileo_visit_user_di ) t1 where t1.appname in ('AppPetWXSS', 'HelloPet') and t1.biz_date between date_format(date_sub(date_format(date_sub(curdate(), interval 1 day), '%Y%m%d'), interval 1 day), '%Y%m%d') and date_format(date_sub(curdate(), interval 1 day), '%Y%m%d') group by t1.biz_date ) t2 left join ( select date_format(date_format(date_add(t1.biz_date, interval -1 day), '%Y%m%d'), '%Y%m%d') as biz_date , count(DISTINCT if(datediff(t1.biz_date, t1.last_visit_date) = 1 and t1.biz_date_is_visit = '1', t1.user_id, null)) as calculate_field from ( select * from pets_user_miaowa_galileo_visit_user_di ) t1 where t1.appname in ('AppPetWXSS', 'HelloPet') and t1.biz_date between date_format(date_sub(date_format(date_sub(curdate(), interval 1 day), '%Y%m%d'), interval 1 day), '%Y%m%d') and date_format(date_sub(curdate(), interval 1 day), '%Y%m%d') group by date_format(date_format(date_add(t1.biz_date, interval -1 day), '%Y%m%d'), '%Y%m%d') ) f1 on t2.biz_date = f1.biz_date order by biz_date asc limit 0, 1000
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql, debug=True)
+        result = oceanbase_parser.parse(sql, debug=True, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_single_quote_escape(self):
@@ -482,14 +521,14 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         SELECT director_id FROM movies WHERE movie_title = 'It''s Winter'
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
         sql = """
         SELECT director_id FROM movies WHERE movie_title = "It''s Winter"
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_operator(self):
@@ -497,7 +536,7 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         select         count(1)         from train_order_info where  occupy_type in              (                   ?              )                                  and order_serial_no =  ?                                 and connect_type =  ?                                     and merchant_id = ''                                 and order_state in              (                   ?              )                                 and ticket_machine_id in              (                   ?              )                                 and lock_state =  ?                                 and phone_verify_status =  ?                                 and window_no =  ?                                 and passenger_info like concat('%',concat( ?,'%'))                                 and departure_station like concat('%',concat( ?,'%'))                                 and arrival_station like concat('%',concat( ?,'%'))                                 and merchant_id =  ?                                 and createtime >=  ?                                 and createtime <=  ?                                 and gmt_booked >=  ?                                 and gmt_booked <=  ?                                 and gmt_departure >=  ?                                 and gmt_departure <=  ?                                 and train_code =  ?                                 and pay_serial_no =  ?                                 and env =  ?                                  and gmt_distribute >=  ?                                 and gmt_distribute <=  ?                                  and inquire_type in              (                   ?              )                                 and merchant_business_type =  ?                                 and ability_require &  ? =  ?
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
         assert isinstance(result, Statement)
 
     def test_engine_non_reserved(self):
@@ -520,7 +559,12 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
         order by gmt_modified desc
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = oceanbase_parser.parse(sql)
+        result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+        assert isinstance(result, Statement)
+
+    def test_odps_function(self):
+        sql = """select * from tbl where pt=max_pt('myproject.tbl')"""
+        result = odps_parser.parse(sql, lexer=odps_lexer)
         assert isinstance(result, Statement)
 
 

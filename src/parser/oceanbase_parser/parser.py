@@ -3665,4 +3665,4 @@ def p_error(p):
     raise SyntaxError("The current version does not support this SQL")
 
 
-parser = yacc.yacc(tabmodule="parser_table", start="command", debugfile="parser.out")
+parser = yacc.yacc(tabmodule="parser_table", start="command", debugfile="parser.out",optimize=True)

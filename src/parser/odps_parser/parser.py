@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 from __future__ import print_function
 
 import types
-
 from src.parser.tree.window import (
     FrameBound,
     FrameClause,
@@ -23,7 +22,9 @@ from src.parser.tree.window import (
     WindowSpec,
 )
 
-from src.parser.tree.with_stmt import CommonTableExpr, With, WithHasQuery
+from ply import yacc
+from src.optimizer.optimizer_enum import IndexType
+from src.parser.odps_parser.lexer import tokens
 from src.parser.tree.expression import (
     AggregateFunc,
     ArithmeticBinaryExpression,
@@ -81,10 +82,7 @@ from src.parser.tree.statement import Delete, Insert, Query, Update
 from src.parser.tree.table import Table
 from src.parser.tree.values import Values
 from src.parser.tree.field_type import UNSPECIFIEDLENGTH, FieldType, SQLType
-
-from ply import yacc
-from src.optimizer.optimizer_enum import IndexType
-from src.parser.mysql_parser.lexer import tokens
+from src.parser.tree.with_stmt import With, CommonTableExpr, WithHasQuery
 
 tokens = tokens
 
@@ -96,7 +94,7 @@ precedence = (
     ('left', 'AND', 'ANDAND'),
     ('right', 'NOT'),
     ('left', 'BETWEEN', 'CASE', 'WHEN', 'THEN', 'ELSE'),
-    ('left', 'EQ', 'NULL_SAFE_EQ','NE', 'LT', 'LE', 'GT', 'GE', 'IS', 'LIKE', 'RLIKE', 'REGEXP', 'IN'),
+    ('left', 'EQ','NULL_SAFE_EQ','NE', 'LT', 'LE', 'GT', 'GE', 'IS', 'LIKE', 'RLIKE', 'REGEXP', 'IN'),
     ('left', 'BIT_OR'),
     ('left', 'BIT_AND'),
     ('left', 'BIT_MOVE_LEFT', 'BIT_MOVE_RIGHT'),
@@ -113,8 +111,7 @@ precedence = (
 
 def p_command(p):
     r"""command : ddl
-    | dml
-    | others"""
+    | dml"""
     p[0] = p[1]
 
 
@@ -125,11 +122,6 @@ def p_ddl(p):
 
 def p_dml(p):
     r"""dml : statement"""
-    p[0] = p[1]
-
-
-def p_others(p):
-    r"""others : COMMIT"""
     p[0] = p[1]
 
 
@@ -153,6 +145,11 @@ def p_create_table_end(p):
     | AUTO_INCREMENT EQ number create_table_end
     | COMMENT EQ SCONST create_table_end
     | COMPRESSION EQ SCONST create_table_end
+    | REPLICA_NUM EQ number create_table_end
+    | BLOCK_SIZE EQ number create_table_end
+    | USE_BLOOM_FILTER EQ FALSE create_table_end
+    | TABLET_SIZE EQ number create_table_end
+    | PCTFREE EQ number create_table_end
     | empty
     """
     pass
@@ -280,7 +277,8 @@ def p_index_column_list(p):
 
 def p_index_end(p):
     r"""
-    index_end : empty
+    index_end : BLOCK_SIZE number
+              | empty
     """
 
 
@@ -370,7 +368,6 @@ def p_cursor_specification(p):
         order_by = p[1].order_by
         limit, offset = p[1].limit, p[1].offset
         p[1].order_by = []
-        # p[1].limit,p[1].offset=0,0
         p[0] = Query(
             p.lineno(1),
             p.lexpos(1),
@@ -433,6 +430,7 @@ def p_ident_list(p):
 def p_for_update_opt(p):
     r"""for_update_opt : FOR UPDATE
     | FOR UPDATE NOWAIT
+    | FOR UPDATE NO_WAIT
     | FOR UPDATE SKIP LOCKED
     | FOR UPDATE WAIT figure
     | LOCK IN SHARE MODE
@@ -484,7 +482,6 @@ def p_set_operation_stmt_w_order_by_limit(p):
             simple_table.offset,
         )
         simple_table.order_by = []
-        # simple_table.limit,simple_table.offset=0,0
     p[0] = Query(
         p.lineno(1),
         p.lexpos(1),
@@ -565,7 +562,7 @@ def p_set_operation_stmt_simple_table(p):
 def p_order_by_opt(p):
     r"""order_by_opt : order_by
     | empty"""
-    p[0] = p[1] if p[1] else None
+    p[0] = p[1] if p[1] else []
 
 
 def p_order_by(p):
@@ -698,6 +695,7 @@ def p_set_operation_expression(p):
 def p_subquery(p):
     r"""subquery : LPAREN simple_table RPAREN
     | LPAREN set_operation_stmt RPAREN
+    | LPAREN select_stmt_with_clause RPAREN
     | LPAREN subquery RPAREN"""
     p[0] = SubqueryExpression(p.lineno(1), p.lexpos(1), query=p[2])
 
@@ -823,7 +821,11 @@ def p_select_items(p):
 def p_select_item(p):
     r"""select_item : derived_column
     | DISTINCT LPAREN derived_column RPAREN
-    | DISTINCT derived_column"""
+    | DISTINCT derived_column
+    | UNIQUE LPAREN derived_column RPAREN
+    | UNIQUE derived_column
+    | ALL LPAREN derived_column RPAREN
+    | ALL derived_column"""
     if len(p) == 2:
         p[0] = p[1]
     elif len(p) == 3:
@@ -850,6 +852,7 @@ def p_derived_column(p):
     else:
         p[0] = SingleColumn(p.lineno(1), p.lexpos(1), alias=p[2], expression=p[1])
 
+
 def p_table_expression_opt(p):
     r"""table_expression_opt : FROM relations partition where_opt group_by_opt having_opt
     | FROM relations where_opt group_by_opt having_opt
@@ -860,6 +863,7 @@ def p_table_expression_opt(p):
         p[0] = Node(p.lineno(1), p.lexpos(1), from_=p[2], where=p[3], group_by=p[4], having=p[5])
     else:
         p[0] = p[1]
+
 
 def p_partition(p):
     r"""partition : PARTITION LPAREN identifiers RPAREN"""
@@ -900,7 +904,7 @@ def p_joined_table(p):
 
 
 def p_cross_join(p):
-    r"""cross_join : table_reference CROSS JOIN table_reference join_criteria"""
+    r"""cross_join : table_reference CROSS JOIN table_primary  join_criteria"""
     p[0] = Join(
         p.lineno(1),
         p.lexpos(1),
@@ -915,9 +919,7 @@ def p_qualified_join(p):
     r"""qualified_join : table_reference join_type JOIN table_reference join_criteria"""
     right = p[4]
     criteria = p[5]
-    join_type = (
-        p[2].upper() if p[2] and p[2].upper() in ("LEFT", "RIGHT", "FULL") else "INNER"
-    )
+    join_type = p[2] if p[2] in ("LEFT", "RIGHT", "FULL") else "INNER"
     p[0] = Join(
         p.lineno(1),
         p.lexpos(1),
@@ -929,7 +931,7 @@ def p_qualified_join(p):
 
 
 def p_natural_join(p):
-    r"""natural_join : table_reference NATURAL join_type JOIN table_reference join_criteria"""
+    r"""natural_join : table_reference NATURAL join_type JOIN table_primary  join_criteria"""
     right = p[5]
     criteria = NaturalJoin()
     join_type = "INNER"
@@ -992,6 +994,7 @@ def p_index_hint_list(p):
     r"""index_hint_list : index_hint_list index_hint
     | index_hint"""
     pass
+
 
 def p_index_hint(p):
     r"""index_hint : use_index
@@ -1174,7 +1177,6 @@ def p_sounds_predicate(p):
     r"""sounds_predicate : value_expression SOUNDS LIKE factor"""
     p[0] = SoundLike(p.lineno(1), p.lexpos(1), arguments=[p[1], p[2]])
 
-
 def p_in_predicate(p):
     r"""in_predicate : value_expression IN in_value
     | value_expression NOT IN in_value"""
@@ -1182,7 +1184,6 @@ def p_in_predicate(p):
         p[0] = InPredicate(p.lineno(1), p.lexpos(1), is_not=True, value=p[1], value_list=p[4])
     else:
         p[0] = InPredicate(p.lineno(1), p.lexpos(1), is_not=False, value=p[1], value_list=p[3])
-
 
 def p_like_predicate(p):
     r"""like_predicate : value_expression like_opt value_expression escape_opt"""
@@ -1228,7 +1229,7 @@ def p_string_lit(p):
     r"""string_lit : SCONST
     | QUOTED_IDENTIFIER
     | string_lit SCONST
-    | string_lit QUOTED_IDENTIFIER"""
+    | string_lit  QUOTED_IDENTIFIER"""
     if len(p) == 2:
         p[0] = StringLiteral(p.lineno(1), p.lexpos(1), value=p[1][1:-1])
     else:
@@ -1337,7 +1338,10 @@ def p_base_primary_expression(p):
     | exists_func_call
     | case_specification
     | cast_func_call
-    | window_func_call"""
+    | window_func_call
+    | oceanbase_func_call
+    | odps_func_call"""
+
     if p.slice[1].type == "qualified_name":
         p[0] = QualifiedNameReference(p.lineno(1), p.lexpos(1), name=p[1])
     elif len(p) == 4:
@@ -1364,6 +1368,29 @@ def p_variables(p):
         p[0]=p[1]
     else:
         p[0] = QualifiedName(parts=[p[1]])
+
+def p_oceanbase_func_call(p):
+    r"""oceanbase_func_call : HOST_IP LPAREN RPAREN
+    | USEC_TO_TIME LPAREN expression RPAREN
+    | TIME_TO_USEC LPAREN expression RPAREN
+    | NVL LPAREN expression COMMA expression RPAREN
+    | ORA_DECODE LPAREN expression COMMA call_list RPAREN
+    """
+    arguments,call_list= [],[]
+    length=len(p)
+    if p.slice[length - 2].type == "call_list":
+        call_list=p[length-2]
+        length = length - 2
+    if length > 4:
+        for i in range(3, length, 2):
+            arguments.append(p[i])
+        arguments.extend(call_list)
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
+
+def p_odps_func_call(p):
+    r"""odps_func_call : MAX_PT LPAREN expression RPAREN
+    """
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3]])
 
 def p_exists_func_call(p):
     r"""exists_func_call : EXISTS subquery"""
@@ -1563,12 +1590,9 @@ def p_frame_between(p):
 def p_frame_expr(p):
     r"""frame_expr : figure
     | QM
-    | INTERVAL expression time_unit
+    | time_interval
     |"""
-    if len(p) == 4:
-        p[0] = FrameExpr(p.lineno(1), p.lexpos(1), value=p[2], unit=p[3])
-    else:
-        p[0] = FrameExpr(p.lineno(1), p.lexpos(1), value=p[1])
+    p[0] = FrameExpr(p.lineno(1), p.lexpos(1), value=p[1])
 
 
 def p_lead_lag_info_opt(p):
@@ -1591,9 +1615,9 @@ def p_default_opt(p):
 
 def p_value(p):
     r"""value : NULL
+    | string_lit
     | figure
     | boolean_value
-    | string_lit
     | QM"""
     if p.slice[1].type == "NULL":
         p[0] = NullLiteral(p.lineno(1), p.lexpos(1))
@@ -1726,8 +1750,8 @@ def p_time_function_call(p):
     | unix_timestamp_func
     | utc_func
     | week_or_year_func
-    | sys_date_func
     | extract_func
+    | sys_date_func
     | add_or_sub_date_func
     | date_one_para_func
     | date_two_para_func"""
@@ -1903,8 +1927,8 @@ def p_date_one_para_func(p):
 def p_date_two_para_func(p):
     r"""date_two_para_func : DATEDIFF LPAREN expression COMMA expression RPAREN
     | SUBTIME LPAREN expression COMMA expression RPAREN
-    | ADDTIME LPAREN expression COMMA expression RPAREN
     | DATE_FORMAT LPAREN expression COMMA expression RPAREN
+    | ADDTIME LPAREN expression COMMA expression RPAREN
     | STR_TO_DATE LPAREN expression COMMA expression RPAREN
     | MAKEDATE LPAREN expression COMMA expression RPAREN
     | TIMEDIFF LPAREN expression COMMA expression RPAREN
@@ -1973,13 +1997,15 @@ def p_string_operator_func_call(p):
     if length == 2:
         p[0] = p[1]
     else:
-        arguments,call_list = [],[]
+        arguments = []
+        call_list=[]
         if p.slice[length - 2].type == "call_list":
-            call_list=p[length - 2]
+            call_list=p[length-2]
             length = length - 2
-        for i in range(3, length, 2):
-            arguments.append(p[i])
-        arguments.extend(call_list)
+        if length > 4:
+            for i in range(3, length, 2):
+                arguments.append(p[i])
+            arguments.extend(call_list)
         p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
 
 
@@ -2209,8 +2235,7 @@ def p_search_json_func_call(p):
     | JSON_VALUE LPAREN expression COMMA expression RPAREN
     """
     length = len(p)
-    arguments = []
-    call_list=[]
+    arguments, call_list = [],[]
     if p.slice(length - 2).type == "call_list":
         call_list=p[length - 2]
         length -= 2
@@ -2242,7 +2267,8 @@ def p_modify_json_func_call(p):
     | JSON_UNQUOTE LPAREN expression RPAREN
     """
     length = len(p)
-    arguments,call_list= [],[]
+    arguments = []
+    call_list=[]
     if p.slice(length - 2).type == "call_list":
         call_list=p[length - 2]
         length -= 2
@@ -2502,12 +2528,14 @@ def p_when_clauses(p):
     elif isinstance(p[1], list):
         p[1].append(p[2])
         p[0] = p[1]
+    else:
+        p[0] = None
 
 
 def p_charset_name(p):
     r"""charset_name : string_lit
-    | BINARY
-    | identifier"""
+    | identifier
+    | BINARY"""
     p[0] = p[1]
 
 
@@ -2674,68 +2702,256 @@ def p_identifier(p):
     r"""identifier : IDENTIFIER
     | quoted_identifier
     | non_reserved
-    | not_keyword_token
     | DIGIT_IDENTIFIER"""
     p[0] = p[1]
 
 
-# resvered word in mysql but can be used as token
 def p_non_reserved(p):
     r"""non_reserved : ABS
+    | ACCESSIBLE
+    | ACCOUNT
     | ACOS
+    | ACTION
+    | ACTIVATE
+    | ACTIVE
     | AES_DECRYPT
     | AES_ENCRYPT
+    | AFTER
+    | AGAINST
+    | AGGREGATE
+    | ALGORITHM
+    | ALWAYS
+    | ANALYSE
+    | ANY
     | ANY_VALUE
+    | APPROX_COUNT_DISTINCT
+    | APPROX_COUNT_DISTINCT_SYNOPSIS
+    | APPROX_COUNT_DISTINCT_SYNOPSIS_MERGE
+    | ARCHIVELOG
+    | ASCII
+    | ASENSITIVE
     | ASIN
     | ASYNCHRONOUS_CONNECTION_FAILOVER_ADD_MANAGED
     | ASYNCHRONOUS_CONNECTION_FAILOVER_ADD_SOURCE
     | ASYNCHRONOUS_CONNECTION_FAILOVER_DELETE_MANAGED
     | ASYNCHRONOUS_CONNECTION_FAILOVER_DELETE_SOURCE
     | ASYNCHRONOUS_CONNECTION_FAILOVER_RESET
+    | AT
     | ATAN
+    | AUDIT
+    | AUTHORS
+    | AUTO
+    | AUTOEXTEND_SIZE
+    | AUTO_INCREMENT
+    | AVG
+    | AVG_ROW_LENGTH
+    | BACKUP
+    | BACKUPSET
+    | BALANCE
+    | BASE
+    | BASELINE
+    | BASELINE_ID
+    | BASIC
+    | BEFORE
+    | BEGI
     | BENCHMARK
     | BIN
+    | BINDING
+    | BINLOG
     | BIN_TO_UUID
+    | BIT
     | BIT_COUNT
     | BIT_LENGTH
+    | BLOCK
+    | BLOCK_INDEX
+    | BLOCK_SIZE
+    | BLOOM_FILTER
+    | BOOL
+    | BOOLEAN
+    | BOOTSTRAP
+    | BREADTH
+    | BTREE
+    | BUCKETS
+    | BULK
+    | BYTE
+    | CACHE
     | CALL
+    | CANCEL
     | CAST
-    | CELIING
+    | CASCADED
+    | CATALOG_NAME
     | CEIL
     | CEILING
+    | CHAIN
+    | CHANGED
+    | CHARACTER_LENGT
     | CHARACTER_LENGTH
+    | CHARSET
     | CHAR_LENGTH
+    | CHECKPOINT
+    | CHECKSUM
+    | CHUNK
+    | CIPHER
+    | CLASS_ORIGIN
+    | CLEAN
+    | CLEAR
+    | CLIENT
+    | CLOG
+    | CLOSE
+    | CLUSTER
+    | CLUSTER_ID
+    | CLUSTER_NAME
+    | COALESCE
+    | CODE
     | COERCIBILITY
-    | COLUMN
     | COPY
+    | COLLATION
+    | COLUMNS
+    | COLUMN_FORMAT
+    | COLUMN_NAME
+    | COLUMN_STAT
+    | COMMENT
+    | COMMIT
+    | COMMITTED
+    | COMPACT
+    | COMPLETION
     | COMPRESS
+    | COMPRESSED
+    | COMPRESSION
     | CONCAT_WS
+    | CONCURRENT
+    | CONNECTION
     | CONNECTION_ID
+    | CONSISTENT
+    | CONSISTENT_MODE
+    | CONSTRAINT_CATALOG
+    | CONSTRAINT_NAME
+    | CONSTRAINT_SCHEMA
+    | CONTAINS
+    | CONTEXT
+    | CONTRIBUTORS
     | CONY
     | COS
     | COT
     | COUNT
+    | CPU
     | CRC32
+    | CREATE_TIMESTAMP
+    | CTXCAT
+    | CTX_ID
+    | CUBE
+    | CURRENT
+    | CURSOR_NAME
+    | CYCLE
+    | DATA
+    | DATABASE_ID
+    | DATAFILE
+    | DATA_TABLE_ID
+    | DATE
+    | DATETIME
+    | DATE_FORMAT
+    | DAY
     | DAYNAME
     | DAYOFMONTH
     | DAYOFWEEK
     | DAYOFYEAR
+    | DEALLOCATE
+    | DEC
+    | DECLARE
+    | DEFAULT_AUTH
+    | DEFAULT_TABLEGROUP
+    | DEFINER
     | DEGREES
+    | DELAY
+    | DELAY_KEY_WRITE
+    | DEPTH
+    | DESTINATION
+    | DES_KEY_FILE
+    | DETERMINISTIC
+    | DIAGNOSTICS
+    | DIRECTORY
+    | DISABLE
+    | DISCARD
+    | DISK
+    | DISKGROUP
+    | DO
+    | DUMP
+    | DUMPFILE
+    | DUPLICATE
+    | DUPLICATE_SCOPE
+    | DYNAMIC
+    | EACH
+    | EFFECTIVE
+    | EGEXP_INSTR
     | ELT
+    | ENABLE
+    | ENCRYPTION
+    | END
+    | ENDS
+    | ENGINE
+    | ENGINES
+    | ENGINE_
+    | ENTITY
+    | ENUM
+    | ERRORS
+    | ERROR_CODE
+    | ERROR_P
+    | ERSION
+    | ESCAPE
+    | EVENT
+    | EVENTS
+    | EVERY
+    | EXCHANGE
+    | EXECUTE
     | EXP
+    | EXPANSION
+    | EXPIRE
+    | EXPIRED
+    | EXPIRE_INFO
+    | EXPORT
     | EXPORT_SET
+    | EXTENDED
+    | EXTENDED_NOADDR
+    | EXTENT_SIZE
     | EXTRACTVALUE
-    | EXTRACTVALUEEXP
+    | FAST
+    | FAULTS
     | FIELD
+    | FIELDS
+    | FILEX
+    | FILE_ID
+    | FINAL_COUNT
     | FIND_IN_SET
+    | FIRST
+    | FIXED
+    | FLASHBACK
+    | FLOAT4
+    | FLOAT8
     | FLOOR
+    | FLUSH
+    | FOLLOWER
+    | FOLLOWING
+    | FORMAT
+    | FOUND
     | FOUND_ROWS
+    | FREEZE
+    | FREQUENCY
     | FROM_BASE64
     | FROM_DAYS
     | FROM_UNIXTIME
+    | FUNCTION
+    | GENERAL
+    | GEOMETRY
+    | GEOMETRYCOLLECTION
+    | GET
     | GET_LOCK
+    | GLOBAL
+    | GLOBAL_ALIAS
+    | GLOBAL_NAME
+    | GRANTS
     | GREATEST
     | GROUPING
+    | GROUPS
     | GROUP_REPLICATION_DISABLE_MEMBER_ACTION
     | GROUP_REPLICATION_ENABLE_MEMBER_ACTION
     | GROUP_REPLICATION_GET_COMMUNICATION_PROTOCOL
@@ -2748,26 +2964,66 @@ def p_non_reserved(p):
     | GROUP_REPLICATION_SWITCH_TO_SINGLE_PRIMARY_MODE
     | GTID_SUBSET
     | GTID_SUBTRACT
+    | GTS
+    | HANDLER
+    | HASH
+    | HELP
     | HEX
+    | HISTOGRAM
+    | HOST
+    | HOSTS
+    | HOST_IP
+    | HOUR
     | ICU_VERSION
-    | IF
+    | ID
+    | IDC
+    | IDENTIFIED
+    | IFIGNORE
     | IFNULL
+    | IGNORE_SERVER_IDS
+    | ILOG
+    | ILOGCACHE
+    | IMPORT
+    | INCR
+    | INCREMENTAL
+    | INDEXES
+    | INDEX_TABLE_ID
     | INET6_ATON
     | INET6_NTOA
     | INET_ATON
     | INET_NTOA
-    | INSTR
+    | INFO
+    | INITIAL_SIZE
     | INTO
+    | INNER_PARSE
+    | INNODB
+    | INSENSITIVE
+    | INSERT_METHOD
+    | INSTALL
+    | INSTANCE
+    | INSTR
+    | INVISIBLE
+    | INVOKER
+    | IO
+    | IO_AFTER_GTIDS
+    | IO_BEFORE_GTIDS
+    | IO_THREAD
+    | IPC
     | IS
     | ISNULL
+    | ISOLATION
+    | ISSUER
     | IS_FREE_LOCK
     | IS_IPV4
     | IS_IPV4_COMPAT
     | IS_IPV4_MAPPED
     | IS_IPV6
+    | IS_TENANT_SYS_POOL
     | IS_USED_LOCK
     | IS_UUID
     | ITERATE
+    | JOB
+    | JSON
     | JSON_ARRAY
     | JSON_ARRAYAGG
     | JSON_ARRAY_APPEND
@@ -2799,342 +3055,350 @@ def p_non_reserved(p):
     | JSON_UNQUOTE
     | JSON_VAILD
     | JSON_VALUE
+    | KEY_BLOCK_SIZE
+    | KEY_VERSION
+    | KVCACHE
+    | LANGUAGE
+    | LAST
     | LAG
     | LAST_DAY
     | LAST_INSERT_ID
     | LAST_VALUE
-    | LATERAL
     | LCASE
+    | LEADER
+    | LEAK
+    | LEAK_MOD
     | LEAST
+    | LEAVES
     | LENGTH
+    | LESS
+    | LEVEL
+    | LINESTRING
+    | LISTAGG
+    | LIST_
     | LN
     | LOAD_FILE
+    | LOB
+    | LOCAL
+    | LOCALITY
     | LOCATE
+    | LOCATION
+    | LOCKED
+    | LOCKS
+    | LOCK_
     | LOG
     | LOG10
     | LOG2
+    | LOGFILE
+    | LOGONLY_REPLICA_NUM
+    | LOGS
+    | LONGB
+    | LOOP
     | LOWER
     | LPAD
     | LTRIM
+    | MAJOR
     | MAKEDATE
+    | MAKE_SE
     | MAKE_SET
-    | MASTER_POS_WAIT
-    | MD5
-    | MID
-    | MONTHNAME
-    | NAME_CONST
-    | NULLIF
-    | OCT
-    | OCTET_LENGTH
-    | OF
-    | OR
-    | ORD
-    | OVER
-    | PARAMETER
-    | PERIOD_ADD
-    | PERIOD_DIFF
-    | PI
-    | POSITION
-    | POW
-    | POWER
-    | QUOTE
-    | RANDOM_BYTES
-    | RANK
-    | READS
-    | REDOFILE
-    | RELEASE_ALL_LOCKS
-    | RELEASE_LOCK
-    | REPLACE
-    | REPLICATE
-    | RESET
-    | RETURN
-    | RETURNS
-    | ROLES_GRAPHML
-    | ROUND
-    | RPAD
-    | RTRIM
-    | SCHEMA
-    | SEC_TO_TIME
-    | SESSION_USER
-    | SHA
-    | SHA1
-    | SHA2
-    | SKIP
-    | SLEEP
-    | SONAME
-    | SOUNDEX
-    | SOUNDS
-    | SOURCE_POS_WAIT
-    | SPACE
-    | SPATIAL
-    | SPECIFIC
-    | SQL_AFTER_GTIDS
-    | SQL_AFTER_MTS_GAPS
-    | SQL_BEFORE_GTIDS
-    | SQL_CALC_FOUND_ROWS
-    | SQL_SMALL_RESULT
-    | SQL_THREAD
-    | STACKED
-    | STATEMENT_DIGEST
-    | STATEMENT_DIGEST_TEXT
-    | STOP
-    | STORED
-    | STRAIGHT_JOIN
-    | STRCMP
-    | STR_TO_DATE
-    | SUBCLASS_ORIGIN
-    | SUBSTR
-    | SUBSTRING_INDEX
-    | SUSPEND
-    | SYSTEM_USER
-    | TIMEDIFF
-    | TIME_FORMAT
-    | TIME_TO_SEC
-    | TOP
-    | TO_BASE64
-    | TO_DAYS
-    | TO_SECONDS
-    | TYPES
-    | UCASE
-    | UNCOMPRESS
-    | UNCOMPRESSED_LENGTH
-    | UNDO
-    | UNDO_BUFFER_SIZE
-    | UNHEX
-    | UNIQUE
-    | UNINSTALL
-    | UNIX_TIMESTAMP
-    | UNLOCK
-    | UPDATEXML
-    | UPPER
-    | UUID
-    | UUID_SHORT
-    | UUID_TO_BIN
-    | VALIDATE_PASSWORD_STRENGTH
-    | VALUES
-    | VAR_VARIANCE
-    | VERSION
-    | WAIT_FOR_EXECUTED_GTID_SET
-    | WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS
-    | WEEKDAY
-    | WEEKOFYEAR
-    | WITH
-    | WORK
-    | WRAPPER
-    | WRITE
-    | XA
-    | XID
-    | XML
-    | XOR
-    | YEARWEEK
-    | ZEROFILL"""
-    p[0] = p[1]
-
-
-def p_not_keyword_token(p):
-    r"""not_keyword_token : ACCOUNT
-    | ACTION
-    | ADVISE
-    | AFTER
-    | AGAINST
-    | AGO
-    | ALGORITHM
-    | ALWAYS
-    | ANY
-    | ASCII
-    | AUTO_INCREMENT
-    | AVG
-    | AVG_ROW_LENGTH
-    | BACKUP
-    | BEGIN
-    | BINLOG
-    | BIT
-    | BOOL
-    | BOOLEAN
-    | BTREE
-    | BYTE
-    | CACHE
-    | CAPTURE
-    | CASCADED
-    | CAUSAL
-    | CHARSET
-    | CLEANUP
-    | CLIENT
-    | COALESCE
-    | COLLATION
-    | COLUMNS
-    | COLUMN_FORMAT
-    | COMMENT
-    | COMMIT
-    | COMMITTED
-    | COMPACT
-    | COMPRESSED
-    | COMPRESSION
-    | CONCURRENCY
-    | CONNECTION
-    | CONSISTENCY
-    | CONSISTENT
-    | CONTEXT
-    | CPU
-    | CURRENT
-    | CYCLE
-    | DATA
-    | DATE
-    | DATETIME
-    | DAY
-    | DECLARE
-    | DISABLE
-    | DISABLED
-    | DISCARD
-    | DISK
-    | DO
-    | DUPLICATE
-    | DYNAMIC
-    | ENABLE
-    | ENABLED
-    | END
-    | ENFORCED
-    | ENGINE
-    | ENUM
-    | ERROR
-    | ESCAPE
-    | EVENT
-    | EVENTS
-    | EXECUTE
-    | EXPANSION
-    | EXTENDED
-    | FIELDS
-    | FILE
-    | FIRST
-    | FLUSH
-    | FOLLOWING
-    | FORMAT
-    | FOUND
-    | FULL
-    | FUNCTION
-    | GENERAL
-    | GLOBAL
-    | GRANTS
-    | HANDLER
-    | HASH
-    | HELP
-    | HOSTS
-    | HOUR
-    | IDENTIFIED
-    | IMPORT
-    | INDEXES
-    | INSERT_METHOD
-    | INSTANCE
-    | INVISIBLE
-    | INVOKER
-    | IO
-    | IPC
-    | ISOLATION
-    | ISSUER
-    | JSON
-    | KEY_BLOCK_SIZE
-    | LANGUAGE
-    | LAST
-    | LESS
-    | LEVEL
-    | LIST
-    | LOCAL
-    | LOCATION
-    | LOCKED
-    | LOGS
+    | MANUAL
     | MASTER
+    | MASTER_AUTO_POSITION
+    | MASTER_BIND
+    | MASTER_CONNECT_RETRY
+    | MASTER_DELAY
+    | MASTER_HEARTBEAT_PERIOD
+    | MASTER_HOST
+    | MASTER_LOG_FILE
+    | MASTER_LOG_POS
+    | MASTER_PASSWORD
+    | MASTER_PORT
+    | MASTER_POS_WAIT
+    | MASTER_RETRY_COUNT
+    | MASTER_SERVER_ID
+    | MASTER_SSL
+    | MASTER_SSL_CA
+    | MASTER_SSL_CAPATH
+    | MASTER_SSL_CERT
+    | MASTER_SSL_CIPHER
+    | MASTER_SSL_CRL
+    | MASTER_SSL_CRLPATH
+    | MASTER_SSL_KEY
+    | MASTER_SSL_VERIFY_SERVER_CERT
+    | MASTER_USER
+    | MATCHED
+    | MATERIALIZED
     | MAX
+    | MAX_CONNECTIONS_PER_HOUR
+    | MAX_CPU
+    | MAX_DISK_SIZE
+    | MAX_IOPS
+    | MAX_MEMORY
+    | MAX_PT
+    | MAX_QUERIES_PER_HOUR
     | MAX_ROWS
-    | MB
+    | MAX_SESSION_NUM
+    | MAX_SIZE
+    | MAX_UPDATES_PER_HOUR
+    | MAX_USED_PART_ID
+    | MAX_USER_CONNECTIONS
+    | MD5
+    | MEDIUM
     | MEMBER
     | MEMORY
+    | MEMTABLE
     | MERGE
+    | MESSAGE_TEXT
+    | META
     | MICROSECOND
+    | MID
+    | MIDDLEINT
+    | MIGRATE
+    | MIGRATION
+    | MINOR
     | MINUTE
-    | MINVALUE
+    | MIN_CPU
+    | MIN_IOPS
+    | MIN_MEMORY
     | MIN_ROWS
+    | MKEDATE
     | MODE
+    | MODIFIES
     | MODIFY
     | MONTH
+    | MONTHNAME
+    | MOVE
+    | MULTILINESTRING
+    | MULTIPOINT
+    | MULTIPOLYGON
+    | MUTEX
+    | MYSQL_ERRNO
+    | NAME
     | NAMES
+    | NAME_CONST
     | NATIONAL
-    | NEVER
+    | NCHAR
+    | NDB
+    | NDBCLUSTER
+    | NEW
     | NEXT
+    | NO
+    | NOARCHIVELOG
     | NODEGROUP
     | NONE
+    | NORMAL
     | NOW
     | NOWAIT
+    | NO_WAIT
     | NULLS
+    | NULLIF
     | NVARCHAR
+    | NVL
+    | OAD_FILE
+    | OCCUR
+    | OCT
+    | OCTET_LENGTH
+    | OERCIBILITY
+    | OF
     | OFF
     | OFFSET
-    | ONLINE
+    | OLD_KEY
+    | OLD_PASSWORD
+    | ONE
+    | ONE_SHOT
     | ONLY
-    | ON_DUPLICATE
+    | ONTHNAME
     | OPEN
-    | OPTIONAL
+    | OPTIONS
+    | OR
+    | ORA_DECODE
+    | ORD
+    | ORIG_DEFAULT
+    | OUTLINE
+    | OVER
+    | OWER
+    | OWNER
+    | PACE
     | PACK_KEYS
     | PAGE
+    | PARAMETERS
     | PARSER
     | PARTIAL
     | PARTITIONING
     | PARTITIONS
+    | PARTITION_ID
     | PASSWORD
     | PAUSE
-    | PERCENT
-    | PER_DB
-    | PER_TABLE
+    | PCTFREE
+    | PERIOD_ADD
+    | PERIOD_DIFF
+    | PHASE
+    | PHYSICAL
+    | PI
+    | PL
+    | PLAN
+    | PLANREGRESS
+    | PLUGIN
     | PLUGINS
+    | PLUGIN_DIR
+    | POSITION
     | POINT
-    | POLICY
+    | POLYGON
+    | POOL
+    | PORT
+    | POW
+    | POWER
     | PRECEDING
+    | PREPARE
     | PRESERVE
+    | PREV
+    | PREVIEW
+    | PRIMARY_ZONE
     | PRIVILEGES
+    | PROCESS
     | PROCESSLIST
     | PROFILE
+    | PROFILES
+    | PROGRESSIVE_MERGE_NUM
     | PROXY
     | PURGE
+    | P_CHUNK
+    | P_ENTITY
     | QUARTER
     | QUERY
     | QUICK
+    | QUOTE
+    | R32
+    | RANDOM
+    | RANDOM_BYTES
+    | RANK
+    | READS
+    | READ_ONLY
+    | READ_WRITE
     | REBUILD
     | RECOVER
+    | RECYCLE
+    | RECYCLEBIN
+    | REDOFILE
+    | REDO_BUFFER_SIZE
     | REDUNDANT
+    | REFRESH
+    | REGION
+    | RELAY
+    | RELAYLOG
+    | RELAY_LOG_FILE
+    | RELAY_LOG_POS
+    | RELAY_THREAD
+    | RELEASE_ALL_LOCKS
+    | RELEASE_LOCK
     | RELOAD
+    | REMOTE_OSS
     | REMOVE
     | REORGANIZE
     | REPAIR
+    | REPEATABLE
+    | REPLACE
+    | REPLICA
     | REPLICATION
+    | REPLICA_NUM
+    | REPLICA_TYPE
+    | REPORT
+    | RESET
     | RESOURCE
+    | RESOURCE_POOL_LIST
     | RESPECT
+    | RESTART
     | RESTORE
     | RESUME
+    | RETURN
+    | RETURNING
+    | RETURNS
     | REVERSE
+    | REWRITE_MERGE_VERSION
+    | ROLES_GRAPHML
     | ROLLBACK
+    | ROLLING
+    | ROLLUP
+    | ROM_BASE64
+    | ROM_UNIXTIME
+    | ROOT
+    | ROOTSERVICE
+    | ROOTTABLE
+    | ROTATE
+    | ROUTINE
+    | ROUND
     | ROW
     | ROWS
     | ROW_COUNT
     | ROW_FORMAT
     | ROW_NUMBER
+    | RPAD
     | RTREE
+    | RTRIM
+    | RUDUNDANT
+    | RUN
+    | SAMPLE
     | SAVEPOINT
+    | SCHEDULE
+    | SCHEMA
+    | SCHEMAS
+    | SCHEMA_NAME
+    | SCOPE
+    | SEARCH
     | SECOND
+    | SECURITY
+    | SEC_TO_TIME
+    | SEED
+    | SENSITIVE
     | SEPARATOR
+    | SERIAL
     | SERIALIZABLE
+    | SERVER
+    | SERVER_IP
+    | SERVER_PORT
+    | SERVER_TYPE
     | SESSION
+    | SESSION_ALIAS
+    | SESSION_USER
+    | SET_MASTER_CLUSTER
+    | SET_SLAVE_CLUSTER
+    | SET_TP
+    | SHA
+    | SHA1
+    | SHA2
     | SHARE
     | SHUTDOWN
+    | SKIP
     | SIGN
     | SIGNED
     | SIMPLE
     | SLAVE
+    | SLEEP
+    | SLOT_IDX
     | SLOW
     | SNAPSHOT
+    | SOCKET
     | SOME
+    | SONAME
+    | SOUNDEX
+    | SOUNDS
     | SOURCE
+    | SOURCE_POS_WAIT
+    | SPACE
+    | SPATIAL
+    | SPECIFIC
+    | SPFILE
+    | SPLIT
+    | SQL_AFTER_GTIDS
+    | SQL_AFTER_MTS_GAPS
+    | SQL_BEFORE_GTIDS
     | SQL_BUFFER_RESULT
     | SQL_CACHE
+    | SQL_CALC_FOUND_ROWS
+    | SQL_ID
     | SQL_NO_CACHE
+    | SQL_SMALL_RESULT
+    | SQL_THREAD
     | SQL_TSI_DAY
     | SQL_TSI_HOUR
     | SQL_TSI_MINUTE
@@ -3143,41 +3407,150 @@ def p_not_keyword_token(p):
     | SQL_TSI_SECOND
     | SQL_TSI_WEEK
     | SQL_TSI_YEAR
+    | STANDBY
     | START
+    | STARTS
+    | STAT
+    | STATEMENT_DIGEST
+    | STATEMENT_DIGEST_TEXT
     | STATS_AUTO_RECALC
     | STATS_PERSISTENT
     | STATS_SAMPLE_PAGES
     | STATUS
+    | STOP
     | STORAGE
+    | STORAGE_FORMAT_VERSION
+    | STORAGE_FORMAT_WORK_VERSION
+    | STORED
+    | STORING
+    | STRAIGHT_JOIN
+    | STRCMP
+    | STR_TO_DATE
+    | SUBCLASS_ORIGIN
     | SUBJECT
+    | SUBPARTITION
+    | SUBPARTITIONS
+    | SUBSTR
+    | SUBSTRING_INDEX
     | SUPER
     | SUM
+    | SUSPEND
+    | SWAPS
+    | SWITCH
+    | SWITCHES
+    | SWITCHOVER
+    | SYNCHRONIZATION
+    | SYSTEM
+    | SYSTEM_USER
+    | TABLEGROUP
+    | TABLEGROUPS
+    | TABLEGROUP_ID
     | TABLES
     | TABLESPACE
+    | TABLET
+    | TABLET_MAX_SIZE
+    | TABLET_SIZE
     | TABLE_CHECKSUM
+    | TABLE_ID
+    | TABLE_MODE
+    | TABLE_NAME
+    | TASK
+    | TATEMENT_DIGEST
+    | TEMPLATE
     | TEMPORARY
     | TEMPTABLE
+    | TENANT
+    | TENANT_ID
+    | TEXT
+    | THAN
     | TIME
+    | TIMEDIFF
     | TIMESTAMP
+    | TIME_FORMAT
+    | TIME_TO_SEC
+    | TIME_ZONE_INFO
+    | TOP
+    | TO_BASE64
+    | TO_DAYS
+    | TO_SECONDS
+    | TP_NAME
+    | TP_NO
+    | TRACE
+    | TRADITIONAL
     | TRANSACTION
     | TRIGGERS
     | TRUNCATE
     | TYPE
+    | TYPES
+    | UBTIME
+    | UCASE
     | UNBOUNDED
     | UNCOMMITTED
+    | UNCOMPRESS
+    | UNCOMPRESSED_LENGTH
     | UNDEFINED
+    | UNDO
+    | UNDOFILE
+    | UNDO_BUFFER_SIZE
+    | UNHEX
+    | UNICODE
+    | UNINSTALL
+    | UNIT
+    | UNIT_NUM
+    | UNIQUE
+    | UNIX_TIMESTAMP
     | UNKNOWN
+    | UNLOCK
+    | UNLOCKED
+    | UNUSUAL
+    | UOTE
+    | UPDATEXML
+    | UPGRADE
+    | UPPER
+    | USEC_TO_TIME
     | USER
-    | VALIDATION
+    | USER_RESOURCES
+    | USE_BLOOM_FILTER
+    | USE_FRM
+    | UUID
+    | UUID_SHORT
+    | UUID_TO_BIN
+    | VALID
+    | VALIDATE
+    | VALIDATE_PASSWORD_STRENGTH
     | VALUE
+    | VARCHARACTER
     | VARIABLES
+    | VAR_VARIANCE
+    | VERBOSE
+    | VERSION
+    | VIEW
+    | VIRTUAL_COLUMN_ID
+    | VISIBLE
     | WAIT
+    | WAIT_FOR_EXECUTED_GTID_SET
+    | WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS
     | WARNINGS
     | WEEK
+    | WEEKDAY
+    | WEEKOFYEAR
     | WEIGHT_STRING
-    | WITHOUT
+    | WITH
+    | WITH_ROWID
+    | WORK
+    | WRAPPER
+    | WRITE
     | X509
-    | YEAR"""
+    | XA
+    | XML
+    | XOR
+    | XTRACTVALUE
+    | YEAR
+    | YEARWEEK
+    | ZEROFILL
+    | ZONE
+    | ZONE_LIST
+    | ZONE_TYPE"""
     p[0] = p[1]
 
 
@@ -3298,4 +3671,4 @@ def p_error(p):
     raise SyntaxError("The current version does not support this SQL")
 
 
-parser = yacc.yacc(tabmodule="parser_table", start="command", debugfile="parser.out", optimize=True)
+parser = yacc.yacc(tabmodule="parser_table", start="command", debugfile="parser.out",optimize=True)
