@@ -312,16 +312,52 @@ def p_ignore(p):
            | empty
     """
 
-
 def p_delete(p):
-    r"""delete : DELETE FROM relations where_opt order_by_opt limit_opt"""
-    p_limit = p[6]
-    offset = 0
-    limit = 0
-    if p_limit:
-        offset = int(p_limit[0])
-        limit = int(p_limit[1])
-    p[0] = Delete(table=p[3], where=p[4], order_by=p[5], limit=limit, offset=offset)
+    r"""delete : DELETE FROM relations where_opt order_by_opt limit_opt
+    | DELETE FROM relations partition where_opt order_by_opt limit_opt
+    | DELETE table_name_list FROM relations where_opt order_by_opt limit_opt
+    | DELETE table_name_list FROM relations partition where_opt order_by_opt limit_opt
+    | DELETE FROM table_name_list USING relations where_opt order_by_opt limit_opt
+    | DELETE FROM table_name_list USING relations partition where_opt order_by_opt limit_opt
+    """
+    length=len(p)
+    p_limit = p[length-1]
+    if p_limit is not None:
+        offset,limit = int(p_limit[0]),int(p_limit[1])  
+    else:
+        offset,limit=0,0
+    if p.slice[3].type=="relations":
+        tables,table_refs=p[3],None
+    elif p.slice[2].type=="table_name_list":
+        tables,table_refs=p[4],p[2]
+    else:
+        tables,table_refs=p[3],p[5]
+    p[0] = Delete(table=tables,table_refs=table_refs,where=p[length-3], order_by=p[length-2], limit=limit, offset=offset)
+
+
+def p_table_name_list(p):
+    r"""table_name_list :  table_name_list COMMA table_name_opt_wild
+    |  table_name_opt_wild"""
+    if len(p)==4:
+        p[1].append(p[3])
+        p[0]=p[1]
+    else:
+        p[0]=[p[1]]
+
+def p_table_name_opt_wild(p):
+    r"""table_name_opt_wild : identifier
+    | identifier PERIOD identifier
+    | identifier PERIOD ASTERISK
+    | identifier PERIOD identifier PERIOD ASTERISK"""
+    if len(p)==6 or (len(p)==4 and p.slice[3]=='identifier'):
+        p[0]=QualifiedName(parts=[p[2],p[3]])
+    else:
+        p[0]=QualifiedName(parts=[p[1]])
+
+def p_opt_asterisk(p):
+    r"""opt_asterisk : PERIOD ASTERISK
+    | empty"""
+    pass
 
 
 def p_update(p):
@@ -623,14 +659,15 @@ def p_limit_stmt(p):
     r"""limit_stmt : LIMIT parameterization
     | LIMIT parameterization COMMA parameterization
     | LIMIT parameterization OFFSET parameterization
-    | LIMIT ALL"""
-    if len(p) < 5:
-        p[0] = (0, p[2])
-    else:
-        if p[3] == ',':
-            p[0] = (p[2], p[4])
+    | LIMIT ALL
+    | FETCH first_or_next fetch_first_opt row_or_rows ONLY"""
+    if p.slice[1].type == "LIMIT":
+        if len(p) < 5:
+            p[0] = (0, p[2])
         else:
-            p[0] = (p[4], p[2])
+            p[0] = (p[2], p[4]) if p[3] == ',' else (p[4], p[2])
+    else:
+        p[0]=(0,p[3])
 
 
 def p_parameterization(p):
@@ -639,6 +676,20 @@ def p_parameterization(p):
     """
     p[0] = p[1]
 
+def p_first_or_next(p):
+    r"""first_or_next : FIRST
+    | NEXT"""
+    p[0]=p[1]
+
+def p_fetch_first_opt(p):
+    r"""fetch_first_opt : parameterization
+    | empty"""
+    p[0]=p[1] if p[1] else 1
+
+def p_row_or_rows(p):
+    r"""row_or_rows : ROW
+    | ROWS"""
+    p[0]=p[1]
 
 def p_number(p):
     r"""number : NUMBER"""
@@ -663,7 +714,7 @@ def p_set_operation_expressions(p):
 
 
 def _set_operation(line, pos, left, right, oper, distinctOrAll):
-    distinct = distinctOrAll is not None and distinctOrAll.upper() == "DISTINCT"
+    distinct = distinctOrAll is not None and distinctOrAll.upper() in {"DISTINCT","UNIQUE","DISTINCTROW"}
     all = distinctOrAll is not None and distinctOrAll.upper() == "ALL"
     oper = oper.upper()
     if oper == "UNION":
@@ -735,20 +786,19 @@ def _item_list(p):
     else:
         p[0] = None
 
-
 def p_query_spec(p):
-    r"""query_spec : SELECT select_items table_expression_opt order_by_opt limit_opt window_clause_opt for_update_opt"""
-    select_items = p[2]
-    table_expression_opt = p[3]
+    r"""query_spec : SELECT select_stmt_opts select_items table_expression_opt order_by_opt limit_opt window_clause_opt for_update_opt"""
+    select_items = p[3]
+    table_expression_opt = p[4]
     from_relations = table_expression_opt.from_ if table_expression_opt else None
     where = table_expression_opt.where if table_expression_opt else None
     group_by = table_expression_opt.group_by if table_expression_opt else None
     having = table_expression_opt.having if table_expression_opt else None
-    p_for_update = p[7]
+    p_for_update = p[8]
     for_update = None
     nowait_or_wait = None
 
-    p_limit = p[5]
+    p_limit = p[6]
     offset = 0
     limit = 0
     if p_limit:
@@ -765,7 +815,7 @@ def p_query_spec(p):
         from_ = from_relations[0]
         for rel in from_relations[1:]:  # Skip first one
             from_ = Join(
-                p.lineno(3), p.lexpos(3), join_type="IMPLICIT", left=from_, right=rel
+                p.lineno(4), p.lexpos(4), join_type="IMPLICIT", left=from_, right=rel
             )
 
     p[0] = QuerySpecification(
@@ -778,10 +828,10 @@ def p_query_spec(p):
         having=having,
         for_update=for_update,
         nowait_or_wait=nowait_or_wait,
-        order_by=p[4],
+        order_by=p[5],
         limit=limit,
         offset=offset,
-        window_spec_list=p[6],
+        window_spec_list=p[7],
     )
 
 
@@ -806,13 +856,46 @@ def p_having_opt(p):
     | empty"""
     p[0] = p[2] if p[1] else None
 
-
 def p_set_quantifier_opt(p):
-    r"""set_quantifier_opt : ALL
-    | DISTINCT
-    | empty"""
-    p[0] = p[1]
+    r"""set_quantifier_opt : distinct_opt 
+    | empty
+    """
+    p[0]=p[1]
 
+def p_select_stmt_opts(p):
+    r"""select_stmt_opts : select_stmt_opt_list
+    | empty"""
+    p[0]=p[1]
+
+def p_select_stmt_opt_list(p):
+    r"""select_stmt_opt_list : select_stmt_opt_list select_stmt_opt
+    | select_stmt_opt"""
+    if len(p)==3:
+        p[1].append(p[2])
+        p[0]=p[1]
+    else:
+        p[0]=[p[1]]
+
+def p_select_stmt_opt(p):
+    r"""select_stmt_opt : distinct_opt
+    | priority
+    | SQL_SMALL_RESULT
+    | SQL_BIG_RESULT
+    | SQL_BUFFER_RESULT
+    | SQL_NO_CACHE
+    | SQL_CALC_FOUND_ROWS
+    | STRAIGHT_JOIN"""
+    p[0]=p[1]
+
+def p_priority(p):
+    r"""priority : HIGH_PRIORITY"""
+    p[0]=p[1]
+
+def p_distinct_opt(p):
+    r"""distinct_opt : ALL
+    | DISTINCT
+    | DISTINCTROW"""
+    p[0] = p[1]
 
 def p_select_items(p):
     r"""select_items : select_item
@@ -821,16 +904,8 @@ def p_select_items(p):
 
 
 def p_select_item(p):
-    r"""select_item : derived_column
-    | DISTINCT LPAREN derived_column RPAREN
-    | DISTINCT derived_column"""
-    if len(p) == 2:
-        p[0] = p[1]
-    elif len(p) == 3:
-        p[0] = p[2]
-    else:
-        p[0] = p[3]
-
+    r"""select_item : derived_column"""
+    p[0] = p[1]
 
 def p_derived_column(p):
     r"""derived_column : expression alias_opt
@@ -1089,7 +1164,7 @@ def p_search_condition(p):
 def p_boolean_term(p):
     r"""boolean_term : NOT search_condition
     | MATCH LPAREN select_items RPAREN AGAINST LPAREN value_expression full_text_search_modifier_opt RPAREN
-    | user_define_variable ASSIGNMENTEQ search_condition
+    | define_variable ASSIGNMENTEQ search_condition
     | boolean_factor"""
     if len(p) == 2:
         p[0] = p[1]
@@ -1130,7 +1205,7 @@ def p_boolean_factor(p):
     | boolean_factor comparison_operator ANY subquery
     | boolean_factor comparison_operator SOME subquery
     | boolean_factor comparison_operator ALL subquery
-    | boolean_factor comparison_operator user_define_variable ASSIGNMENTEQ predicate
+    | boolean_factor comparison_operator define_variable ASSIGNMENTEQ predicate
     | predicate"""
     if len(p) == 4:
         p[0] = ComparisonExpression(
@@ -1282,7 +1357,6 @@ def p_numeric_value_expression(p):
     | numeric_value_expression DIV numeric_value_expression
     | numeric_value_expression MOD numeric_value_expression
     | numeric_value_expression PERCENT numeric_value_expression
-    | numeric_value_expression PIPES numeric_value_expression
     | numeric_value_expression bit_opt numeric_value_expression
     | numeric_value_expression MINUS time_interval
     | numeric_value_expression PLUS time_interval
@@ -1328,7 +1402,7 @@ def p_factor(p):
 
 def p_base_primary_expression(p):
     r"""base_primary_expression : value
-    | user_define_variable 
+    | define_variable 
     | qualified_name
     | date_lit
     | subquery
@@ -1345,9 +1419,11 @@ def p_base_primary_expression(p):
     else:
         p[0] = p[1]
 
-def p_user_define_variable(p):
-    r"""user_define_variable : SINGLE_AT_IDENTIFIER
-    |  SINGLE_AT_IDENTIFIER PERIOD variables
+def p_define_variable(p):
+    r"""define_variable : SINGLE_AT_IDENTIFIER
+    | SINGLE_AT_IDENTIFIER PERIOD variables
+    | DOUBLE_AT_IDENTIFIER
+    | DOUBLE_AT_IDENTIFIER PERIOD variables
     """
     if len(p) == 4:
         parts=[p[1]]
@@ -1730,7 +1806,8 @@ def p_time_function_call(p):
     | extract_func
     | add_or_sub_date_func
     | date_one_para_func
-    | date_two_para_func"""
+    | date_two_para_func
+    | date_three_para_func"""
     p[0] = p[1]
 
 
@@ -1864,6 +1941,10 @@ def p_add_or_sub_date_func(p):
     | SUBDATE LPAREN expression COMMA time_interval RPAREN
     | DATE_ADD LPAREN expression COMMA time_interval RPAREN
     | DATE_SUB LPAREN expression COMMA time_interval RPAREN
+    | ADDDATE LPAREN expression COMMA expression RPAREN
+    | SUBDATE LPAREN expression COMMA expression RPAREN
+    | DATE_ADD LPAREN expression COMMA expression RPAREN
+    | DATE_SUB LPAREN expression COMMA expression RPAREN
     """
     p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3],p[5]])
 
@@ -1913,6 +1994,9 @@ def p_date_two_para_func(p):
     | TIME_FORMAT LPAREN expression COMMA expression RPAREN"""
     p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
 
+def p_date_three_para_func(p):
+    r"""date_three_para_func : CONVERT_TZ LPAREN expression COMMA expression COMMA expression RPAREN"""
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5],p[7]])
 
 def p_string_operator_func_call(p):
     r"""string_operator_func_call : ASCII LPAREN expression RPAREN
@@ -1934,7 +2018,7 @@ def p_string_operator_func_call(p):
     | FORMAT LPAREN expression COMMA expression COMMA expression RPAREN
     | FROM_BASE64 LPAREN expression RPAREN
     | HEX LPAREN expression RPAREN
-    | INSERT LPAREN expression COMMA expression COMMA expression RPAREN
+    | INSERT LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
     | INSTR LPAREN expression COMMA expression RPAREN
     | LCASE LPAREN expression RPAREN
     | LEFT LPAREN expression COMMA expression RPAREN
@@ -2042,34 +2126,30 @@ def p_remstr_position(p):
     | TRAILING"""
     p[0] = p[1]
 
-
 def p_string_comparsion_func_call(p):
     r"""string_comparsion_func_call : STRCMP LPAREN expression COMMA expression RPAREN
-    | REGEXP_INSTR regexp_opt
+    | REGEXP_INSTR LPAREN expression COMMA expression RPAREN
+    | REGEXP_INSTR LPAREN expression COMMA expression COMMA expression RPAREN
+    | REGEXP_INSTR LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
+    | REGEXP_INSTR LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    | REGEXP_INSTR LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
     | REGEXP_LIKE LPAREN expression COMMA expression RPAREN
     | REGEXP_LIKE LPAREN expression COMMA expression COMMA expression RPAREN
-    | REGEXP_REPLACE regexp_opt
+    | REGEXP_REPLACE LPAREN expression COMMA expression RPAREN
+    | REGEXP_REPLACE LPAREN expression COMMA expression COMMA expression RPAREN
+    | REGEXP_REPLACE LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
+    | REGEXP_REPLACE LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    | REGEXP_REPLACE LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    | REGEXP_SUBSTR LPAREN expression COMMA expression RPAREN
+    | REGEXP_SUBSTR LPAREN expression COMMA expression COMMA expression RPAREN
+    | REGEXP_SUBSTR LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
+    | REGEXP_SUBSTR LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
+    | REGEXP_SUBSTR LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
     """
-    if len(p) == 7:
-        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5]])
-    elif len(p) == 9:
-        p[0] = FunctionCall(
-            p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[3], p[5], p[7]]
-        )
-    else:
-        p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=[p[2]])
-
-
-def p_regexp_opt(p):
-    r"""regexp_opt : LPAREN expression COMMA expression RPAREN
-    | LPAREN expression COMMA expression COMMA expression RPAREN
-    | LPAREN expression COMMA expression COMMA expression COMMA expression RPAREN
-    | LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
-    | LPAREN expression COMMA expression COMMA expression COMMA expression COMMA expression COMMA expression RPAREN
-    """
-    p[0] = []
-    for i in range(2, len(p), 2):
-        p[0].append(p[i])
+    arguments,length=[],len(p)
+    for i in range(3, length, 2):
+        arguments.append(p[i])
+    p[0] = FunctionCall(p.lineno(1), p.lexpos(1), name=p[1], arguments=arguments)
 
 
 def p_xml_func_call(p):
@@ -2211,7 +2291,7 @@ def p_search_json_func_call(p):
     length = len(p)
     arguments = []
     call_list=[]
-    if p.slice(length - 2).type == "call_list":
+    if p.slice[length - 2].type == "call_list":
         call_list=p[length - 2]
         length -= 2
     for i in range(3, length, 2):
@@ -2243,7 +2323,7 @@ def p_modify_json_func_call(p):
     """
     length = len(p)
     arguments,call_list= [],[]
-    if p.slice(length - 2).type == "call_list":
+    if p.slice[length - 2].type == "call_list":
         call_list=p[length - 2]
         length -= 2
     for i in range(3, length, 2):
@@ -2360,12 +2440,12 @@ def p_aggreate_func_without_distinct(p):
 
 
 def p_aggreate_func_with_distinct(p):
-    r"""aggreate_func_with_distinct : AVG LPAREN distinct_opt expression RPAREN over_clause_opt
+    r"""aggreate_func_with_distinct : AVG LPAREN set_quantifier_opt expression RPAREN over_clause_opt
     | COUNT LPAREN DISTINCT call_list RPAREN over_clause_opt
-    | JSON_ARRAYAGG LPAREN distinct_opt expression RPAREN over_clause_opt
-    | MAX LPAREN distinct_opt expression RPAREN over_clause_opt
-    | SUM LPAREN distinct_opt expression RPAREN over_clause_opt
-    | MIN LPAREN distinct_opt expression RPAREN over_clause_opt"""
+    | JSON_ARRAYAGG LPAREN set_quantifier_opt expression RPAREN over_clause_opt
+    | MAX LPAREN set_quantifier_opt expression RPAREN over_clause_opt
+    | SUM LPAREN set_quantifier_opt expression RPAREN over_clause_opt
+    | MIN LPAREN set_quantifier_opt expression RPAREN over_clause_opt"""
     arguments = p[4] if p.slice[4].type == "call_list" else [p[4]]
     p[0] = AggregateFunc(
         p.lineno(1),
@@ -2378,7 +2458,7 @@ def p_aggreate_func_with_distinct(p):
 
 
 def p_group_concat_func_call(p):
-    """group_concat_func_call : GROUP_CONCAT LPAREN distinct_opt call_list order_by_opt separator_opt RPAREN over_clause_opt"""
+    """group_concat_func_call : GROUP_CONCAT LPAREN set_quantifier_opt call_list order_by_opt separator_opt RPAREN over_clause_opt"""
     p[0] = GroupConcat(
         p.lineno(1),
         p.lexpos(1),
@@ -2427,12 +2507,6 @@ def p_format_selector(p):
     | DATETIME
     | TIME
     | TIMESTAMP"""
-    p[0] = p[1]
-
-
-def p_distinct_opt(p):
-    r"""distinct_opt : DISTINCT
-    | empty"""
     p[0] = p[1]
 
 
@@ -2698,6 +2772,7 @@ def p_non_reserved(p):
     | BIN_TO_UUID
     | BIT_COUNT
     | BIT_LENGTH
+    | BRIEF
     | CALL
     | CAST
     | CELIING
@@ -2758,6 +2833,7 @@ def p_non_reserved(p):
     | INET_NTOA
     | INSTR
     | INTO
+    | INTERVAL
     | IS
     | ISNULL
     | IS_FREE_LOCK
@@ -2842,6 +2918,10 @@ def p_non_reserved(p):
     | RANK
     | READS
     | REDOFILE
+    | REGEXP_INSTR
+    | REGEXP_LIKE
+    | REGEXP_REPLACE
+    | REGEXP_SUBSTR 
     | RELEASE_ALL_LOCKS
     | RELEASE_LOCK
     | REPLACE
@@ -2885,6 +2965,7 @@ def p_non_reserved(p):
     | SUBCLASS_ORIGIN
     | SUBSTR
     | SUBSTRING_INDEX
+    | SUBTIME
     | SUSPEND
     | SYSTEM_USER
     | TIMEDIFF
@@ -2901,7 +2982,6 @@ def p_non_reserved(p):
     | UNDO
     | UNDO_BUFFER_SIZE
     | UNHEX
-    | UNIQUE
     | UNINSTALL
     | UNIX_TIMESTAMP
     | UNLOCK
@@ -2912,6 +2992,7 @@ def p_non_reserved(p):
     | UUID_TO_BIN
     | VALIDATE_PASSWORD_STRENGTH
     | VALUES
+    | VARIANCE
     | VAR_VARIANCE
     | VERSION
     | WAIT_FOR_EXECUTED_GTID_SET
@@ -3051,6 +3132,7 @@ def p_not_keyword_token(p):
     | MERGE
     | MICROSECOND
     | MINUTE
+    | MIN
     | MINVALUE
     | MIN_ROWS
     | MODE
