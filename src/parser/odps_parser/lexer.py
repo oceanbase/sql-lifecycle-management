@@ -41,6 +41,7 @@ tokens = (
         'BIT_XOR',
         'BIT_OPPOSITE',
         'SINGLE_AT_IDENTIFIER',
+        'DOUBLE_AT_IDENTIFIER',
         'EXCLA_MARK',
         'BIT_MOVE_LEFT',
         'BIT_MOVE_RIGHT',
@@ -119,7 +120,7 @@ def t_NUMBER_START_WITH_XB(t):
 
 
 def t_IDENTIFIER(t):
-    r"""[a-zA-Z\u4e00-\u9fa50-9_][a-zA-Z\u4e00-\u9fa50-9_@:]*"""
+    r"""[a-zA-Z\u4e00-\u9fa50-9_$][a-zA-Z\u4e00-\u9fa50-9_@:$]*"""
     if re.match(
         r'(^0[xX][0-9a-fA-F]+$)|(^[xX]\'[0-9a-fA-F]+\'$)|(^0[bB][01]+$)|(^[bB]\'[01]+\'$)|(^\d+$)',
         t.value,
@@ -142,6 +143,13 @@ def t_QUOTED_IDENTIFIER(t):
 def t_SINGLE_AT_IDENTIFIER(t):
     r"""@[^@][\w@\u4e00-\u9fa5]*"""
     t.type = "SINGLE_AT_IDENTIFIER"
+    return t
+
+
+# start with double @
+def t_DOUBLE_AT_IDENTIFIER(t):
+    r"""@@[\w@\u4e00-\u9fa5]*"""
+    t.type = "DOUBLE_AT_IDENTIFIER"
     return t
 
 

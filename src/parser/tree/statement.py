@@ -27,6 +27,7 @@ class Delete(Statement):
         line=None,
         pos=None,
         table=None,
+        table_refs=None,
         where=None,
         order_by=None,
         limit=None,
@@ -36,6 +37,7 @@ class Delete(Statement):
         self.table = table
         self.where = where
         self.order_by = order_by or []
+        self.table_refs = table_refs
         self.limit = limit
         self.offset = offset
 

@@ -158,6 +158,10 @@ delete from execution_log          where                (                       
             """SELECT position FROM t""",
             """SELECT lag FROM t""",
             """SELECT over FROM t""",
+            """SELECT min FROM t""",
+            """SELECT interval FROM t""",
+            """SELECT variance FROM t""",
+            """SELECT subtime FROM t""",
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
@@ -849,20 +853,6 @@ delete from execution_log          where                (                       
         for sql in test_sqls:
             result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
-            assert isinstance(result, Statement)
-
-    def test_ob_function(p):
-        test_sqls = [
-            "SELECT ALL(a) FROM t",
-            "SELECT ALL a FROM t",
-            "SELECT UNIQUE(a) FROM t",
-            "SELECT UNIQUE a FROM t",
-            "SELECT HOST_IP()",
-            "SELECT ORA_DECODE(sign(a),-1,0)",
-            "SELECT NVL(a,b)",
-        ]
-        for sql in test_sqls:
             result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
             assert isinstance(result, Statement)
 

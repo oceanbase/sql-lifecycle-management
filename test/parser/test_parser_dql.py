@@ -564,8 +564,183 @@ SELECT channel_code , contact_number FROM customer_contact_channels WHERE active
 
     def test_odps_function(self):
         sql = """select * from tbl where pt=max_pt('myproject.tbl')"""
-        result = odps_parser.parse(sql, lexer=odps_lexer)
+        result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
         assert isinstance(result, Statement)
+
+    def test_ob_tochar_function(self):
+        test_sqls = [
+            "SELECT to_char(12345.6789, '99999.9999') FROM dual",
+            "SELECT to_char(sysdate, 'yyyy-mm-dd') FROM dual",
+            "SELECT to_char(interval '1 00:01:05' DAY, '0.00%') FROM dual",
+            "SELECT TO_CHAR('010101') FROM DUAL",
+            """
+            SELECT a.table_name,
+       a.owner AS SCHEMA_NAME,
+       a.num_rows,
+       b.comments description,
+       to_char(c.created, 'yyyy-mm-dd hh24:mi:ss') create_time,
+       to_char(c.last_ddl_time, 'yyyy-mm-dd hh24:mi:ss') last_ddl_time
+FROM dba_tables a
+LEFT JOIN dba_tab_comments b ON a.owner = b.owner
+AND a.table_name = b.table_name ,
+    dba_objects c
+WHERE a.owner = c.owner
+  AND a.table_name = c.object_name
+  AND c.subobject_name IS NULL
+  AND c.object_type = 'table'
+  AND a.owner = 'omsuser'
+GROUP BY a.table_name,
+         a.owner,
+         a.num_rows,
+         b.comments,
+         c.created,
+         c.last_ddl_time""",
+        ]
+        for sql in test_sqls:
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_regsub_str_function(self):
+        test_sqls = [
+            "SELECT REGEXP_SUBSTR('12345', '[0-9]+', 2)",
+            "SELECT REGEXP_SUBSTR('hello world', '(.)', 1, 0, 'i')",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_pipes_function(self):
+        test_sqls = [
+            "SELECT * FROM t WHERE a in (1) || a like '%1'",
+            "SELECT * FROM t WHERE a in (1) || 1 || a like '%1'",
+            "SELECT * FROM t WHERE a in (1) || 1+1 || 1%2 || a like '%1'",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_ob_function(self):
+        test_sqls = [
+            "SELECT ALL(a) FROM t",
+            "SELECT ALL a FROM t",
+            "SELECT UNIQUE(a) FROM t",
+            "SELECT UNIQUE a FROM t",
+            "SELECT HOST_IP()",
+            "SELECT ORA_DECODE(sign(a),-1,0)",
+            "SELECT NVL(a,b)",
+            "SELECT TO_CHAR(123, '99999') FROM DUAL",
+            "SELECT TO_CHAR('1212') FROM clobtest",
+            "SELECT TO_CHAR(interval'1' year, 'SS-MI-HH', 'nls_language = american') FROM DUAL",
+            "SELECT CONVERT_TZ('2022-01-01 12:00:00', 'UTC', 'America/New_York') FROM DUAL",
+            "SELECT OB_VERSION() FROM DUAL",
+            "SELECT DECODE(1, 1, 'One', 2, 'Two', 'Other') FROM DUAL",
+        ]
+        for sql in test_sqls:
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_select_fetch_condition(self):
+        test_sqls = [
+            "SELECT * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT * FROM DUAL FETCH NEXT 1 ROWS ONLY",
+            "SELECT * FROM DUAL FETCH FIRST 5 ROW ONLY",
+            "SELECT * FROM DUAL FETCH NEXT 1 ROW ONLY",
+            "SELECT * FROM DUAL FETCH FIRST 5 ROW ONLY",
+            "SELECT * FROM DUAL FETCH NEXT 1 ROW ONLY",
+            "SELECT * FROM DUAL FETCH FIRST ? ROW ONLY",
+            "SELECT * FROM DUAL FETCH NEXT ? ROW ONLY",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_select_stmt_opts(self):
+        test_sqls = [
+            "SELECT ALL * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT DISTINCT * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT DISTINCTROW * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT DISTINCTROW ALL * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT DISTINCTROW ALL DISTINCT * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT SQL_NO_CACHE * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT SQL_CALC_FOUND_ROWS * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT SQL_SMALL_RESULT * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT SQL_BIG_RESULT * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT SQL_BUFFER_RESULT * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT HIGH_PRIORITY * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+            "SELECT STRAIGHT_JOIN * FROM DUAL FETCH FIRST 5 ROWS ONLY",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_identifier(self):
+        test_sqls = [
+            "SELECT * FROM DUAL WHERE $1=1",
+            "SELECT * FROM DUAL WHERE $1$=1",
+            "SELECT * FROM DUAL WHERE 0x12G=1",
+            "SELECT * FROM DUAL WHERE 0b12=1",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_date_func(self):
+        test_sqls = [
+            "SELECT ADDDATE('2022-01-01', INTERVAL 5 DAY)",
+            "SELECT ADDDATE('2022-01-01', 5)",
+            "SELECT SUBDATE('2022-01-01', INTERVAL 5 DAY)",
+            "SELECT SUBDATE('2022-01-01', 5)",
+            "SELECT DATE_ADD('2022-01-01', INTERVAL 5 DAY)",
+            "SELECT DATE_ADD('2022-01-01', 5)",
+            "SELECT DATE_SUB('2022-01-01', INTERVAL 5 DAY)",
+            "SELECT DATE_SUB('2022-01-01', 5)",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
+
+    def test_delete_statement(self):
+        test_sqls = [
+            "DELETE t1, t2 FROM t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id=t2.id AND t2.id=t3.id",
+            "DELETE FROM t1, t2 USING t1 INNER JOIN t2 INNER JOIN t3 WHERE t1.id=t2.id AND t2.id=t3.id",
+            "DELETE t1 FROM t1 LEFT JOIN t2 ON t1.id=t2.id WHERE t2.id IS NULL",
+            "DELETE t1 FROM t1 LEFT JOIN t2 ON t1.id=t2.id PARTITION(p1,p2) WHERE t2.id IS NULL",
+        ]
+        for sql in test_sqls:
+            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            assert isinstance(result, Statement)
+            result = odps_parser.parse(sql, lexer=odps_lexer, debug=True)
+            assert isinstance(result, Statement)
 
 
 if __name__ == '__main__':
