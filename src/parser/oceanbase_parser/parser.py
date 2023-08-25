@@ -668,7 +668,10 @@ def p_parameterization(p):
     r"""parameterization : number
     | QM
     """
-    p[0] = p[1]
+    if p.slice[1].type == "number":
+        p[0]=p[1].value
+    else:
+        p[0] = p[1]
 
 def p_first_or_next(p):
     r"""first_or_next : FIRST
@@ -687,7 +690,7 @@ def p_row_or_rows(p):
 
 def p_number(p):
     r"""number : NUMBER"""
-    p[0] = p[1]
+    p[0] = LongLiteral(p.lineno(1), p.lexpos(1), p[1])
 
 
 def p_set_operation_expressions(p):
@@ -2756,7 +2759,10 @@ def p_field_param_list(p):
 def p_field_parameter(p):
     r"""field_parameter : number
     | base_data_type"""
-    p[0] = p[1]
+    if p.slice[1].type == "number":
+        p[0]=p[1].value
+    else:
+        p[0] = p[1]
 
 
 def p_float_opt(p):
@@ -3736,12 +3742,11 @@ def p_quoted_identifier(p):
 
 def p_figure(p):
     r"""figure : FRACTION
-    | NUMBER
-    | HEX_NUMBER"""
+    | number"""
     if p.slice[1].type == "FRACTION":
         p[0] = DoubleLiteral(p.lineno(1), p.lexpos(1), p[1])
     else:
-        p[0] = LongLiteral(p.lineno(1), p.lexpos(1), p[1])
+        p[0] = p[1]
 
 
 def p_empty(p):
