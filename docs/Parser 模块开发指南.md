@@ -271,5 +271,6 @@ result = mysql_parser.parse(sql, lexer=mysql_lexer)
 ![DELETE 语句的执行计划树](./pictures/DELETE%20语法树.png)
 
 # 参考
-● [TiDB 源码阅读系列文章（五）TiDB SQL Parser 的实现](https://cn.pingcap.com/blog/tidb-source-code-reading-5)
-● [PLY](https://github.com/dabeaz/ply)
+
+* [TiDB 源码阅读系列文章（五）TiDB SQL Parser 的实现](https://cn.pingcap.com/blog/tidb-source-code-reading-5)
+* [PLY](https://github.com/dabeaz/ply)
