@@ -121,7 +121,7 @@ def t_SCONST(t):
 
 
 def t_NUMBER_START_WITH_XB(t):
-    r"""[xX]'[0-9A-Fa-f]*'|[bB]'[0-1]*'"""
+    r"""[-+]?[xX]'[0-9A-Fa-f]*'|[-+]?[bB]'[0-1]*'"""
     t.type = "NUMBER"
     return t
 
@@ -129,7 +129,7 @@ def t_NUMBER_START_WITH_XB(t):
 def t_IDENTIFIER(t):
     r"""[a-zA-Z\u4e00-\u9fa50-9_$][a-zA-Z\u4e00-\u9fa50-9_@:$]*"""
     if re.match(
-        r'(^0[xX][0-9a-fA-F]+$)|(^[xX]\'[0-9a-fA-F]+\'$)|(^0[bB][01]+$)|(^[bB]\'[01]+\'$)|(^\d+$)',
+        r'(^0[xX][0-9a-fA-F]+$)|(^0[bB][01]+$)|(^\d+$)',
         t.value,
     ):
         t.type = "NUMBER"

@@ -57,7 +57,7 @@ class MyTestCase(unittest.TestCase):
             {'ordering': 'desc', 'column_name': 'b'},
         ]
         assert min_max_list == ['age']
-        assert limit_number == '10'
+        assert limit_number == 10
 
     def test_get_filter_column2(self):
         sql = """SELECT
