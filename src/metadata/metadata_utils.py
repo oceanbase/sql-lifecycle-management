@@ -16,8 +16,7 @@ from typing import List
 
 from src.metadata.catalog import Catalog, Statistics, Selectivity, Table, Index, Column
 from src.optimizer.optimizer_enum import IndexType, OptType
-from src.parser.mysql_parser.parser import parser as mysql_parser
-from src.parser.mysql_parser.lexer import lexer as mysql_lexer
+from src.parser.mysql_parser import parser as mysql_parser
 
 
 class MetaDataUtils(object):
@@ -30,7 +29,7 @@ class MetaDataUtils(object):
         for ddl_sql in schema_sql.split(';'):
             if not ddl_sql:
                 break
-            res = mysql_parser.parse(ddl_sql, lexer=mysql_lexer)
+            res = mysql_parser.parse(ddl_sql)
             table_name = res['table_name']
             element_list = res['element_list']
             index_list = res['index_list']
@@ -95,7 +94,7 @@ class MetaDataUtils(object):
                 for ddl_sql in schema_sql.split(';'):
                     if not ddl_sql:
                         break
-                    res = mysql_parser.parse(ddl_sql, lexer=mysql_lexer)
+                    res = mysql_parser.parse(ddl_sql)
                     table_name = res['table_name']
                     element_list = res['element_list']
                     index_list = res['index_list']

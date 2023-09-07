@@ -11,8 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
 from src.optimizer.engine import Engine
-from src.parser.mysql_parser.parser import parser as mysql_parser
-from src.parser.mysql_parser.lexer import lexer as mysql_lexer
+from src.parser.mysql_parser import parser as mysql_parser
 from .rewrite_rule import mysql_rules, common_rules
 
 
@@ -27,7 +26,7 @@ class MySQLEngine(Engine):
         return singleton
 
     def parse(self, sql, tracking=False):
-        return mysql_parser.parse(sql, lexer=mysql_lexer, tracking=tracking)
+        return mysql_parser.parse(sql, tracking=tracking)
 
     def rewrite(self, statement, catalog=None):
         common_rules.extend(mysql_rules)

@@ -14,8 +14,7 @@
 
 import unittest
 
-from src.parser.mysql_parser.parser import parser
-from src.parser.mysql_parser.lexer import lexer
+from src.parser.mysql_parser import parser
 
 
 class MyTestCase(unittest.TestCase):
@@ -41,7 +40,6 @@ class MyTestCase(unittest.TestCase):
                                 KEY `pure_dbname` (`pure_dbname`) ) 
                                 ENGINE=InnoDB DEFAULT CHARSET=utf8
                         """,
-            lexer=lexer,
         )
         assert result['index_list'][0][0].value == '1.primary'
         assert result['index_list'][0][1] == 'PRIMARY'
@@ -176,7 +174,6 @@ class MyTestCase(unittest.TestCase):
   KEY `I_machine_id_state_type_env_created` (`ticket_machine_id`,`merchant_id`,`order_state`,`occupy_type`,`env`,`gmt_created`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=3529344021213246782 COMMENT='订单表:订单相关信息存储' 
     """,
-            lexer=lexer,
         )
         assert len(result['index_list']) == 29
         assert result['index_list'][0][0].value == '1.primary'
