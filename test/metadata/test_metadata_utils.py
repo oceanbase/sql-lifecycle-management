@@ -17,8 +17,7 @@ import unittest
 
 from src.metadata.catalog import Catalog
 from src.metadata.metadata_utils import MetaDataUtils
-from src.parser.mysql_parser.parser import parser
-from src.parser.mysql_parser.lexer import lexer
+from src.parser.mysql_parser import parser
 from src.parser.parser_utils import ParserUtils
 
 
@@ -124,7 +123,7 @@ class MyTestCase(unittest.TestCase):
         self.catalog_object = MetaDataUtils.json_to_catalog(
             json.loads(self.catalog_json)
         )
-        visitor = ParserUtils.format_statement(parser.parse(self.sql, lexer=lexer))
+        visitor = ParserUtils.format_statement(parser.parse(self.sql))
         self.table_list = visitor.table_list
         self.projection_column_list = visitor.projection_column_list
         self.order_list = visitor.order_list

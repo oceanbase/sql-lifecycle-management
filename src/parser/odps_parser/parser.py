@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 from __future__ import print_function
 
+import threading
 import types
 from src.parser.tree.window import (
     FrameBound,
@@ -24,7 +25,7 @@ from src.parser.tree.window import (
 
 from ply import yacc
 from src.optimizer.optimizer_enum import IndexType
-from src.parser.odps_parser.lexer import tokens
+from src.parser.odps_parser.lexer import tokens, lexer
 from src.parser.tree.expression import (
     AggregateFunc,
     ArithmeticBinaryExpression,
@@ -3815,4 +3816,13 @@ def p_error(p):
     raise SyntaxError("The current version does not support this SQL")
 
 
-parser = yacc.yacc(tabmodule="parser_table", start="command", debugfile="parser.out",optimize=True)
+parser = None
+
+
+def parse(sql=None, debug=False, tracking=False, tokenfunc=None):
+    global parser
+    if parser is None:
+        with threading.Lock():
+            if parser is None:
+                parser = yacc.yacc(tabmodule="parser_table", start="command", debugfile="parser.out", optimize=True)
+    return parser.parse(input=sql, lexer=lexer, debug=debug, tracking=tracking, tokenfunc=tokenfunc)

@@ -17,10 +17,8 @@ import unittest
 from src.parser.tree.with_stmt import WithHasQuery
 
 from src.common.utils import Utils
-from src.parser.mysql_parser.parser import parser as mysql_parser
-from src.parser.mysql_parser.lexer import lexer as mysql_lexer
-from src.parser.oceanbase_parser.parser import parser as oceanbase_parser
-from src.parser.oceanbase_parser.lexer import lexer as oceanbase_lexer
+from src.parser.mysql_parser import parser as mysql_parser
+from src.parser.oceanbase_parser import parser as oceanbase_parser
 from src.parser.tree.expression import ComparisonExpression
 from src.parser.tree.statement import Statement
 import warnings
@@ -87,7 +85,7 @@ class MyTestCase(unittest.TestCase):
         INSERT IGNORE INTO ilimitcenter05.tp_48246_ogt_fc_lc_day (`id`, `tnt_inst_id`, `principal_id`, `principal_type`, `cumulate_code` , `stat_time`, `amount`, `day_count`, `reverse_amount`, `reverse_count` , `max_value`, `min_value`, `cumulate_properties`, `p1`, `p2` , `p3`, `p4`, `p5`, `p6`, `p7` , `p8`, `p9`, `p10`, `p11`, `p12` , `p13`, `p14`, `p15`, `properties_md5`, `gmt_create` , `gmt_modified`, `currency`, `version`) SELECT `id`, `tnt_inst_id`, `principal_id`, `principal_type`, `cumulate_code` , `stat_time`, `amount`, `day_count`, `reverse_amount`, `reverse_count` , `max_value`, `min_value`, `cumulate_properties`, `p1`, `p2` , `p3`, `p4`, `p5`, `p6`, `p7` , `p8`, `p9`, `p10`, `p11`, `p12` , `p13`, `p14`, `p15`, `properties_md5`, `gmt_create` , `gmt_modified`, `currency`, `version` FROM ilimitcenter05.fc_lc_day FORCE INDEX (`PRIMARY`) WHERE `id` > ? AND (`id` < ? OR `id` = ?) LOCK IN SHARE MODE
         """
         sql = Utils.remove_sql_text_affects_parser(sql)
-        result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+        result = mysql_parser.parse(sql)
         assert isinstance(result, Statement)
 
     def test_insert_now(self):
@@ -120,7 +118,7 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_mysql_regexp_opt(self):
@@ -130,7 +128,7 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_resvered_word_can_used_as_token_in_mysql_ob(self):
@@ -165,9 +163,9 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_resvered_word_can_used_as_token_only_in_ob(self):
@@ -176,7 +174,7 @@ delete from execution_log          where                (                       
             """SELECT groups FROM t""",
         ]
         for sql in test_sqls:
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_vector_expression(self):
@@ -189,9 +187,9 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_concat_function(self):
@@ -202,9 +200,9 @@ delete from execution_log          where                (                       
         ]
         for sql in test_sqls:
             sql = Utils.remove_sql_text_affects_parser(sql)
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_cast_function(self):
@@ -218,9 +216,9 @@ delete from execution_log          where                (                       
             "SELECT CAST(9 AS BINARY(15))",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_inner_join(self):
@@ -228,9 +226,9 @@ delete from execution_log          where                (                       
             " SELECT * FROM ((SELECT * FROM b INNER JOIN a ON a.task_id = b.task_id) x INNER JOIN y ON x.id = y.id)"
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_set_operation(self):
@@ -243,9 +241,9 @@ delete from execution_log          where                (                       
             " ((SELECT * FROM a ) UNION (SELECT * FROM b)) UNION (SELECT * FROM c)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_with_operation(self):
@@ -259,9 +257,9 @@ delete from execution_log          where                (                       
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             for sql in test_sqls:
-                result = mysql_parser.parse(sql, lexer=mysql_lexer)
+                result = mysql_parser.parse(sql)
                 assert isinstance(result, WithHasQuery)
-                result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+                result = oceanbase_parser.parse(sql)
                 assert isinstance(result, WithHasQuery)
 
     def test_windows_func(self):
@@ -406,9 +404,9 @@ delete from execution_log          where                (                       
         """,
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_same_name_token(self):
@@ -450,9 +448,9 @@ delete from execution_log          where                (                       
             'SELECT row_number FROM my_table',
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_like_escape(self):
@@ -461,9 +459,9 @@ delete from execution_log          where                (                       
             'select * from t where id like "0049663881" escape "`"',
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_interval(self):
@@ -478,9 +476,9 @@ delete from execution_log          where                (                       
             "select * from t where a>date_sub(now(),?)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_when_case(self):
@@ -489,9 +487,9 @@ delete from execution_log          where                (                       
             "SELECT CASE WHEN gender = '男' THEN '先生' WHEN gender = '女' THEN '女士' ELSE '未知' END AS title, name FROM user",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_group_concat(p):
@@ -501,9 +499,9 @@ delete from execution_log          where                (                       
             "SELECT category, group_concat(DISTINCT brand ORDER BY brand ASC SEPARATOR ', ') AS brands FROM product GROUP BY category",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_join(p):
@@ -514,9 +512,9 @@ delete from execution_log          where                (                       
             "SELECT o.order_id, c.name FROM orders o FULL OUTER JOIN customers c ON o.customer_id = c.customer_id;",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_subquery_compare(p):
@@ -527,9 +525,9 @@ delete from execution_log          where                (                       
             "SELECT o.order_id, o.amount FROM orders o WHERE o.amount > SOME ( SELECT AVG(amount) FROM orders)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_if(p):
@@ -538,9 +536,9 @@ delete from execution_log          where                (                       
             "SELECT name, IF(gender='male', '先生', '女士') AS title FROM users",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_sconst(p):
@@ -552,9 +550,9 @@ delete from execution_log          where                (                       
             r"SELECT * FROM users where a='''aaa\a\a\\' and b='\'b'",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_alias_name(p):
@@ -563,9 +561,9 @@ delete from execution_log          where                (                       
             "SELECT category AS product_category,COUNT(*) AS 'product_count' FROM products",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_match_against(p):
@@ -577,9 +575,9 @@ delete from execution_log          where                (                       
             "SELECT * FROM products WHERE MATCH(product_name, product_description) AGAINST('camera' IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_assignment(p):
@@ -589,9 +587,9 @@ delete from execution_log          where                (                       
             "SELECT category_name FROM categories WHERE category_id = (select @rownum.test := 0)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_binary(p):
@@ -600,9 +598,9 @@ delete from execution_log          where                (                       
             "SELECT * FROM users WHERE _BINARY 'admin' = 'test'",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_for_update(p):
@@ -615,9 +613,9 @@ delete from execution_log          where                (                       
             "SELECT * FROM orders WHERE order_status = 'new' FOR UPDATE SKIP LOCKED",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_for_update_ob(p):
@@ -625,7 +623,9 @@ delete from execution_log          where                (                       
             "SELECT * FROM orders WHERE order_status = 'new' FOR UPDATE NO_WAIT",
         ]
         for sql in test_sqls:
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_convert(p):
@@ -636,9 +636,11 @@ delete from execution_log          where                (                       
             "SELECT CONVERT(product_price, DECIMAL(10,2)) AS price_string FROM products",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_aggreate_func_with_window(p):
@@ -650,9 +652,11 @@ delete from execution_log          where                (                       
             "SELECT GROUP_CONCAT(DISTINCT product_name ORDER BY product_name ASC SEPARATOR ', ') OVER(PARTITION BY user_id) AS product_list FROM orders",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_group_by_with_order(p):
@@ -664,9 +668,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM orders GROUP BY order_year DESC, order_month ASC",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_length(p):
@@ -674,9 +680,11 @@ delete from execution_log          where                (                       
             "SELECT length(title) FROM t",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_date_lit(p):
@@ -686,9 +694,11 @@ delete from execution_log          where                (                       
             "SELECT TIMESTAMP '2021-05-05'",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_noeqnull(p):
@@ -698,9 +708,11 @@ delete from execution_log          where                (                       
             "SELECT 1|1 <=> 1+1*1>2",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_cross_nutural_join(p):
@@ -711,9 +723,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM products NATURAL JOIN orders CROSS JOIN customers on orders.name=customers.name",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_extract(p):
@@ -724,9 +738,11 @@ delete from execution_log          where                (                       
             "SELECT EXTRACT(DAY FROM order_date) AS order_day, EXTRACT(HOUR FROM order_date) AS order_hour FROM orders",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_dual(p):
@@ -734,9 +750,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM DUAL",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_partition(p):
@@ -744,9 +762,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM t PARTITION(p85,p1)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_collate(p):
@@ -759,9 +779,11 @@ delete from execution_log          where                (                       
             'SELECT DISTINCT k COLLATE latin1_german2_ci FROM t1',
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_number(p):
@@ -780,9 +802,11 @@ delete from execution_log          where                (                       
             "SELECT X''",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_index_hint(p):
@@ -795,9 +819,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM t1 USE INDEX FOR JOIN (i1) FORCE INDEX FOR JOIN (PRIMARY)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_string_after_string(p):
@@ -810,9 +836,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM t1 GROUP BY 'a' 'desc'",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_trim_funcion(p):
@@ -824,9 +852,11 @@ delete from execution_log          where                (                       
             "SELECT TRIM('x' FROM 'xxxbarxxx')",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_coalesce_function(p):
@@ -836,9 +866,11 @@ delete from execution_log          where                (                       
             "SELECT COALESCE(NULL,'a','b')",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_logical_operator(p):
@@ -851,9 +883,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM products WHERE NOT price BETWEEN 100 AND 200 && brand IN ('Apple', 'Samsung')",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_with_rollup(p):
@@ -862,9 +896,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM t1 GROUP BY name, size WITH ROLLUP",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_ceil_func(p):
@@ -874,9 +910,11 @@ delete from execution_log          where                (                       
             "SELECT * FROM t WHERE a=CEIL(0b101)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_comment(p):
@@ -886,9 +924,11 @@ delete from execution_log          where                (                       
             "SELECT * /**/FROM t WHERE a=CEIL(0b101)",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(
+                sql,
+            )
             assert isinstance(result, Statement)
 
     def test_identitifer_name(p):
@@ -898,9 +938,9 @@ delete from execution_log          where                (                       
             "SELECT * FROM t WHERE _FA=0",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
     def test_position_func(p):
@@ -908,9 +948,9 @@ delete from execution_log          where                (                       
             "SELECT * FROM t WHERE a=POSITION('tacode' in 'tacodea')",
         ]
         for sql in test_sqls:
-            result = mysql_parser.parse(sql, lexer=mysql_lexer, debug=True)
+            result = mysql_parser.parse(sql)
             assert isinstance(result, Statement)
-            result = oceanbase_parser.parse(sql, lexer=oceanbase_lexer, debug=True)
+            result = oceanbase_parser.parse(sql)
             assert isinstance(result, Statement)
 
 

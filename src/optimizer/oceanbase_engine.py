@@ -11,8 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
 from src.optimizer.engine import Engine
-from src.parser.oceanbase_parser.parser import parser as oceanbase_parser
-from src.parser.oceanbase_parser.lexer import lexer as oceanbase_lexer
+from src.parser.oceanbase_parser import parser as oceanbase_parser
 from .rewrite_rule import common_rules
 
 
@@ -27,7 +26,7 @@ class OceanBaseEngine(Engine):
         return singleton
 
     def parse(self, sql, tracking=False):
-        return oceanbase_parser.parse(sql, lexer=oceanbase_lexer, tracking=tracking)
+        return oceanbase_parser.parse(sql, tracking=tracking)
 
     def rewrite(self, statement, catalog=None):
         rule_explanation_list = []
