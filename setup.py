@@ -46,6 +46,7 @@ setup(
         'flasgger',
         'ply==3.11',
         'chardet==3.0.4',
+        'sqlgpt-parser>=0.0.1a2',
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",

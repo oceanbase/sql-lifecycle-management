@@ -11,8 +11,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
 from src.optimizer.optimizer import Optimizer
-from src.parser.mysql_parser import parser as mysql_parser
-from src.parser.parser_utils import ParserUtils
+from sqlgpt_parser.sql_parser.mysql_parser import parser as mysql_parser
+from sqlgpt_parser.sql_parser.parser_utils import ParserUtils
 from src.common.utils import Utils
 
 

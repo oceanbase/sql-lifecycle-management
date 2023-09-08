@@ -10,7 +10,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-from src.parser.tree.expression import (
+from sqlgpt_parser.sql_parser.tree.expression import (
     BetweenPredicate,
     ComparisonExpression,
     ExistsPredicate,
@@ -18,7 +18,7 @@ from src.parser.tree.expression import (
     LikePredicate,
     LogicalBinaryExpression,
 )
-from src.parser.tree import Statement, Query
+from sqlgpt_parser.sql_parser.tree import Statement, Query
 from .heuristic_rule_return_result import HeuristicRuleReturnResult
 from ..abstract_rule import AbstractRewriteRule
 
