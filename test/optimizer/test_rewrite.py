@@ -2,13 +2,13 @@ import json
 import unittest
 
 from src.metadata.metadata_utils import MetaDataUtils
-from src.optimizer.formatter import format_sql
+from sqlgpt_parser.format.formatter import format_sql
 from src.optimizer.rewrite_rule import (
     RewriteMySQLORRule,
     RemoveOrderByInDeleteUpdateRule,
     RewriteSupplementColumnRule,
 )
-from src.parser.mysql_parser import parser
+from sqlgpt_parser.sql_parser.mysql_parser import parser
 
 
 class MyTestCase(unittest.TestCase):
@@ -16,13 +16,17 @@ class MyTestCase(unittest.TestCase):
         statement = parser.parse("SELECT * FROM T1 WHERE C1 < 20000 OR C2 < 30")
         RewriteMySQLORRule().match_action(statement)
         after_sql_rewrite_format = format_sql(statement, 0)
+        print(after_sql_rewrite_format)
         assert (
             after_sql_rewrite_format
-            == """SELECT *
+            == """SELECT
+  *
 FROM
   T1
 WHERE C1 < 20000
-UNION SELECT *
+UNION
+SELECT
+  *
 FROM
   T1
 WHERE C2 < 30"""
@@ -137,7 +141,8 @@ FROM
         )
 
     def test_or_same_column(self):
-        after_sql_rewrite_format = """SELECT *
+        after_sql_rewrite_format = """SELECT
+  *
 FROM
   T1
 WHERE C1 IN (20000, 30)"""
@@ -162,11 +167,14 @@ WHERE C1 IN (20000, 30)"""
         result = format_sql(statement, 0)
         assert (
             result
-            == """SELECT *
+            == """SELECT
+  *
 FROM
   T1
 WHERE C1 IN (20000)
-UNION SELECT *
+UNION
+SELECT
+  *
 FROM
   T1
 WHERE C2 IN (30)"""

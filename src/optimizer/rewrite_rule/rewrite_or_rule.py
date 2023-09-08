@@ -9,18 +9,18 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
-from src.parser.tree.expression import (
+from sqlgpt_parser.sql_parser.tree.expression import (
     ComparisonExpression,
     InListExpression,
     InPredicate,
     LogicalBinaryExpression,
     QualifiedNameReference,
 )
-from src.parser.tree.query_specification import QuerySpecification
-from src.parser.tree.set_operation import Union
-from src.parser.tree.statement import Query, Statement
+from sqlgpt_parser.sql_parser.tree.query_specification import QuerySpecification
+from sqlgpt_parser.sql_parser.tree.set_operation import Union
+from sqlgpt_parser.sql_parser.tree.statement import Query, Statement
 from src.optimizer.optimizer_enum import IndexType
-from src.parser.tree.visitor import DefaultTraversalVisitor
+from sqlgpt_parser.sql_parser.tree.visitor import DefaultTraversalVisitor
 from ..abstract_rule import AbstractRewriteRule
 
 

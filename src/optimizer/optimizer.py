@@ -16,9 +16,9 @@ from typing import Optional
 from src.common.utils import Utils
 from src.metadata.catalog import Catalog, Index
 from src.metadata.metadata_utils import MetaDataUtils
-from src.optimizer.formatter import format_sql
+from sqlgpt_parser.format.formatter import format_sql
 from src.optimizer.optimizer_enum import IndexType
-from src.parser.parser_utils import ParserUtils
+from sqlgpt_parser.sql_parser.parser_utils import ParserUtils
 from .cbo.cbo_optimizer import CBOOptimizer
 from .oceanbase_engine import OceanBaseEngine
 from .prunning_rule.index_prunning import CompareStat, IndexPrunning

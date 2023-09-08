@@ -11,7 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
 from src.optimizer.engine import Engine
-from src.parser.oceanbase_parser import parser as oceanbase_parser
+from sqlgpt_parser.sql_parser.oceanbase_parser import parser as oceanbase_parser
 from .rewrite_rule import common_rules
 
 

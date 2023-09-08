@@ -9,12 +9,12 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
-from src.parser.tree.expression import QualifiedNameReference
-from src.parser.tree.qualified_name import QualifiedName
-from src.parser.tree.select_item import SingleColumn
-from src.parser.tree.statement import Query, Statement
-from src.parser.tree.table import Table
-from src.parser.tree.visitor import DefaultTraversalVisitor
+from sqlgpt_parser.sql_parser.tree.expression import QualifiedNameReference
+from sqlgpt_parser.sql_parser.tree.qualified_name import QualifiedName
+from sqlgpt_parser.sql_parser.tree.select_item import SingleColumn
+from sqlgpt_parser.sql_parser.tree.statement import Query, Statement
+from sqlgpt_parser.sql_parser.tree.table import Table
+from sqlgpt_parser.sql_parser.tree.visitor import DefaultTraversalVisitor
 from ..abstract_rule import AbstractRewriteRule
 
 

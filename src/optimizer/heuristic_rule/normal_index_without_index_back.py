@@ -14,7 +14,7 @@ import sys
 from typing import List
 
 from src.optimizer.optimizer_enum import IndexType
-from src.parser.tree import Statement
+from sqlgpt_parser.sql_parser.tree import Statement
 from .heuristic_rule_return_result import HeuristicRuleReturnResult
 from ..abstract_rule import AbstractRewriteRule
 

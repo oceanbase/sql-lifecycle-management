@@ -24,7 +24,7 @@ from src.common.logger import Logger
 from src.common.utils import Utils
 from src.common.utils import fun_diff_secs, div_list
 from src.optimizer.oceanbase_engine import OceanBaseEngine
-from src.parser.parser_utils import ParserUtils
+from sqlgpt_parser.sql_parser.parser_utils import ParserUtils
 
 log_file = os.path.basename(sys.argv[0]).split(".")[0] + '.log'
 log = Logger(log_file)
