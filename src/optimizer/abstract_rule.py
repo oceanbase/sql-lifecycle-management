@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
 from abc import ABCMeta, abstractmethod
 
-from sqlgpt_parser.sql_parser.tree.statement import Statement
+from sqlgpt_parser.parser.tree.statement import Statement
 
 
 class AbstractRewriteRule(metaclass=ABCMeta):

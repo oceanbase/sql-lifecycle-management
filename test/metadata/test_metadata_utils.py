@@ -17,8 +17,8 @@ import unittest
 
 from src.metadata.catalog import Catalog
 from src.metadata.metadata_utils import MetaDataUtils
-from sqlgpt_parser.sql_parser.mysql_parser import parser
-from sqlgpt_parser.sql_parser.parser_utils import ParserUtils
+from sqlgpt_parser.parser.mysql_parser import parser
+from sqlgpt_parser.parser.parser_utils import ParserUtils
 
 
 class MyTestCase(unittest.TestCase):

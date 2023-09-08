@@ -10,11 +10,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-from sqlgpt_parser.sql_parser.tree.expression import QualifiedNameReference
-from sqlgpt_parser.sql_parser.tree.qualified_name import QualifiedName
-from sqlgpt_parser.sql_parser.tree.select_item import SingleColumn
-from sqlgpt_parser.sql_parser.tree.statement import Statement
-from sqlgpt_parser.sql_parser.tree.visitor import DefaultTraversalVisitor
+from sqlgpt_parser.parser.tree.expression import QualifiedNameReference
+from sqlgpt_parser.parser.tree.qualified_name import QualifiedName
+from sqlgpt_parser.parser.tree.select_item import SingleColumn
+from sqlgpt_parser.parser.tree.statement import Statement
+from sqlgpt_parser.parser.tree.visitor import DefaultTraversalVisitor
 from .pmd_enum import PMDLevel
 from .pmd_result import PMDResultRule
 from ..abstract_rule import AbstractRewriteRule

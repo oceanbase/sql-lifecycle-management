@@ -10,9 +10,9 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 """
 
-from sqlgpt_parser.sql_parser.tree.literal import NullLiteral
-from sqlgpt_parser.sql_parser.tree.statement import Statement
-from sqlgpt_parser.sql_parser.tree.visitor import DefaultTraversalVisitor
+from sqlgpt_parser.parser.tree.literal import NullLiteral
+from sqlgpt_parser.parser.tree.statement import Statement
+from sqlgpt_parser.parser.tree.visitor import DefaultTraversalVisitor
 from .pmd_enum import PMDLevel
 from .pmd_result import PMDResultRule
 from ..abstract_rule import AbstractRewriteRule
