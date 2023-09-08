@@ -13,7 +13,7 @@ from abc import ABCMeta, abstractmethod
 from typing import List
 
 from src.optimizer.cbo.cbo import CBO
-from sqlgpt_parser.sql_parser.tree.statement import Statement
+from sqlgpt_parser.parser.tree.statement import Statement
 from .heuristic_rule import heuristic_rule_list
 from .pmd_rule import common_pmd_list
 

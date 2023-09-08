@@ -19,9 +19,9 @@ from src.common.logger import Logger
 from src.consume.file_parse_common import get_encoding
 from src.consume.mysql_logparser_base import MysqlSlowLogParse
 from sqlgpt_parser.format.formatter import format_sql
-from sqlgpt_parser.sql_parser.mysql_parser.parser import parser as mysql_parser
-from sqlgpt_parser.sql_parser.mysql_parser.lexer import lexer as mysql_lexer
-from sqlgpt_parser.sql_parser.parser_utils import ParserUtils
+from sqlgpt_parser.parser.mysql_parser.parser import parser as mysql_parser
+from sqlgpt_parser.parser.mysql_parser.lexer import lexer as mysql_lexer
+from sqlgpt_parser.parser.parser_utils import ParserUtils
 
 log_file = os.path.basename(sys.argv[0]).split(".")[0] + '.log'
 log = Logger(log_file)
