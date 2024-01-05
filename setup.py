@@ -39,7 +39,7 @@ setup(
         'lxml==4.9.1',
         'tqdm==4.53.0',
         'flask_request_id==0.1',
-        'pycryptodome==3.17',
+        'pycryptodome==3.19.1',
         'pytest',
         'simplejson==3.18.4',
         'schedule',
