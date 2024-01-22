@@ -397,7 +397,7 @@ def schedule_plan_ob(db_conf, queue_info, schedule_type):
                         if plan_info and is_need_insert:
                             plan_info = plan_info[:-2].replace('\'', '')
                             plan_full = plan_full.replace('\'', '')[:60000]
-                            outline_hash = hashlib.md5(
+                            outline_hash = hashlib.sha256(
                                 outline_data.encode("utf8")
                             ).hexdigest()
                             # result_sql

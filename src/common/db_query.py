@@ -36,7 +36,7 @@ metadb = cfg['db']
 
 f.close()
 
-hl = hashlib.md5()
+hl = hashlib.sha256()
 
 SQLESS_DEFULT_PASSWORD = '*e9c2bcdc178a99b7b08dd25db58ded2ee5bff05'
 

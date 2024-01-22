@@ -13,6 +13,10 @@ from .rewrite_supplement_column_rule import RewriteSupplementColumnRule
 from .rewrite_or_rule import RewriteMySQLORRule
 from .remove_order_by_in_delete_update_rule import RemoveOrderByInDeleteUpdateRule
 
-common_rules = [RewriteSupplementColumnRule(), RemoveOrderByInDeleteUpdateRule()]
+common_rules = [
+    RewriteSupplementColumnRule(),
+    RemoveOrderByInDeleteUpdateRule(),
+    RewriteMySQLORRule(),
+]
 
 mysql_rules = [RewriteMySQLORRule()]

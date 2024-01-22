@@ -70,7 +70,7 @@ class SlowQueryParser(object):
                 log.error(statement)
                 log.exception(e)
 
-        sql_id = hashlib.md5(statement.encode('utf-8')).hexdigest().upper()
+        sql_id = hashlib.sha256(statement.encode('utf-8')).hexdigest().upper()
         return sql_id, statement
 
     def skip_sql(self, sql):
