@@ -200,6 +200,7 @@ class MetaDataUtils(object):
 
     @staticmethod
     def extension_all_match_index(filter_column_list, order_list):
+        column_set = set()
         column_list = []
         range_flag = False
         last_column = ''
@@ -207,7 +208,9 @@ class MetaDataUtils(object):
             column_name = filter_column['column_name']
             opt = filter_column['opt']
             if opt == '=' or opt == 'in' or opt == 'is':
-                column_list.append(column_name)
+                if column_name not in column_set:
+                    column_set.add(column_name)
+                    column_list.append(column_name)
             elif (
                 opt == '>'
                 or opt == '<'
@@ -221,6 +224,8 @@ class MetaDataUtils(object):
                     range_flag = True
 
         if range_flag:
+            if last_column in column_set:
+                column_list.remove(last_column)
             column_list.append(last_column)
 
         # TODO Statistics need to be added to determine which one comes first when there are range queries and sorting
