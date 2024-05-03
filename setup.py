@@ -37,7 +37,7 @@ setup(
         'flask-cors==3.0.10',
         'fire==0.3.1',
         'lxml==4.9.1',
-        'tqdm==4.53.0',
+        'tqdm==4.66.3',
         'flask_request_id==0.1',
         'pycryptodome==3.19.1',
         'pytest',
