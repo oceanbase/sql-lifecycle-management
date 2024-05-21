@@ -25,7 +25,7 @@ setup(
     python_requires='>=3.6.3',
     install_requires=[
         'sqlalchemy==1.3.1',
-        'pymysql==0.9.3',
+        'pymysql==1.1.1',
         'DBUtils==1.3',
         'flask==2.2.5',
         'requests==2.31.0',
