@@ -34,7 +34,7 @@ setup(
         'werkzeug==3.0.1',
         'unittest-xml-reporting==3.0.4',
         'future==0.18.3',
-        'flask-cors==3.0.10',
+        'flask-cors==4.0.1',
         'fire==0.3.1',
         'lxml==4.9.1',
         'tqdm==4.53.0',
